@@ -1,5 +1,8 @@
+use std::io::Write;
+
 use actix_multipart::form::tempfile::TempFile;
 use sqlx::PgPool;
+use tempfile::NamedTempFile;
 use tokio::io::AsyncReadExt;
 
 use crate::config::Config;
@@ -36,10 +39,75 @@ pub async fn store_upload(
     config: &Config,
     file: TempFile,
 ) -> Result<StoredFile> {
-    let size = file.size as u64;
+    store(
+        pool,
+        storage,
+        config,
+        file.file,
+        file.size as u64,
+        file.file_name,
+    )
+    .await
+}
+
+/// Fetch an image from `url` and store it, sharing the multipart upload's
+/// validation. Returns a `BadRequest` when the URL cannot be fetched, and the
+/// usual `UnsupportedMediaType` when the fetched bytes are not a supported image.
+pub async fn store_from_url(
+    pool: &PgPool,
+    storage: &Storage,
+    config: &Config,
+    url: &str,
+) -> Result<StoredFile> {
+    let response = reqwest::get(url)
+        .await
+        .map_err(|e| Error::BadRequest(format!("could not fetch url: {e}")))?;
+    if !response.status().is_success() {
+        return Err(Error::BadRequest(format!(
+            "url returned status {}",
+            response.status().as_u16()
+        )));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| Error::BadRequest(format!("could not read url body: {e}")))?;
+    check_size(config, bytes.len() as u64)?;
+
+    let original_name = url
+        .rsplit('/')
+        .next()
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+
+    let mut temp = storage.new_temp()?;
+    temp.write_all(&bytes)?;
+
+    store(
+        pool,
+        storage,
+        config,
+        temp,
+        bytes.len() as u64,
+        original_name,
+    )
+    .await
+}
+
+/// Shared core: validate the temp file, sniff its type, check dimensions,
+/// insert a collision-safe row, then persist it to disk.
+async fn store(
+    pool: &PgPool,
+    storage: &Storage,
+    config: &Config,
+    temp: NamedTempFile,
+    size: u64,
+    original_name: Option<String>,
+) -> Result<StoredFile> {
     check_size(config, size)?;
 
-    let path = file.file.path();
+    let path = temp.path();
 
     // Sniff the type from the file header only, no need to read the whole file.
     let mut header = [0u8; 512];
@@ -62,7 +130,7 @@ pub async fn store_upload(
     check_dimensions(config, dimensions.width as u32, dimensions.height as u32)?;
     let (width, height) = (dimensions.width as i32, dimensions.height as i32);
 
-    let original_name = file.file_name.clone();
+    let original_name = original_name.as_deref();
     let size = size as i64;
 
     // Insert first (retrying on id collision) so we never leave an orphan file on disk.
@@ -75,7 +143,7 @@ pub async fn store_upload(
                 id: &candidate,
                 ext,
                 mime: &mime,
-                original_name: original_name.as_deref(),
+                original_name,
                 size,
                 width,
                 height,
@@ -89,7 +157,7 @@ pub async fn store_upload(
     }
     let id = id.ok_or_else(|| Error::BadRequest("could not allocate an id".into()))?;
 
-    storage.persist(file, &id, ext)?;
+    storage.persist(temp, &id, ext)?;
 
     Ok(StoredFile {
         id,

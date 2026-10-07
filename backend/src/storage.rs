@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use actix_files::NamedFile;
-use actix_multipart::form::tempfile::TempFile;
+use tempfile::NamedTempFile;
 
 use crate::error::Result;
 
@@ -32,13 +32,18 @@ impl Storage {
         self.root.join(format!("{id}.{ext}"))
     }
 
+    /// A temp file inside `root`, so a later `persist` is a same-filesystem
+    /// rename. Used for URL rehosts, where the bytes arrive over HTTP rather
+    /// than through a multipart `TempFile`.
+    pub fn new_temp(&self) -> Result<NamedTempFile> {
+        Ok(NamedTempFile::new_in(&self.root)?)
+    }
+
     /// Move a finished upload into place. `file` sits in a temp file inside
-    /// `root` already (TempFileConfig in main.rs), so this is a same-filesystem
-    /// rename: atomic, no re-copy of the bytes.
-    pub fn persist(&self, file: TempFile, id: &str, ext: &str) -> Result<()> {
-        file.file
-            .persist(self.path_for(id, ext))
-            .map_err(|e| e.error)?;
+    /// `root` already (multipart's TempFileConfig, or `new_temp`), so this is a
+    /// same-filesystem rename: atomic, no re-copy of the bytes.
+    pub fn persist(&self, file: NamedTempFile, id: &str, ext: &str) -> Result<()> {
+        file.persist(self.path_for(id, ext)).map_err(|e| e.error)?;
         Ok(())
     }
 

@@ -15,7 +15,7 @@ use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, StorageCo
 use elysia::error::Error;
 use elysia::handlers::upload;
 use elysia::repository::files::{self, NewFile};
-use elysia::services::files::{check_dimensions, check_size, generate_id};
+use elysia::services::files::{check_dimensions, check_size, generate_id, store_from_url};
 use elysia::storage::Storage;
 
 fn test_config() -> Config {
@@ -245,6 +245,69 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
         upload_status(pool, config, tiny_png(2, 2)).await,
         StatusCode::OK
     );
+}
+
+/// One-shot HTTP server on a loopback port: answers a single request with the
+/// given status line, content type and body, then closes. Returns its URL.
+fn serve_once(status_line: &'static str, content_type: &'static str, body: Vec<u8>) -> String {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let _ = stream.read(&mut [0u8; 1024]); // drain the request line/headers
+            let header = format!(
+                "{status_line}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = stream.write_all(header.as_bytes());
+            let _ = stream.write_all(&body);
+        }
+    });
+    format!("http://{addr}/image.png")
+}
+
+/// Build a Storage over a fresh temp dir for rehost tests.
+fn temp_storage() -> (Storage, std::path::PathBuf) {
+    let dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    (Storage::new(dir.to_str().unwrap()), dir)
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn rehost_stores_a_fetched_image(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(2, 2));
+    let stored = store_from_url(&pool, &storage, &test_config(), &url)
+        .await
+        .unwrap();
+    assert_eq!(stored.ext, "png");
+    assert!(storage.path_for(&stored.id, "png").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn rehost_rejects_a_non_image_link(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
+    assert!(matches!(
+        store_from_url(&pool, &storage, &test_config(), &url).await,
+        Err(Error::UnsupportedMediaType)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let url = serve_once("HTTP/1.1 404 Not Found", "text/plain", b"nope".to_vec());
+    assert!(matches!(
+        store_from_url(&pool, &storage, &test_config(), &url).await,
+        Err(Error::BadRequest(_))
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

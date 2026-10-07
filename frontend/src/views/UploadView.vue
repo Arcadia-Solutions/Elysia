@@ -12,6 +12,11 @@
       <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
     </div>
 
+    <div class="url-row">
+      <InputText v-model="urlInput" size="small" :placeholder="$t('upload.url_placeholder')" fluid @keyup.enter="rehost" :disabled="uploading" />
+      <Button :label="$t('upload.rehost')" size="small" @click="rehost" :disabled="uploading || !urlInput" />
+    </div>
+
     <div v-if="result" class="result">
       <img :src="link" :alt="$t('upload.preview_alt')" class="preview" />
       <div class="link-row">
@@ -28,7 +33,8 @@ import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import { useI18n } from 'vue-i18n'
-import { api } from '@/services/api/http'
+import { isAxiosError } from 'axios'
+import http, { api } from '@/services/api/http'
 import type { UploadResponse } from '@/services/api-schema'
 import { showToast } from '@/main'
 
@@ -36,6 +42,7 @@ const { t } = useI18n()
 const result = ref<UploadResponse | null>(null)
 const uploading = ref(false)
 const dragging = ref(false)
+const urlInput = ref('')
 
 const link = computed(() => (result.value ? `/i/${result.value.id}.${result.value.ext}` : ''))
 const fullLink = computed(() => (link.value ? new URL(link.value, window.location.origin).href : ''))
@@ -63,6 +70,28 @@ const onUpload = (event: FileUploadUploaderEvent) => {
 const onDrop = (event: DragEvent) => {
   dragging.value = false
   handleFile(event.dataTransfer?.files?.[0])
+}
+
+const rehost = () => {
+  if (!urlInput.value) return
+  if (!URL.canParse(urlInput.value)) {
+    showToast('', t('upload.invalid_url'), 'error')
+    return
+  }
+  uploading.value = true
+  http
+    .post<UploadResponse>('/api/upload-url', { url: urlInput.value })
+    .then((uploaded) => {
+      result.value = uploaded.data
+      urlInput.value = ''
+    })
+    .catch((error: unknown) => {
+      const detail = (isAxiosError(error) && error.response?.data?.error) || t('upload.failed')
+      showToast('', detail, 'error')
+    })
+    .finally(() => {
+      uploading.value = false
+    })
 }
 
 const copyLink = () => {
@@ -99,6 +128,10 @@ const copyLink = () => {
 .drop-hint {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
+}
+.url-row {
+  display: flex;
+  gap: 8px;
 }
 .result {
   display: flex;

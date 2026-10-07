@@ -10,6 +10,9 @@
   "upload": {
     "choose": "Choose image",
     "drop_hint": "or drop an image here",
+    "url_placeholder": "Paste an image link to rehost",
+    "rehost": "Rehost",
+    "invalid_url": "Please enter a valid URL",
     "logout": "Logout",
     "copy": "Copy link",
     "copied": "Link copied",

@@ -10,7 +10,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
-use elysia::handlers::{login, serve, upload};
+use elysia::handlers::{login, serve, upload, upload_url};
 use elysia::storage::Storage;
 
 #[actix_web::main]
@@ -60,6 +60,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(TempFileConfig::default().directory(&upload_dir))
             .route("/api/auth/login", web::post().to(login))
             .route("/api/upload", web::post().to(upload))
+            .route("/api/upload-url", web::post().to(upload_url))
             .route("/i/{filename}", web::get().to(serve))
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
