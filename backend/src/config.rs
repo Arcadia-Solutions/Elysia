@@ -37,6 +37,10 @@ pub struct StorageConfig {
     pub upload_dir: String,
     #[serde(default)]
     pub max_file_size_bytes: u64,
+    #[serde(default)]
+    pub max_width_pixels: u32,
+    #[serde(default)]
+    pub max_height_pixels: u32,
 }
 
 #[derive(Debug, Deserialize)]

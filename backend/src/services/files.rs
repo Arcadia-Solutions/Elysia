@@ -37,9 +37,7 @@ pub async fn store_upload(
     file: TempFile,
 ) -> Result<StoredFile> {
     let size = file.size as u64;
-    if config.storage.max_file_size_bytes > 0 && size > config.storage.max_file_size_bytes {
-        return Err(Error::BadRequest("file too large".into()));
-    }
+    check_size(config, size)?;
 
     let path = file.file.path();
 
@@ -61,6 +59,7 @@ pub async fn store_upload(
 
     // Pixel dimensions, read from the image header (no full decode).
     let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
+    check_dimensions(config, dimensions.width as u32, dimensions.height as u32)?;
     let (width, height) = (dimensions.width as i32, dimensions.height as i32);
 
     let original_name = file.file_name.clone();
@@ -96,6 +95,34 @@ pub async fn store_upload(
         id,
         ext: ext.to_string(),
     })
+}
+
+/// Reject files above the configured byte limit (0 = unlimited).
+pub fn check_size(config: &Config, size: u64) -> Result<()> {
+    let limit = config.storage.max_file_size_bytes;
+    if limit > 0 && size > limit {
+        return Err(Error::BadRequest(format!(
+            "file too large: {size} bytes, limit is {limit} bytes"
+        )));
+    }
+    Ok(())
+}
+
+/// Reject images above the configured pixel limits (0 = unlimited, per axis).
+pub fn check_dimensions(config: &Config, width: u32, height: u32) -> Result<()> {
+    let max_width = config.storage.max_width_pixels;
+    let max_height = config.storage.max_height_pixels;
+    if max_width > 0 && width > max_width {
+        return Err(Error::BadRequest(format!(
+            "image width too large: {width} pixels, limit is {max_width} pixels"
+        )));
+    }
+    if max_height > 0 && height > max_height {
+        return Err(Error::BadRequest(format!(
+            "image height too large: {height} pixels, limit is {max_height} pixels"
+        )));
+    }
+    Ok(())
 }
 
 /// Look up a file's metadata by id, or `NotFound`. The row doubles as a

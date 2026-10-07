@@ -22,6 +22,28 @@ env:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+
+    # DATABASE_URL is only used at test runtime: `#[sqlx::test]` connects here
+    # and creates a throwaway database per test. Query macros still compile
+    # offline from the checked-in .sqlx cache.
+    env:
+      DATABASE_URL: postgres://elysia:password@localhost:5432/elysia
+
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: elysia
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: elysia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: ./backend

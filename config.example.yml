@@ -11,7 +11,12 @@ database:
 
 storage:
   upload_dir: ./data/uploads
+  # a value of 0 disables the check
   max_file_size_bytes: 0
+  # a value of 0 disables the check
+  max_width_pixels: 0
+  # a value of 0 disables the check
+  max_height_pixels: 0
 
 auth:
   admin_token: "change-me"
