@@ -1,0 +1,59 @@
+name: Backend CI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/**"
+      - "!**.md"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "!**.md"
+      - ".github/workflows/backend.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: "true"
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+          cache-workspaces: ./backend
+
+      - name: Clippy
+        run: cargo clippy
+
+      - name: Build
+        run: cargo build
+
+      - name: Run tests
+        run: cargo test
+
+  formatting:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+          cache-workspaces: ./backend
+      - name: Rustfmt Check
+        run: cargo fmt --all -- --check

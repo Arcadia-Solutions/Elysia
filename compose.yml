@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: elysia
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: elysia
+    ports:
+      - "5432:5432"
+    volumes:
+      - elysia_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elysia"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  elysia_pgdata:

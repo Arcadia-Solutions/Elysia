@@ -1,0 +1,8 @@
+{
+  "generatorName": "typescript-axios",
+  "output": "src/services/api-schema",
+  "additionalProperties": {
+    "supportsES6": true,
+    "withSeparateModelsAndApi": false
+  }
+}

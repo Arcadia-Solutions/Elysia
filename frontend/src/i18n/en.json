@@ -1,0 +1,19 @@
+{
+  "app": {
+    "name": "Elysia"
+  },
+  "login": {
+    "token_placeholder": "Admin token",
+    "submit": "Login",
+    "invalid": "Invalid token"
+  },
+  "upload": {
+    "choose": "Choose image",
+    "drop_hint": "or drop an image here",
+    "logout": "Logout",
+    "copy": "Copy link",
+    "copied": "Link copied",
+    "failed": "Upload failed",
+    "preview_alt": "preview"
+  }
+}

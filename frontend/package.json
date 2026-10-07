@@ -1,0 +1,45 @@
+{
+  "name": "elysia-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -p tsconfig.app.json --noEmit --composite false && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc -p tsconfig.app.json --noEmit --composite false",
+    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore --ignore-pattern '**/api-schema/**'",
+    "lint:eslint": "eslint . --fix",
+    "lint": "npm run lint:oxlint && npm run lint:eslint",
+    "format": "prettier --write src/",
+    "check-format": "prettier --check src",
+    "gen:api": "openapi-generator-cli generate -g typescript-axios -i http://localhost:8080/api-docs/openapi.json -o ./src/services/api-schema --config openapi-generator.config.json --skip-validate-spec"
+  },
+  "dependencies": {
+    "@primeuix/themes": "^1.0.0",
+    "axios": "^1.8.3",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.1",
+    "vue": "^3.5.13",
+    "vue-i18n": "^10.0.8",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.25.2",
+    "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^22.13.10",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.5.0",
+    "@vue/tsconfig": "^0.7.0",
+    "eslint": "^9.21.0",
+    "eslint-plugin-oxlint": "^0.15.13",
+    "eslint-plugin-vue": "~10.0.0",
+    "jiti": "^2.7.0",
+    "oxlint": "^0.15.13",
+    "prettier": "3.5.3",
+    "typescript": "~5.8.0",
+    "vite": "^6.2.1",
+    "vue-tsc": "^2.2.8"
+  }
+}

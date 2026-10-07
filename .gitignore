@@ -1,0 +1,6 @@
+target/
+data/
+config.yml
+node_modules
+.env
+CLAUDE.md
