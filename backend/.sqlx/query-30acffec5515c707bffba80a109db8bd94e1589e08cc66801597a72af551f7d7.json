@@ -1,0 +1,111 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  target_file_format as \"target_file_format?: TargetFormat\",\n                  target_file_size_bytes\n           from elysia_settings where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "max_file_size_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "max_file_size_bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "max_width_pixels",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "max_width_pixels"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "max_height_pixels",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "max_height_pixels"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "target_width_pixels",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "target_width_pixels"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "target_height_pixels",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "target_height_pixels"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "target_file_format?: TargetFormat",
+        "type_info": {
+          "Custom": {
+            "name": "target_format",
+            "kind": {
+              "Enum": [
+                "webp",
+                "jpegxl",
+                "avif"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "target_file_format"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "target_file_size_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "target_file_size_bytes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "30acffec5515c707bffba80a109db8bd94e1589e08cc66801597a72af551f7d7"
+}

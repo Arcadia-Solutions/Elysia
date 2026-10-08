@@ -11,22 +11,10 @@ database:
 
 storage:
   upload_dir: ./data/uploads
-  # max_file_size_bytes is required (> 0): an upload with no byte ceiling is an
-  # unbounded write. e.g. 52428800 for 50 MiB.
-  max_file_size_bytes: 52428800
-  # pixel reject-limits. 0 disables the check, EXCEPT when processing is on
-  # (target_file_format set): then both must be > 0, since processing decodes the
-  # source into memory and these caps are what stop a decompression bomb.
-  max_width_pixels: 0
-  max_height_pixels: 0
-  # processing: all require target_file_format to be set, else startup fails
-  target_width_pixels: 0        # 0 = no resize
-  target_height_pixels: 0       # 0 = no resize
-  # webp | jpegxl | avif ; omit to disable all processing (store as-is)
-  # note: avif has no lossless mode, so uploads with avif target must send a
-  # lossy_compression_value (1-100); a lossless request returns 400
-  # target_file_format: webp
-  target_file_size_bytes: 0     # 0 = off; lossy-compress down to this if still bigger
+  # Hard multipart stream ceiling baked in at startup; bounds the bytes streamed
+  # to the temp file. The user-facing upload size cap and all processing options
+  # are edited in the web UI (Settings), not here. Default ~10 GiB.
+  max_upload_stream_bytes: 10737418240
 
 auth:
   admin_token: "change-me"

@@ -1,13 +1,8 @@
 .gitignore
 .npmignore
-.openapi-generator-ignore
 api.ts
 base.ts
 common.ts
 configuration.ts
-docs/DefaultApi.md
-docs/LoginRequest.md
-docs/LoginResponse.md
-docs/UploadResponse.md
 git_push.sh
 index.ts

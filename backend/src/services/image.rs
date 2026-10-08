@@ -2,11 +2,15 @@
 //! No DB, no HTTP: just bytes in, bytes out.
 
 use image::{DynamicImage, GenericImageView};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-/// Output format; deserialized from config (`jxl` is accepted for `jpegxl`).
-#[derive(Debug, Clone, Copy, Deserialize)]
+/// Output format; `jxl` is accepted as an alias for `jpegxl` on input. Stored in
+/// the DB as the `target_format` Postgres enum, mapped by the `sqlx::Type` derive.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, utoipa::ToSchema, sqlx::Type,
+)]
 #[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "target_format", rename_all = "lowercase")]
 pub enum TargetFormat {
     Webp,
     #[serde(alias = "jxl")]

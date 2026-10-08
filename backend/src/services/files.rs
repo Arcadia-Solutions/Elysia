@@ -6,10 +6,10 @@ use sqlx::PgPool;
 use tempfile::NamedTempFile;
 use tokio::io::AsyncReadExt;
 
-use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::repository::files::{self, FileRow, NewFile};
 use crate::services::image;
+use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
 
 const ALPHABET: [char; 62] = [
@@ -120,14 +120,14 @@ fn describe_actions(
 pub async fn store_upload(
     pool: &PgPool,
     storage: &Storage,
-    config: &Config,
+    settings: &ElysiaSettings,
     file: TempFile,
     options: &UploadOptions,
 ) -> Result<StoredFile> {
     store(
         pool,
         storage,
-        config,
+        settings,
         file.file,
         file.size as u64,
         file.file_name,
@@ -142,7 +142,7 @@ pub async fn store_upload(
 pub async fn store_from_url(
     pool: &PgPool,
     storage: &Storage,
-    config: &Config,
+    settings: &ElysiaSettings,
     url: &str,
     options: &UploadOptions,
 ) -> Result<StoredFile> {
@@ -160,7 +160,7 @@ pub async fn store_from_url(
         .bytes()
         .await
         .map_err(|e| Error::BadRequest(format!("could not read url body: {e}")))?;
-    check_size(config, bytes.len() as u64)?;
+    check_size(settings, bytes.len() as u64)?;
 
     let original_name = url
         .rsplit('/')
@@ -174,7 +174,7 @@ pub async fn store_from_url(
     store(
         pool,
         storage,
-        config,
+        settings,
         temp,
         bytes.len() as u64,
         original_name,
@@ -188,13 +188,13 @@ pub async fn store_from_url(
 async fn store(
     pool: &PgPool,
     storage: &Storage,
-    config: &Config,
+    settings: &ElysiaSettings,
     temp: NamedTempFile,
     size: u64,
     original_name: Option<String>,
     options: &UploadOptions,
 ) -> Result<StoredFile> {
-    check_size(config, size)?;
+    check_size(settings, size)?;
 
     let path = temp.path();
 
@@ -216,7 +216,7 @@ async fn store(
 
     // Pixel dimensions, read from the image header (no full decode).
     let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
-    check_dimensions(config, dimensions.width as u32, dimensions.height as u32)?;
+    check_dimensions(settings, dimensions.width as u32, dimensions.height as u32)?;
     let source_ext = ext;
     let (source_width, source_height) = (dimensions.width as i32, dimensions.height as i32);
     let original_hash = hash_file(path).await?;
@@ -233,14 +233,14 @@ async fn store(
     }
 
     // Run the pipeline when a target format is configured; `None` passes through.
-    let processed = match config.storage.target_file_format {
+    let processed = match settings.target_file_format {
         Some(format) => {
             let input = tokio::fs::read(path).await?;
             let process_options = image::ProcessOptions {
-                target_width: config.storage.target_width_pixels,
-                target_height: config.storage.target_height_pixels,
+                target_width: settings.target_width_pixels,
+                target_height: settings.target_height_pixels,
                 format,
-                target_file_size: config.storage.target_file_size_bytes,
+                target_file_size: settings.target_file_size_bytes,
                 requested_quality: options.lossy_compression_value,
             };
             // Encoding is CPU-heavy; keep it off the async worker threads.
@@ -375,8 +375,8 @@ async fn hash_file(path: &std::path::Path) -> Result<String> {
 }
 
 /// Reject files above the configured byte limit (0 = unlimited).
-pub fn check_size(config: &Config, size: u64) -> Result<()> {
-    let limit = config.storage.max_file_size_bytes;
+pub fn check_size(settings: &ElysiaSettings, size: u64) -> Result<()> {
+    let limit = settings.max_file_size_bytes;
     if limit > 0 && size > limit {
         return Err(Error::BadRequest(format!(
             "file too large: {size} bytes, limit is {limit} bytes"
@@ -386,9 +386,9 @@ pub fn check_size(config: &Config, size: u64) -> Result<()> {
 }
 
 /// Reject images above the configured pixel limits (0 = unlimited, per axis).
-pub fn check_dimensions(config: &Config, width: u32, height: u32) -> Result<()> {
-    let max_width = config.storage.max_width_pixels;
-    let max_height = config.storage.max_height_pixels;
+pub fn check_dimensions(settings: &ElysiaSettings, width: u32, height: u32) -> Result<()> {
+    let max_width = settings.max_width_pixels;
+    let max_height = settings.max_height_pixels;
     if max_width > 0 && width > max_width {
         return Err(Error::BadRequest(format!(
             "image width too large: {width} pixels, limit is {max_width} pixels"

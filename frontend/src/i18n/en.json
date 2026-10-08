@@ -4,8 +4,7 @@
   },
   "login": {
     "token_placeholder": "Admin token",
-    "submit": "Login",
-    "invalid": "Invalid token"
+    "submit": "Login"
   },
   "upload": {
     "choose": "Choose image",
@@ -16,7 +15,45 @@
     "logout": "Logout",
     "copy": "Copy link",
     "copied": "Link copied",
-    "failed": "Upload failed",
     "preview_alt": "preview"
+  },
+  "settings": {
+    "title": "Elysia settings",
+    "intro": "Limits and image processing applied to every upload. A value of 0 disables that check. Changes apply immediately, no restart needed.",
+    "save": "Save",
+    "saved": "Settings saved",
+    "errors": {
+      "max_file_size_required": "Required: uploads need a byte ceiling.",
+      "max_dimension_required": "Required when a target format is set."
+    },
+    "max_file_size": {
+      "label": "Maximum file size (bytes)",
+      "help": "Reject uploads larger than this. 0 means no limit."
+    },
+    "max_width": {
+      "label": "Maximum width (pixels)",
+      "help": "Reject images wider than this. 0 means no limit. Required when a target format is set (it bounds server-side decoding)."
+    },
+    "max_height": {
+      "label": "Maximum height (pixels)",
+      "help": "Reject images taller than this. 0 means no limit. Required when a target format is set (it bounds server-side decoding)."
+    },
+    "target_format": {
+      "label": "Convert uploads to",
+      "help": "Re-encode every upload to this format. 'Store as-is' turns off all processing (resize, conversion and target size below).",
+      "store_as_is": "Store as-is (no processing)"
+    },
+    "target_width": {
+      "label": "Resize to fit width (pixels)",
+      "help": "Shrink images to fit within this width, keeping aspect ratio. 0 means no resize; images are never upscaled."
+    },
+    "target_height": {
+      "label": "Resize to fit height (pixels)",
+      "help": "Shrink images to fit within this height, keeping aspect ratio. 0 means no resize; images are never upscaled."
+    },
+    "target_file_size": {
+      "label": "Target file size (bytes)",
+      "help": "If a processed image is still larger than this, lossy-compress it down to fit. 0 means off."
+    }
   }
 }

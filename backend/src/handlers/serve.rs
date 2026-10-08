@@ -9,6 +9,7 @@ use crate::services::files;
 use crate::storage::Storage;
 
 #[utoipa::path(
+    tag = "elysia",
     get,
     path = "/i/{filename}",
     params(("filename" = String, Path, description = "<id>.<ext>")),

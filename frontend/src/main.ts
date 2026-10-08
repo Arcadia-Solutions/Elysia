@@ -6,6 +6,7 @@ import 'primeicons/primeicons.css'
 import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
+import { initToast } from '@/services/toast'
 
 const app = createApp(App)
 
@@ -14,15 +15,6 @@ app.use(router)
 app.use(i18n)
 app.use(ToastService)
 
-export function showToast(title: string, detail: string, severity: string, life = 4000, closable = true, group = 'tr'): void {
-  app.config.globalProperties.$toast.add({
-    severity,
-    summary: title,
-    detail,
-    life,
-    closable,
-    group,
-  })
-}
+initToast(app)
 
 app.mount('#app')

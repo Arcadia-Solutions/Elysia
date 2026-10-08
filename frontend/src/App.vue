@@ -1,17 +1,28 @@
 <template>
   <header class="topbar">
     <span>{{ $t('app.name') }}</span>
-    <Button
-      v-if="route.path !== '/login'"
-      icon="pi pi-sign-out"
-      size="small"
-      severity="secondary"
-      text
-      rounded
-      :title="$t('upload.logout')"
-      :aria-label="$t('upload.logout')"
-      @click="logout"
-    />
+    <span v-if="route.path !== '/login'" class="actions">
+      <Button
+        icon="pi pi-cog"
+        size="small"
+        severity="secondary"
+        text
+        rounded
+        :title="$t('settings.title')"
+        :aria-label="$t('settings.title')"
+        @click="router.push('/settings')"
+      />
+      <Button
+        icon="pi pi-sign-out"
+        size="small"
+        severity="secondary"
+        text
+        rounded
+        :title="$t('upload.logout')"
+        :aria-label="$t('upload.logout')"
+        @click="logout"
+      />
+    </span>
   </header>
   <router-view />
   <Toast position="top-right" group="tr" />
@@ -44,5 +55,9 @@ body {
   font-weight: 600;
   font-size: 1.2rem;
   border-bottom: 1px solid var(--p-content-border-color, #ddd);
+}
+.topbar .actions {
+  display: flex;
+  gap: 4px;
 }
 </style>

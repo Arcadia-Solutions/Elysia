@@ -19,6 +19,7 @@ pub struct LoginResponse {
 }
 
 #[utoipa::path(
+    tag = "elysia",
     post,
     path = "/api/auth/login",
     request_body = LoginRequest,

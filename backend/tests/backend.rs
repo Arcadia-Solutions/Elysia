@@ -72,41 +72,41 @@ fn storage_new_trims_trailing_slashes() {
 
 #[test]
 fn check_size_enforces_limit() {
-    let mut config = test_config();
-    config.storage.max_file_size_bytes = 100;
-    assert!(check_size(&config, 100).is_ok()); // at the limit is fine
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 100;
+    assert!(check_size(&settings, 100).is_ok()); // at the limit is fine
     assert!(matches!(
-        check_size(&config, 101),
+        check_size(&settings, 101),
         Err(Error::BadRequest(_))
     ));
-    config.storage.max_file_size_bytes = 0; // 0 = unlimited
-    assert!(check_size(&config, u64::MAX).is_ok());
+    settings.max_file_size_bytes = 0; // 0 = unlimited
+    assert!(check_size(&settings, u64::MAX).is_ok());
 }
 
 #[test]
 fn check_dimensions_enforces_each_axis() {
-    let mut config = test_config();
-    config.storage.max_width_pixels = 800;
-    config.storage.max_height_pixels = 600;
-    assert!(check_dimensions(&config, 800, 600).is_ok()); // at the limit is fine
+    let mut settings = test_settings();
+    settings.max_width_pixels = 800;
+    settings.max_height_pixels = 600;
+    assert!(check_dimensions(&settings, 800, 600).is_ok()); // at the limit is fine
     assert!(matches!(
-        check_dimensions(&config, 801, 600),
+        check_dimensions(&settings, 801, 600),
         Err(Error::BadRequest(_))
     ));
     assert!(matches!(
-        check_dimensions(&config, 800, 601),
+        check_dimensions(&settings, 800, 601),
         Err(Error::BadRequest(_))
     ));
-    config.storage.max_width_pixels = 0; // 0 = unlimited, per axis
-    assert!(check_dimensions(&config, u32::MAX, 600).is_ok());
+    settings.max_width_pixels = 0; // 0 = unlimited, per axis
+    assert!(check_dimensions(&settings, u32::MAX, 600).is_ok());
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_rejects_file_over_size_limit(pool: PgPool) {
-    let mut config = test_config();
-    config.storage.max_file_size_bytes = 5; // the png is 33 bytes
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 5; // the png is 33 bytes
     assert_eq!(
-        upload_status(pool, config, tiny_png(2, 2)).await,
+        upload_status(pool, settings, tiny_png(2, 2)).await,
         StatusCode::BAD_REQUEST
     );
 }
@@ -114,10 +114,10 @@ async fn upload_rejects_file_over_size_limit(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_rejects_image_over_width_limit(pool: PgPool) {
     // Width over, height unlimited: isolates the width check.
-    let mut config = test_config();
-    config.storage.max_width_pixels = 1; // the image is 2 wide
+    let mut settings = test_settings();
+    settings.max_width_pixels = 1; // the image is 2 wide
     assert_eq!(
-        upload_status(pool, config, tiny_png(2, 1)).await,
+        upload_status(pool, settings, tiny_png(2, 1)).await,
         StatusCode::BAD_REQUEST
     );
 }
@@ -125,10 +125,10 @@ async fn upload_rejects_image_over_width_limit(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_rejects_image_over_height_limit(pool: PgPool) {
     // Height over, width unlimited: isolates the height check.
-    let mut config = test_config();
-    config.storage.max_height_pixels = 1; // the image is 2 tall
+    let mut settings = test_settings();
+    settings.max_height_pixels = 1; // the image is 2 tall
     assert_eq!(
-        upload_status(pool, config, tiny_png(1, 2)).await,
+        upload_status(pool, settings, tiny_png(1, 2)).await,
         StatusCode::BAD_REQUEST
     );
 }
@@ -137,12 +137,12 @@ async fn upload_rejects_image_over_height_limit(pool: PgPool) {
 async fn upload_within_limits_succeeds(pool: PgPool) {
     // Under both limits: validation passes, the row inserts, and the file is
     // stored, so the endpoint returns 200.
-    let mut config = test_config();
-    config.storage.max_file_size_bytes = 1024;
-    config.storage.max_width_pixels = 16;
-    config.storage.max_height_pixels = 16;
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 1024;
+    settings.max_width_pixels = 16;
+    settings.max_height_pixels = 16;
     assert_eq!(
-        upload_status(pool, config, tiny_png(2, 2)).await,
+        upload_status(pool, settings, tiny_png(2, 2)).await,
         StatusCode::OK
     );
 }
@@ -151,7 +151,7 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
 async fn rehost_stores_a_fetched_image(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(2, 2));
-    let stored = store_from_url(&pool, &storage, &test_config(), &url, &Default::default())
+    let stored = store_from_url(&pool, &storage, &test_settings(), &url, &Default::default())
         .await
         .unwrap();
     assert_eq!(stored.ext, "png");
@@ -164,13 +164,13 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
     // Same bytes stored twice: the second reuses the first id and sets existed,
     // and no second copy lands on disk.
     let (storage, dir) = temp_storage();
-    let config = test_config();
+    let settings = test_settings();
     let image = tiny_png(2, 2);
 
     let first = store_from_url(
         &pool,
         &storage,
-        &config,
+        &settings,
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
     )
@@ -181,7 +181,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
     let second = store_from_url(
         &pool,
         &storage,
-        &config,
+        &settings,
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
     )
@@ -205,7 +205,7 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
     assert!(matches!(
-        store_from_url(&pool, &storage, &test_config(), &url, &Default::default()).await,
+        store_from_url(&pool, &storage, &test_settings(), &url, &Default::default()).await,
         Err(Error::UnsupportedMediaType)
     ));
     let _ = std::fs::remove_dir_all(&dir);
@@ -216,7 +216,7 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 404 Not Found", "text/plain", b"nope".to_vec());
     assert!(matches!(
-        store_from_url(&pool, &storage, &test_config(), &url, &Default::default()).await,
+        store_from_url(&pool, &storage, &test_settings(), &url, &Default::default()).await,
         Err(Error::BadRequest(_))
     ));
     let _ = std::fs::remove_dir_all(&dir);

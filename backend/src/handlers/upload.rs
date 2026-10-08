@@ -7,17 +7,19 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::config::Config;
 use crate::error::{Error, Result};
+use crate::handlers::settings::SharedElysiaSettings;
 use crate::middlewares::AdminAuth;
 use crate::services::files::{self, Actions, UploadOptions};
+use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
 
 #[derive(Debug, MultipartForm, ToSchema)]
 pub struct UploadForm {
     // No per-field limit: the overall cap is MultipartFormConfig::total_limit,
-    // set from config.storage.max_file_size_bytes in main.rs. TempFile streams to disk,
-    // so large uploads never buffer in RAM.
+    // set from config.storage.max_upload_stream_bytes in main.rs. TempFile streams to
+    // disk, so large uploads never buffer in RAM; the per-request size ceiling is the
+    // UI-editable elysia setting max_file_size_bytes, checked in the store path.
     #[schema(value_type = String, format = Binary, content_media_type = "application/octet-stream")]
     pub file: TempFile,
 }
@@ -46,8 +48,8 @@ pub struct UploadOptionsQuery {
 
 impl UploadOptionsQuery {
     /// Convert to service options, rejecting compression when processing is off.
-    pub fn into_options(self, config: &Config) -> Result<UploadOptions> {
-        if self.lossy_compression_value.is_some() && config.storage.target_file_format.is_none() {
+    pub fn into_options(self, settings: &ElysiaSettings) -> Result<UploadOptions> {
+        if self.lossy_compression_value.is_some() && settings.target_file_format.is_none() {
             return Err(Error::BadRequest(
                 "compression is disabled: no target_file_format configured".into(),
             ));
@@ -67,6 +69,7 @@ impl UploadOptionsQuery {
 }
 
 #[utoipa::path(
+    tag = "elysia",
     post,
     path = "/api/upload",
     request_body(content = UploadForm, content_type = "multipart/form-data"),
@@ -81,17 +84,18 @@ impl UploadOptionsQuery {
 )]
 pub async fn upload(
     _auth: AdminAuth,
-    cfg: Data<Config>,
+    settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     storage: Data<Storage>,
     query: Query<UploadOptionsQuery>,
     MultipartForm(form): MultipartForm<UploadForm>,
 ) -> Result<HttpResponse> {
-    let options = query.into_inner().into_options(cfg.get_ref())?;
+    let settings = *settings.read().expect("settings lock poisoned");
+    let options = query.into_inner().into_options(&settings)?;
     let stored = files::store_upload(
         pool.get_ref(),
         storage.get_ref(),
-        cfg.get_ref(),
+        &settings,
         form.file,
         &options,
     )

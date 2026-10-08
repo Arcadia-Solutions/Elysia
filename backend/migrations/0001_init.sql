@@ -35,3 +35,34 @@ comment on column files.created_at is 'When the file was uploaded';
 
 -- Skip-reprocess lookup filters on original_hash (see find_record_by_source).
 create index files_original_hash_idx on files (original_hash);
+
+-- Runtime-editable elysia settings, edited from the web UI. A single row
+-- (id = 'singleton'); the boot-time infrastructure values stay in config.yml.
+create type target_format as enum ('webp', 'jpegxl', 'avif');
+
+create table elysia_settings (
+  id text primary key,
+  max_file_size_bytes bigint not null,
+  max_width_pixels int not null,
+  max_height_pixels int not null,
+  target_width_pixels int not null,
+  target_height_pixels int not null,
+  target_file_format target_format,
+  target_file_size_bytes bigint not null
+);
+
+comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
+comment on column elysia_settings.max_file_size_bytes is 'Reject uploads larger than this; 0 disables the check';
+comment on column elysia_settings.max_width_pixels is 'Reject images wider than this; 0 disables the check';
+comment on column elysia_settings.max_height_pixels is 'Reject images taller than this; 0 disables the check';
+comment on column elysia_settings.target_width_pixels is 'Resize width bound; 0 = no resize';
+comment on column elysia_settings.target_height_pixels is 'Resize height bound; 0 = no resize';
+comment on column elysia_settings.target_file_format is 'webp | jpegxl | avif; null stores uploads as-is (processing off)';
+comment on column elysia_settings.target_file_size_bytes is 'Lossy target size in bytes; 0 = no target';
+
+-- Default row: processing off, 10 MiB upload ceiling (valid against the same
+-- rules the API enforces on every save).
+insert into elysia_settings
+  (id, max_file_size_bytes, max_width_pixels, max_height_pixels,
+   target_width_pixels, target_height_pixels, target_file_format, target_file_size_bytes)
+values ('singleton', 10485760, 0, 0, 0, 0, null, 0);

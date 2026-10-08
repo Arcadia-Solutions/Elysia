@@ -33,10 +33,9 @@ import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import { useI18n } from 'vue-i18n'
-import { isAxiosError } from 'axios'
-import http, { api } from '@/services/api/http'
+import { api } from '@/services/api/http'
 import type { UploadResponse } from '@/services/api-schema'
-import { showToast } from '@/main'
+import { showToast } from '@/services/toast'
 
 const { t } = useI18n()
 const result = ref<UploadResponse | null>(null)
@@ -54,9 +53,6 @@ const handleFile = (file: File | undefined) => {
     .upload(file)
     .then((uploaded) => {
       result.value = uploaded.data
-    })
-    .catch(() => {
-      showToast('', t('upload.failed'), 'error')
     })
     .finally(() => {
       uploading.value = false
@@ -79,15 +75,11 @@ const rehost = () => {
     return
   }
   uploading.value = true
-  http
-    .post<UploadResponse>('/api/upload-url', { url: urlInput.value })
+  api
+    .uploadUrl({ url: urlInput.value })
     .then((uploaded) => {
       result.value = uploaded.data
       urlInput.value = ''
-    })
-    .catch((error: unknown) => {
-      const detail = (isAxiosError(error) && error.response?.data?.error) || t('upload.failed')
-      showToast('', detail, 'error')
     })
     .finally(() => {
       uploading.value = false

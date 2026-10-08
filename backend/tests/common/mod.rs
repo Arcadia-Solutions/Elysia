@@ -1,6 +1,8 @@
 //! Helpers shared by the integration test binaries.
 #![allow(dead_code)]
 
+use std::sync::RwLock;
+
 use actix_multipart::form::{MultipartFormConfig, tempfile::TempFileConfig};
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
@@ -12,6 +14,7 @@ use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, StorageCo
 use elysia::handlers::upload;
 use elysia::services::files::generate_id;
 use elysia::services::image::{ProcessOptions, TargetFormat};
+use elysia::settings::ElysiaSettings;
 use elysia::storage::Storage;
 
 pub fn test_config() -> Config {
@@ -29,17 +32,34 @@ pub fn test_config() -> Config {
         },
         storage: StorageConfig {
             upload_dir: "/tmp/elysia".into(),
-            max_file_size_bytes: 0,
-            max_width_pixels: 0,
-            max_height_pixels: 0,
-            target_width_pixels: 0,
-            target_height_pixels: 0,
-            target_file_format: None,
-            target_file_size_bytes: 0,
+            max_upload_stream_bytes: 10 * 1024 * 1024,
         },
         auth: AuthConfig {
             admin_token: "admin-token".into(),
         },
+    }
+}
+
+/// Default elysia settings: all checks off and processing off. Note this fails
+/// `validate` (max_file_size_bytes is 0) by design, which the validation tests
+/// rely on; the store/upload paths never call `validate`, so 0 = unlimited there.
+pub fn test_settings() -> ElysiaSettings {
+    ElysiaSettings {
+        max_file_size_bytes: 0,
+        max_width_pixels: 0,
+        max_height_pixels: 0,
+        target_width_pixels: 0,
+        target_height_pixels: 0,
+        target_file_format: None,
+        target_file_size_bytes: 0,
+    }
+}
+
+/// Default settings with WebP processing turned on.
+pub fn webp_settings() -> ElysiaSettings {
+    ElysiaSettings {
+        target_file_format: Some(TargetFormat::Webp),
+        ..test_settings()
     }
 }
 
@@ -74,21 +94,22 @@ pub fn tiny_png(width: u32, height: u32) -> Vec<u8> {
     bytes
 }
 
-/// POST `image` to `/api/upload` against an app built from `config` and `pool`,
+/// POST `image` to `/api/upload` against an app built from `settings` and `pool`,
 /// returning the status.
-pub async fn upload_status(pool: PgPool, config: Config, image: Vec<u8>) -> StatusCode {
-    upload_status_with_query(pool, config, image, "").await
+pub async fn upload_status(pool: PgPool, settings: ElysiaSettings, image: Vec<u8>) -> StatusCode {
+    upload_status_with_query(pool, settings, image, "").await
 }
 
 /// Like `upload_status`, with a query string appended to the request uri.
 pub async fn upload_status_with_query(
     pool: PgPool,
-    config: Config,
+    settings: ElysiaSettings,
     image: Vec<u8>,
     query: &str,
 ) -> StatusCode {
     let upload_dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
     std::fs::create_dir_all(&upload_dir).unwrap();
+    let config = test_config();
     let token = config.auth.admin_token.clone();
     let storage = Storage::new(upload_dir.to_str().unwrap());
 
@@ -97,6 +118,7 @@ pub async fn upload_status_with_query(
             .app_data(Data::new(config))
             .app_data(Data::new(pool))
             .app_data(Data::new(storage))
+            .app_data(Data::new(RwLock::new(settings)))
             .app_data(MultipartFormConfig::default().total_limit(10 * 1024 * 1024))
             .app_data(TempFileConfig::default().directory(&upload_dir))
             .route("/api/upload", web::post().to(upload)),
@@ -154,12 +176,6 @@ pub fn temp_storage() -> (Storage, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
     std::fs::create_dir_all(&dir).unwrap();
     (Storage::new(dir.to_str().unwrap()), dir)
-}
-
-pub fn webp_config() -> Config {
-    let mut c = test_config();
-    c.storage.target_file_format = Some(TargetFormat::Webp);
-    c
 }
 
 pub fn real_png(width: u32, height: u32) -> Vec<u8> {

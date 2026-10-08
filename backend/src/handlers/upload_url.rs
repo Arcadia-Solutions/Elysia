@@ -6,8 +6,8 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
-use crate::config::Config;
 use crate::error::Result;
+use crate::handlers::settings::SharedElysiaSettings;
 use crate::handlers::upload::{UploadOptionsQuery, UploadResponse};
 use crate::middlewares::AdminAuth;
 use crate::services::files;
@@ -20,6 +20,7 @@ pub struct UploadUrlRequest {
 }
 
 #[utoipa::path(
+    tag = "elysia",
     post,
     path = "/api/upload-url",
     request_body = UploadUrlRequest,
@@ -34,17 +35,18 @@ pub struct UploadUrlRequest {
 )]
 pub async fn upload_url(
     _auth: AdminAuth,
-    cfg: Data<Config>,
+    settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     storage: Data<Storage>,
     query: Query<UploadOptionsQuery>,
     body: Json<UploadUrlRequest>,
 ) -> Result<HttpResponse> {
-    let options = query.into_inner().into_options(cfg.get_ref())?;
+    let settings = *settings.read().expect("settings lock poisoned");
+    let options = query.into_inner().into_options(&settings)?;
     let stored = files::store_from_url(
         pool.get_ref(),
         storage.get_ref(),
-        cfg.get_ref(),
+        &settings,
         &body.url,
         &options,
     )

@@ -8,48 +8,49 @@ use sqlx::PgPool;
 
 use elysia::services::files::{UploadOptions, store_from_url};
 use elysia::services::image::{ProcessError, TargetFormat, process};
+use elysia::settings::ElysiaSettings;
 
 use common::*;
 
 #[test]
 fn validate_rejects_processing_without_target_format() {
-    let mut config = test_config();
-    config.storage.target_file_format = None;
-    config.storage.target_width_pixels = 1920;
-    assert!(config.validate().is_err());
+    let mut settings = test_settings();
+    settings.target_file_format = None;
+    settings.target_width_pixels = 1920;
+    assert!(settings.validate().is_err());
 }
 
 #[test]
 fn validate_requires_max_file_size() {
     // Unconditional: an upload with no byte ceiling is rejected even with the
     // processing feature off.
-    let mut config = test_config();
-    assert!(config.validate().is_err());
-    config.storage.max_file_size_bytes = 50 * 1024 * 1024;
-    assert!(config.validate().is_ok());
+    let mut settings = test_settings();
+    assert!(settings.validate().is_err());
+    settings.max_file_size_bytes = 50 * 1024 * 1024;
+    assert!(settings.validate().is_ok());
 }
 
 #[test]
 fn validate_rejects_processing_without_decode_caps() {
-    let mut config = test_config();
-    config.storage.max_file_size_bytes = 50 * 1024 * 1024;
-    config.storage.target_file_format = Some(TargetFormat::Webp);
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 50 * 1024 * 1024;
+    settings.target_file_format = Some(TargetFormat::Webp);
     // pixel caps left at 0 (unlimited): processing would decode unbounded input.
-    assert!(config.validate().is_err());
+    assert!(settings.validate().is_err());
 }
 
 #[test]
-fn validate_accepts_consistent_config() {
-    let mut config = test_config();
-    config.storage.target_file_format = Some(TargetFormat::Webp);
-    config.storage.target_width_pixels = 1920;
-    config.storage.max_file_size_bytes = 50 * 1024 * 1024;
-    config.storage.max_width_pixels = 10_000;
-    config.storage.max_height_pixels = 10_000;
-    assert!(config.validate().is_ok());
+fn validate_accepts_consistent_settings() {
+    let mut settings = test_settings();
+    settings.target_file_format = Some(TargetFormat::Webp);
+    settings.target_width_pixels = 1920;
+    settings.max_file_size_bytes = 50 * 1024 * 1024;
+    settings.max_width_pixels = 10_000;
+    settings.max_height_pixels = 10_000;
+    assert!(settings.validate().is_ok());
     // feature off is valid once the byte ceiling is set
-    let mut off = test_config();
-    off.storage.max_file_size_bytes = 50 * 1024 * 1024;
+    let mut off = test_settings();
+    off.max_file_size_bytes = 50 * 1024 * 1024;
     assert!(off.validate().is_ok());
 }
 
@@ -57,7 +58,7 @@ fn validate_accepts_consistent_config() {
 async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
-    let stored = store_from_url(&pool, &storage, &webp_config(), &url, &Default::default())
+    let stored = store_from_url(&pool, &storage, &webp_settings(), &url, &Default::default())
         .await
         .unwrap();
     assert_eq!(stored.ext, "webp");
@@ -77,7 +78,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     let first = store_from_url(
         &pool,
         &storage,
-        &webp_config(),
+        &webp_settings(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
     )
@@ -87,7 +88,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     let second = store_from_url(
         &pool,
         &storage,
-        &webp_config(),
+        &webp_settings(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
     )
@@ -110,7 +111,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
         let stored = store_from_url(
             &pool,
             &storage,
-            &webp_config(),
+            &webp_settings(),
             &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
             &options,
         )
@@ -127,7 +128,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
 async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
-    let stored = store_from_url(&pool, &storage, &test_config(), &url, &Default::default())
+    let stored = store_from_url(&pool, &storage, &test_settings(), &url, &Default::default())
         .await
         .unwrap();
     assert_eq!(stored.ext, "png");
@@ -139,7 +140,7 @@ async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
 async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
-        test_config(),
+        test_settings(),
         real_png(8, 8),
         "lossy_compression_value=80",
     )
@@ -151,7 +152,7 @@ async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
 async fn upload_rejects_quality_above_100(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
-        webp_config(),
+        webp_settings(),
         real_png(8, 8),
         "lossy_compression_value=150",
     )
@@ -164,7 +165,7 @@ async fn upload_rejects_quality_zero(pool: PgPool) {
     // 0 is a degenerate lossy value; the valid range is 1 to 100.
     let status = upload_status_with_query(
         pool,
-        webp_config(),
+        webp_settings(),
         real_png(8, 8),
         "lossy_compression_value=0",
     )
@@ -176,7 +177,7 @@ async fn upload_rejects_quality_zero(pool: PgPool) {
 async fn upload_accepts_compression_when_feature_on(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
-        webp_config(),
+        webp_settings(),
         real_png(8, 8),
         "lossy_compression_value=80",
     )
@@ -312,20 +313,12 @@ fn target_format_parses_names_and_rejects_unknown() {
 }
 
 #[test]
-fn config_crate_deserializes_target_format_from_yaml() {
-    let load = |value: &str| {
-        config::Config::builder()
-            .add_source(config::File::from_str(
-                &format!("upload_dir: x\ntarget_file_format: {value}\n"),
-                config::FileFormat::Yaml,
-            ))
-            .build()
-            .unwrap()
-            .try_deserialize::<elysia::config::StorageConfig>()
-    };
-    assert!(matches!(
-        load("jxl").unwrap().target_file_format,
-        Some(TargetFormat::Jpegxl)
-    ));
-    assert!(load("bmp").is_err());
+fn settings_json_roundtrips_target_format() {
+    // The PUT /api/elysia-settings body carries the format by name; the alias
+    // `jxl` is accepted on input and canonicalizes to `jpegxl` on output.
+    let parsed: ElysiaSettings =
+        serde_json::from_str(r#"{"max_file_size_bytes":1,"target_file_format":"jxl"}"#).unwrap();
+    assert_eq!(parsed.target_file_format, Some(TargetFormat::Jpegxl));
+    let json = serde_json::to_string(&parsed).unwrap();
+    assert!(json.contains("\"jpegxl\""));
 }

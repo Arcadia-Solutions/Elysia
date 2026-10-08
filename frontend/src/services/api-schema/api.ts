@@ -23,23 +23,154 @@ import type { RequestArgs } from './base';
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerMap } from './base';
 
+/**
+ * What processing changed between the source and the stored file.
+ */
+export interface Actions {
+    'compression': CompressionAction;
+    'convert'?: ConvertAction | null;
+    'resize'?: ResizeAction | null;
+}
+/**
+ * @type CompressionAction
+ * `\"lossless\"` or the applied lossy quality.
+ */
+export type CompressionAction = CompressionActionOneOf | string;
+
+export interface CompressionActionOneOf {
+    'lossy_quality': number;
+}
+/**
+ * File extensions before and after.
+ */
+export interface ConvertAction {
+    'from': string;
+    'to': string;
+}
+/**
+ * Runtime-editable elysia settings: the upload limits and processing options edited from the web UI and persisted as the single `elysia_settings` row.  Kept separate from [`crate::config::Config`], which holds only the boot-time infrastructure values (bind address, database, upload dir, stream ceiling).
+ */
+export interface ElysiaSettings {
+    /**
+     * Reject uploads larger than this; 0 disables the check.
+     */
+    'max_file_size_bytes'?: number;
+    /**
+     * Reject images taller than this; 0 disables the check.
+     */
+    'max_height_pixels'?: number;
+    /**
+     * Reject images wider than this; 0 disables the check.
+     */
+    'max_width_pixels'?: number;
+    /**
+     * Output format; null stores uploads as-is (processing off).
+     */
+    'target_file_format'?: TargetFormat | null;
+    /**
+     * Lossy target size in bytes; 0 = no target.
+     */
+    'target_file_size_bytes'?: number;
+    /**
+     * Resize height bound; 0 = no resize.
+     */
+    'target_height_pixels'?: number;
+    /**
+     * Resize width bound; 0 = no resize.
+     */
+    'target_width_pixels'?: number;
+}
+
+
 export interface LoginRequest {
     'token': string;
 }
 export interface LoginResponse {
     'valid': boolean;
 }
+/**
+ * Dimensions before and after, as `[width, height]`.
+ */
+export interface ResizeAction {
+    'from': Array<number>;
+    'to': Array<number>;
+}
+/**
+ * Output format; `jxl` is accepted as an alias for `jpegxl` on input. Stored in the DB as the `target_format` Postgres enum, mapped by the `sqlx::Type` derive.
+ */
+
+export const TargetFormat = {
+    Webp: 'webp',
+    Jpegxl: 'jpegxl',
+    Avif: 'avif'
+} as const;
+
+export type TargetFormat = typeof TargetFormat[keyof typeof TargetFormat];
+
+
+/**
+ * Per-upload processing options (query string, shared by both upload routes).
+ */
+export interface UploadOptionsQuery {
+    /**
+     * Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+     */
+    'lossy_compression_value'?: number | null;
+}
 export interface UploadResponse {
+    /**
+     * What processing changed; null when the file is stored as uploaded.
+     */
+    'actions'?: Actions | null;
+    /**
+     * True when the image was already hosted and this is the existing one (deduplicated), false when it was newly stored.
+     */
+    'existed': boolean;
     'ext': string;
     'id': string;
     'url': string;
 }
+/**
+ * A link to an image to rehost.
+ */
+export interface UploadUrlRequest {
+    'url': string;
+}
 
 /**
- * DefaultApi - axios parameter creator
+ * ElysiaApi - axios parameter creator
  */
-export const DefaultApiAxiosParamCreator = function (configuration?: Configuration) {
+export const ElysiaApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/elysia-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
         /**
          * 
          * @param {LoginRequest} loginRequest 
@@ -69,6 +200,41 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(loginRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {ElysiaSettings} elysiaSettings 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        putElysiaSettings: async (elysiaSettings: ElysiaSettings, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'elysiaSettings' is not null or undefined
+            assertParamExists('putElysiaSettings', 'elysiaSettings', elysiaSettings)
+            const localVarPath = `/api/elysia-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(elysiaSettings, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -111,10 +277,11 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @param {File} file 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        upload: async (file: File, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        upload: async (file: File, lossyCompressionValue?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'file' is not null or undefined
             assertParamExists('upload', 'file', file)
             const localVarPath = `/api/upload`;
@@ -129,6 +296,10 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
             const localVarFormParams = new ((configuration && configuration.formDataCtor) || FormData)();
+
+            if (lossyCompressionValue !== undefined) {
+                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
+            }
 
 
             if (file !== undefined) { 
@@ -148,15 +319,66 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 
+         * @param {UploadUrlRequest} uploadUrlRequest 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'uploadUrlRequest' is not null or undefined
+            assertParamExists('uploadUrl', 'uploadUrlRequest', uploadUrlRequest)
+            const localVarPath = `/api/upload-url`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (lossyCompressionValue !== undefined) {
+                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
+            }
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(uploadUrlRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
 /**
- * DefaultApi - functional programming interface
+ * ElysiaApi - functional programming interface
  */
-export const DefaultApiFp = function(configuration?: Configuration) {
-    const localVarAxiosParamCreator = DefaultApiAxiosParamCreator(configuration)
+export const ElysiaApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = ElysiaApiAxiosParamCreator(configuration)
     return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getElysiaSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getElysiaSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
         /**
          * 
          * @param {LoginRequest} loginRequest 
@@ -166,7 +388,19 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         async login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.login(loginRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['DefaultApi.login']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.login']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {ElysiaSettings} elysiaSettings 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.putElysiaSettings(elysiaSettings, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.putElysiaSettings']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -178,30 +412,52 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         async serve(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.serve(filename, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['DefaultApi.serve']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serve']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
          * 
          * @param {File} file 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async upload(file: File, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, options);
+        async upload(file: File, lossyCompressionValue?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossyCompressionValue, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['DefaultApi.upload']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.upload']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {UploadUrlRequest} uploadUrlRequest 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossyCompressionValue, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.uploadUrl']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
 };
 
 /**
- * DefaultApi - factory interface
+ * ElysiaApi - factory interface
  */
-export const DefaultApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
-    const localVarFp = DefaultApiFp(configuration)
+export const ElysiaApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = ElysiaApiFp(configuration)
     return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getElysiaSettings(options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
+            return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
+        },
         /**
          * 
          * @param {LoginRequest} loginRequest 
@@ -210,6 +466,15 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          */
         login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
             return localVarFp.login(loginRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {ElysiaSettings} elysiaSettings 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
+            return localVarFp.putElysiaSettings(elysiaSettings, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -223,19 +488,39 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @param {File} file 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        upload(file: File, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.upload(file, options).then((request) => request(axios, basePath));
+        upload(file: File, lossyCompressionValue?: number, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.upload(file, lossyCompressionValue, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {UploadUrlRequest} uploadUrlRequest 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.uploadUrl(uploadUrlRequest, lossyCompressionValue, options).then((request) => request(axios, basePath));
         },
     };
 };
 
 /**
- * DefaultApi - object-oriented interface
+ * ElysiaApi - object-oriented interface
  */
-export class DefaultApi extends BaseAPI {
+export class ElysiaApi extends BaseAPI {
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getElysiaSettings(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getElysiaSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * 
      * @param {LoginRequest} loginRequest 
@@ -243,7 +528,17 @@ export class DefaultApi extends BaseAPI {
      * @throws {RequiredError}
      */
     public login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).login(loginRequest, options).then((request) => request(this.axios, this.basePath));
+        return ElysiaApiFp(this.configuration).login(loginRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {ElysiaSettings} elysiaSettings 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).putElysiaSettings(elysiaSettings, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -253,17 +548,29 @@ export class DefaultApi extends BaseAPI {
      * @throws {RequiredError}
      */
     public serve(filename: string, options?: RawAxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).serve(filename, options).then((request) => request(this.axios, this.basePath));
+        return ElysiaApiFp(this.configuration).serve(filename, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @param {File} file 
+     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public upload(file: File, options?: RawAxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).upload(file, options).then((request) => request(this.axios, this.basePath));
+    public upload(file: File, lossyCompressionValue?: number, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).upload(file, lossyCompressionValue, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {UploadUrlRequest} uploadUrlRequest 
+     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossyCompressionValue, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
