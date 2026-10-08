@@ -24,6 +24,9 @@ pub struct UploadResponse {
     pub id: String,
     pub ext: String,
     pub url: String,
+    /// True when the image was already hosted and this is the existing one
+    /// (deduplicated), false when it was newly stored.
+    pub existed: bool,
 }
 
 #[utoipa::path(
@@ -52,5 +55,6 @@ pub async fn upload(
         url: format!("/i/{}.{}", stored.id, stored.ext),
         id: stored.id,
         ext: stored.ext,
+        existed: stored.existed,
     }))
 }

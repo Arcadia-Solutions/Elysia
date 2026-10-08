@@ -6,6 +6,7 @@ create table files (
   size bigint not null,
   width int not null,
   height int not null,
+  hash text unique not null,
   created_at timestamptz not null default now()
 );
 
@@ -17,4 +18,5 @@ comment on column files.original_name is 'Original filename from the upload form
 comment on column files.size is 'File size in bytes';
 comment on column files.width is 'Image width in pixels';
 comment on column files.height is 'Image height in pixels';
+comment on column files.hash is 'SHA-256 of the file bytes (hex); unique, so identical uploads are deduplicated to one row';
 comment on column files.created_at is 'When the file was uploaded';

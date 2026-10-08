@@ -45,5 +45,6 @@ pub async fn upload_url(
         url: format!("/i/{}.{}", stored.id, stored.ext),
         id: stored.id,
         ext: stored.ext,
+        existed: stored.existed,
     }))
 }

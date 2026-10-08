@@ -25,6 +25,9 @@ pub fn generate_id() -> String {
 pub struct StoredFile {
     pub id: String,
     pub ext: String,
+    /// True when the bytes were already stored and this id is the existing one
+    /// (deduplicated), false when a new file was created.
+    pub existed: bool,
 }
 
 /// Validate, inspect and store an uploaded file: size check, type sniff,
@@ -130,6 +133,17 @@ async fn store(
     check_dimensions(config, dimensions.width as u32, dimensions.height as u32)?;
     let (width, height) = (dimensions.width as i32, dimensions.height as i32);
 
+    // Deduplicate on the exact bytes: an identical upload reuses the stored id
+    // instead of writing a second copy.
+    let hash = hash_file(path).await?;
+    if let Some(existing) = files::find_by_hash(pool, &hash).await? {
+        return Ok(StoredFile {
+            id: existing.id,
+            ext: existing.ext,
+            existed: true,
+        });
+    }
+
     let original_name = original_name.as_deref();
     let size = size as i64;
 
@@ -147,12 +161,22 @@ async fn store(
                 size,
                 width,
                 height,
+                hash: &hash,
             },
         )
         .await?;
         if inserted {
             id = Some(candidate);
             break;
+        }
+        // A failed insert is an id collision or a concurrent upload of the same
+        // bytes winning the hash race; in the latter case, reuse its row.
+        if let Some(existing) = files::find_by_hash(pool, &hash).await? {
+            return Ok(StoredFile {
+                id: existing.id,
+                ext: existing.ext,
+                existed: true,
+            });
         }
     }
     let id = id.ok_or_else(|| Error::BadRequest("could not allocate an id".into()))?;
@@ -162,7 +186,26 @@ async fn store(
     Ok(StoredFile {
         id,
         ext: ext.to_string(),
+        existed: false,
     })
+}
+
+/// SHA-256 of a file's bytes, as a hex string. Streamed so large files never
+/// buffer in memory.
+async fn hash_file(path: &std::path::Path) -> Result<String> {
+    use sha2::{Digest, Sha256};
+
+    let mut file = tokio::fs::File::open(path).await?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 8192];
+    loop {
+        let read = file.read(&mut buffer).await?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 /// Reject files above the configured byte limit (0 = unlimited).

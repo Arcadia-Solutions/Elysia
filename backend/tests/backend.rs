@@ -289,6 +289,45 @@ async fn rehost_stores_a_fetched_image(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn identical_uploads_are_deduplicated(pool: PgPool) {
+    // Same bytes stored twice: the second reuses the first id and sets existed,
+    // and no second copy lands on disk.
+    let (storage, dir) = temp_storage();
+    let config = test_config();
+    let image = tiny_png(2, 2);
+
+    let first = store_from_url(
+        &pool,
+        &storage,
+        &config,
+        &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+    )
+    .await
+    .unwrap();
+    assert!(!first.existed);
+
+    let second = store_from_url(
+        &pool,
+        &storage,
+        &config,
+        &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+    )
+    .await
+    .unwrap();
+    assert!(second.existed);
+    assert_eq!(first.id, second.id);
+
+    let stored: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "png"))
+        .collect();
+    assert_eq!(stored.len(), 1);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn rehost_rejects_a_non_image_link(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
@@ -332,6 +371,8 @@ fn sample_file(id: &str) -> NewFile<'_> {
         size: 33,
         width: 2,
         height: 2,
+        // Hash tied to the id so distinct ids get distinct (unique) hashes.
+        hash: id,
     }
 }
 

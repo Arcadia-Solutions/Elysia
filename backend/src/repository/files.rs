@@ -10,6 +10,7 @@ pub struct NewFile<'a> {
     pub size: i64,
     pub width: i32,
     pub height: i32,
+    pub hash: &'a str,
 }
 
 pub struct FileRow {
@@ -18,12 +19,13 @@ pub struct FileRow {
     pub mime: String,
 }
 
-/// Insert a file row. Ok(true) on success, Ok(false) on id collision so the
-/// caller can retry with a fresh id before any file hits disk.
+/// Insert a file row. Ok(true) on success, Ok(false) on a unique-constraint
+/// hit (either the id or the content hash) so the caller can retry with a fresh
+/// id, or fall back to the existing row, before any file hits disk.
 pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
     let res = sqlx::query!(
-        "insert into files (id, ext, mime, original_name, size, width, height) \
-         values ($1, $2, $3, $4, $5, $6, $7)",
+        "insert into files (id, ext, mime, original_name, size, width, height, hash) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8)",
         f.id,
         f.ext,
         f.mime,
@@ -31,6 +33,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.size,
         f.width,
         f.height,
+        f.hash,
     )
     .execute(pool)
     .await;
@@ -47,4 +50,15 @@ pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
             .fetch_optional(pool)
             .await?,
     )
+}
+
+/// Find an existing file by its content hash, for deduplication.
+pub async fn find_by_hash(pool: &PgPool, hash: &str) -> Result<Option<FileRow>> {
+    Ok(sqlx::query_as!(
+        FileRow,
+        "select id, ext, mime from files where hash = $1",
+        hash
+    )
+    .fetch_optional(pool)
+    .await?)
 }
