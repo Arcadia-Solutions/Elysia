@@ -15,3 +15,8 @@ docker compose up -d db
 DATABASE_URL=postgres://elysia:password@localhost:5432/elysia \
   cargo test --manifest-path backend/Cargo.toml
 ```
+
+## System dependencies
+
+The JPEG XL encoder (libjxl) is built from vendored source, so no system libjxl is needed.
+The first build is slower and needs cmake, nasm (for the AVIF encoder on x86_64) and a C++ compiler.

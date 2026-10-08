@@ -1,8 +1,9 @@
 use utoipa::OpenApi;
 
 use crate::handlers::login::{LoginRequest, LoginResponse};
-use crate::handlers::upload::{UploadForm, UploadResponse};
+use crate::handlers::upload::{UploadForm, UploadOptionsQuery, UploadResponse};
 use crate::handlers::upload_url::UploadUrlRequest;
+use crate::services::files::{Actions, CompressionAction, ConvertAction, ResizeAction};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -18,7 +19,12 @@ use crate::handlers::upload_url::UploadUrlRequest;
         LoginResponse,
         UploadForm,
         UploadResponse,
-        UploadUrlRequest
+        UploadUrlRequest,
+        UploadOptionsQuery,
+        Actions,
+        ResizeAction,
+        ConvertAction,
+        CompressionAction
     ))
 )]
 pub struct ApiDoc;

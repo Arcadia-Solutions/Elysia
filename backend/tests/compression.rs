@@ -1,0 +1,331 @@
+//! Tests for the image-processing feature: the pure pipeline, the processing
+//! store path, config validation for processing, and the quality query option.
+
+mod common;
+
+use actix_web::http::StatusCode;
+use sqlx::PgPool;
+
+use elysia::services::files::{UploadOptions, store_from_url};
+use elysia::services::image::{ProcessError, TargetFormat, process};
+
+use common::*;
+
+#[test]
+fn validate_rejects_processing_without_target_format() {
+    let mut config = test_config();
+    config.storage.target_file_format = None;
+    config.storage.target_width_pixels = 1920;
+    assert!(config.validate().is_err());
+}
+
+#[test]
+fn validate_requires_max_file_size() {
+    // Unconditional: an upload with no byte ceiling is rejected even with the
+    // processing feature off.
+    let mut config = test_config();
+    assert!(config.validate().is_err());
+    config.storage.max_file_size_bytes = 50 * 1024 * 1024;
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn validate_rejects_processing_without_decode_caps() {
+    let mut config = test_config();
+    config.storage.max_file_size_bytes = 50 * 1024 * 1024;
+    config.storage.target_file_format = Some(TargetFormat::Webp);
+    // pixel caps left at 0 (unlimited): processing would decode unbounded input.
+    assert!(config.validate().is_err());
+}
+
+#[test]
+fn validate_accepts_consistent_config() {
+    let mut config = test_config();
+    config.storage.target_file_format = Some(TargetFormat::Webp);
+    config.storage.target_width_pixels = 1920;
+    config.storage.max_file_size_bytes = 50 * 1024 * 1024;
+    config.storage.max_width_pixels = 10_000;
+    config.storage.max_height_pixels = 10_000;
+    assert!(config.validate().is_ok());
+    // feature off is valid once the byte ceiling is set
+    let mut off = test_config();
+    off.storage.max_file_size_bytes = 50 * 1024 * 1024;
+    assert!(off.validate().is_ok());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
+    let stored = store_from_url(&pool, &storage, &webp_config(), &url, &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(stored.ext, "webp");
+    let convert = stored.actions.unwrap().convert.unwrap();
+    assert_eq!(
+        (convert.from.as_str(), convert.to.as_str()),
+        ("png", "webp")
+    );
+    assert!(storage.path_for(&stored.id, "webp").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let image = real_png(8, 8);
+    let first = store_from_url(
+        &pool,
+        &storage,
+        &webp_config(),
+        &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+        &Default::default(),
+    )
+    .await
+    .unwrap();
+    assert!(!first.existed);
+    let second = store_from_url(
+        &pool,
+        &storage,
+        &webp_config(),
+        &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+        &Default::default(),
+    )
+    .await
+    .unwrap();
+    assert!(second.existed);
+    assert_eq!(first.id, second.id);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn different_quality_reprocesses(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let image = noisy_png(32, 32);
+    let mut ids = Vec::new();
+    for quality in [80, 30] {
+        let options = UploadOptions {
+            lossy_compression_value: Some(quality),
+        };
+        let stored = store_from_url(
+            &pool,
+            &storage,
+            &webp_config(),
+            &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+            &options,
+        )
+        .await
+        .unwrap();
+        assert!(!stored.existed);
+        ids.push(stored.id);
+    }
+    assert_ne!(ids[0], ids[1]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
+    let stored = store_from_url(&pool, &storage, &test_config(), &url, &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(stored.ext, "png");
+    assert!(stored.actions.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
+    let status = upload_status_with_query(
+        pool,
+        test_config(),
+        real_png(8, 8),
+        "lossy_compression_value=80",
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_rejects_quality_above_100(pool: PgPool) {
+    let status = upload_status_with_query(
+        pool,
+        webp_config(),
+        real_png(8, 8),
+        "lossy_compression_value=150",
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_rejects_quality_zero(pool: PgPool) {
+    // 0 is a degenerate lossy value; the valid range is 1 to 100.
+    let status = upload_status_with_query(
+        pool,
+        webp_config(),
+        real_png(8, 8),
+        "lossy_compression_value=0",
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_accepts_compression_when_feature_on(pool: PgPool) {
+    let status = upload_status_with_query(
+        pool,
+        webp_config(),
+        real_png(8, 8),
+        "lossy_compression_value=80",
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[test]
+fn pipeline_converts_png_to_webp() {
+    let out = process(&real_png(8, 8), &pipeline_options(TargetFormat::Webp))
+        .unwrap()
+        .unwrap();
+    assert_eq!(out.ext, "webp");
+    assert_eq!((out.width, out.height), (8, 8));
+    assert_eq!(&out.bytes[0..4], b"RIFF");
+}
+
+#[test]
+fn pipeline_resizes_within_the_box_preserving_aspect() {
+    let mut options = pipeline_options(TargetFormat::Webp);
+    options.target_width = 4;
+    options.target_height = 4;
+    let out = process(&real_png(10, 5), &options).unwrap().unwrap();
+    assert_eq!((out.width, out.height), (4, 2));
+}
+
+#[test]
+fn pipeline_does_not_upscale() {
+    let mut options = pipeline_options(TargetFormat::Webp);
+    options.target_width = 100;
+    options.target_height = 100;
+    let out = process(&real_png(8, 8), &options).unwrap().unwrap();
+    assert_eq!((out.width, out.height), (8, 8));
+}
+
+#[test]
+fn pipeline_lossy_is_smaller_than_lossless() {
+    let img = noisy_png(64, 64);
+    let lossless = process(&img, &pipeline_options(TargetFormat::Webp))
+        .unwrap()
+        .unwrap();
+    let mut options = pipeline_options(TargetFormat::Webp);
+    options.requested_quality = Some(10);
+    let lossy = process(&img, &options).unwrap().unwrap();
+    assert_eq!(lossy.applied_quality, Some(10));
+    assert!(lossy.bytes.len() < lossless.bytes.len());
+}
+
+#[test]
+fn pipeline_rejects_undecodable_bytes() {
+    assert!(matches!(
+        process(&tiny_png(2, 2), &pipeline_options(TargetFormat::Webp)),
+        Err(ProcessError::Undecodable)
+    ));
+}
+
+#[test]
+fn pipeline_passes_through_animated_gif() {
+    assert!(
+        process(&animated_gif(), &pipeline_options(TargetFormat::Webp))
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn pipeline_encodes_avif() {
+    let mut options = pipeline_options(TargetFormat::Avif);
+    options.requested_quality = Some(80);
+    let out = process(&real_png(16, 16), &options).unwrap().unwrap();
+    assert_eq!(out.ext, "avif");
+    assert_eq!((out.width, out.height), (16, 16));
+    assert_eq!(&out.bytes[4..8], b"ftyp");
+}
+
+#[test]
+fn pipeline_avif_lossless_is_rejected() {
+    // No quality + AVIF would be near-lossless, so it must error out.
+    let result = process(&real_png(16, 16), &pipeline_options(TargetFormat::Avif));
+    assert!(matches!(result, Err(ProcessError::Encode(_))));
+}
+
+#[test]
+fn pipeline_encodes_jxl() {
+    let out = process(&real_png(16, 16), &pipeline_options(TargetFormat::Jpegxl))
+        .unwrap()
+        .unwrap();
+    assert_eq!(out.ext, "jxl");
+    assert_eq!((out.width, out.height), (16, 16));
+    assert!(!out.bytes.is_empty());
+}
+
+#[test]
+fn pipeline_jxl_lossy() {
+    let mut options = pipeline_options(TargetFormat::Jpegxl);
+    options.requested_quality = Some(40);
+    let out = process(&real_png(16, 16), &options).unwrap().unwrap();
+    assert_eq!(out.ext, "jxl");
+    assert_eq!(out.applied_quality, Some(40));
+    assert_eq!((out.width, out.height), (16, 16));
+    assert!(!out.bytes.is_empty());
+}
+
+#[test]
+fn pipeline_jxl_quality_100() {
+    let mut options = pipeline_options(TargetFormat::Jpegxl);
+    options.requested_quality = Some(100);
+    let out = process(&real_png(16, 16), &options).unwrap().unwrap();
+    assert_eq!(out.ext, "jxl");
+    assert_eq!(out.applied_quality, Some(100));
+    assert!(!out.bytes.is_empty());
+}
+
+#[test]
+fn pipeline_target_file_size_triggers_lossy() {
+    let img = noisy_png(64, 64);
+    let lossless = process(&img, &pipeline_options(TargetFormat::Webp))
+        .unwrap()
+        .unwrap();
+    let mut options = pipeline_options(TargetFormat::Webp);
+    options.target_file_size = lossless.bytes.len() as u64 / 2;
+    let out = process(&img, &options).unwrap().unwrap();
+    assert!(out.applied_quality.is_some());
+    assert!(out.bytes.len() as u64 <= options.target_file_size);
+}
+
+#[test]
+fn target_format_parses_names_and_rejects_unknown() {
+    let parse = |s: &str| serde_json::from_str::<TargetFormat>(&format!("\"{s}\""));
+    assert!(matches!(parse("jpegxl"), Ok(TargetFormat::Jpegxl)));
+    assert!(matches!(parse("jxl"), Ok(TargetFormat::Jpegxl)));
+    assert!(parse("bmp").is_err());
+}
+
+#[test]
+fn config_crate_deserializes_target_format_from_yaml() {
+    let load = |value: &str| {
+        config::Config::builder()
+            .add_source(config::File::from_str(
+                &format!("upload_dir: x\ntarget_file_format: {value}\n"),
+                config::FileFormat::Yaml,
+            ))
+            .build()
+            .unwrap()
+            .try_deserialize::<elysia::config::StorageConfig>()
+    };
+    assert!(matches!(
+        load("jxl").unwrap().target_file_format,
+        Some(TargetFormat::Jpegxl)
+    ));
+    assert!(load("bmp").is_err());
+}

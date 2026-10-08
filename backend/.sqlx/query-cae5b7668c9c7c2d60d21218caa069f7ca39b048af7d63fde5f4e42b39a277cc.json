@@ -1,0 +1,125 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, ext, mime, original_ext, original_width, original_height, width, height, applied_quality from files where original_hash = $1 and requested_quality is not distinct from $2 order by created_at limit 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ext",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "ext"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "mime",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "mime"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "original_ext",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "original_ext"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "original_width",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "original_width"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "original_height",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "original_height"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "width",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "width"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "height",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "height"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "applied_quality",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "applied_quality"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "cae5b7668c9c7c2d60d21218caa069f7ca39b048af7d63fde5f4e42b39a277cc"
+}

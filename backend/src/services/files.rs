@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use actix_multipart::form::tempfile::TempFile;
+use serde::Serialize;
 use sqlx::PgPool;
 use tempfile::NamedTempFile;
 use tokio::io::AsyncReadExt;
@@ -8,6 +9,7 @@ use tokio::io::AsyncReadExt;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::repository::files::{self, FileRow, NewFile};
+use crate::services::image;
 use crate::storage::Storage;
 
 const ALPHABET: [char; 62] = [
@@ -28,6 +30,85 @@ pub struct StoredFile {
     /// True when the bytes were already stored and this id is the existing one
     /// (deduplicated), false when a new file was created.
     pub existed: bool,
+    /// None when the stored file is identical to its source.
+    pub actions: Option<Actions>,
+}
+
+/// Per-upload processing options.
+#[derive(Default)]
+pub struct UploadOptions {
+    pub lossy_compression_value: Option<u8>,
+}
+
+/// The bytes to store plus their metadata: either the pipeline's output or, when
+/// processing is off/passed through, the untouched source.
+struct Output {
+    temp: NamedTempFile,
+    ext: &'static str,
+    mime: String,
+    width: i32,
+    height: i32,
+    size: i64,
+    applied_quality: Option<i32>,
+}
+
+/// What processing changed between the source and the stored file.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct Actions {
+    pub resize: Option<ResizeAction>,
+    pub convert: Option<ConvertAction>,
+    pub compression: CompressionAction,
+}
+
+/// Dimensions before and after, as `[width, height]`.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct ResizeAction {
+    pub from: [i32; 2],
+    pub to: [i32; 2],
+}
+
+/// File extensions before and after.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct ConvertAction {
+    pub from: String,
+    pub to: String,
+}
+
+/// `"lossless"` or the applied lossy quality.
+#[derive(Serialize, utoipa::ToSchema)]
+#[serde(untagged)]
+pub enum CompressionAction {
+    Lossless(String),
+    Lossy { lossy_quality: i32 },
+}
+
+/// Describe a source-to-stored difference; None when nothing changed.
+fn describe_actions(
+    source_ext: &str,
+    stored_ext: &str,
+    source_size: (i32, i32),
+    stored_size: (i32, i32),
+    applied_quality: Option<i32>,
+) -> Option<Actions> {
+    let resized = source_size != stored_size;
+    let converted = source_ext != stored_ext;
+    if !resized && !converted && applied_quality.is_none() {
+        return None;
+    }
+    Some(Actions {
+        resize: resized.then_some(ResizeAction {
+            from: [source_size.0, source_size.1],
+            to: [stored_size.0, stored_size.1],
+        }),
+        convert: converted.then(|| ConvertAction {
+            from: source_ext.to_string(),
+            to: stored_ext.to_string(),
+        }),
+        compression: match applied_quality {
+            Some(lossy_quality) => CompressionAction::Lossy { lossy_quality },
+            None => CompressionAction::Lossless("lossless".into()),
+        },
+    })
 }
 
 /// Validate, inspect and store an uploaded file: size check, type sniff,
@@ -41,6 +122,7 @@ pub async fn store_upload(
     storage: &Storage,
     config: &Config,
     file: TempFile,
+    options: &UploadOptions,
 ) -> Result<StoredFile> {
     store(
         pool,
@@ -49,6 +131,7 @@ pub async fn store_upload(
         file.file,
         file.size as u64,
         file.file_name,
+        options,
     )
     .await
 }
@@ -61,6 +144,7 @@ pub async fn store_from_url(
     storage: &Storage,
     config: &Config,
     url: &str,
+    options: &UploadOptions,
 ) -> Result<StoredFile> {
     let response = reqwest::get(url)
         .await
@@ -94,6 +178,7 @@ pub async fn store_from_url(
         temp,
         bytes.len() as u64,
         original_name,
+        options,
     )
     .await
 }
@@ -107,6 +192,7 @@ async fn store(
     temp: NamedTempFile,
     size: u64,
     original_name: Option<String>,
+    options: &UploadOptions,
 ) -> Result<StoredFile> {
     check_size(config, size)?;
 
@@ -131,21 +217,76 @@ async fn store(
     // Pixel dimensions, read from the image header (no full decode).
     let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
     check_dimensions(config, dimensions.width as u32, dimensions.height as u32)?;
-    let (width, height) = (dimensions.width as i32, dimensions.height as i32);
+    let source_ext = ext;
+    let (source_width, source_height) = (dimensions.width as i32, dimensions.height as i32);
+    let original_hash = hash_file(path).await?;
+    let requested_quality = options.lossy_compression_value.map(|q| q as i32);
 
-    // Deduplicate on the exact bytes: an identical upload reuses the stored id
-    // instead of writing a second copy.
-    let hash = hash_file(path).await?;
-    if let Some(existing) = files::find_by_hash(pool, &hash).await? {
-        return Ok(StoredFile {
-            id: existing.id,
-            ext: existing.ext,
-            existed: true,
-        });
+    // Same source under the same requested quality was already processed.
+    // ponytail: key is (original_hash, requested_quality) only, ignoring the target
+    // format/size/dimensions config. If an operator changes that config, a re-upload
+    // of the same source returns the file processed under the old config.
+    if let Some(record) =
+        files::find_record_by_source(pool, &original_hash, requested_quality).await?
+    {
+        return Ok(existing_stored(record));
+    }
+
+    // Run the pipeline when a target format is configured; `None` passes through.
+    let processed = match config.storage.target_file_format {
+        Some(format) => {
+            let input = tokio::fs::read(path).await?;
+            let process_options = image::ProcessOptions {
+                target_width: config.storage.target_width_pixels,
+                target_height: config.storage.target_height_pixels,
+                format,
+                target_file_size: config.storage.target_file_size_bytes,
+                requested_quality: options.lossy_compression_value,
+            };
+            // Encoding is CPU-heavy; keep it off the async worker threads.
+            tokio::task::spawn_blocking(move || image::process(&input, &process_options))
+                .await
+                .map_err(|_| Error::Io(std::io::Error::other("image processing task failed")))?
+                .map_err(|e| match e {
+                    image::ProcessError::Undecodable => Error::UnsupportedMediaType,
+                    image::ProcessError::Encode(message) => Error::BadRequest(message),
+                })?
+        }
+        None => None,
+    };
+
+    let output = match processed {
+        Some(p) => {
+            let mut temp = storage.new_temp()?;
+            temp.write_all(&p.bytes)?;
+            Output {
+                size: p.bytes.len() as i64,
+                ext: p.ext,
+                mime: p.mime.to_string(),
+                width: p.width as i32,
+                height: p.height as i32,
+                applied_quality: p.applied_quality.map(|q| q as i32),
+                temp,
+            }
+        }
+        None => Output {
+            size: size as i64,
+            ext: source_ext,
+            mime,
+            width: source_width,
+            height: source_height,
+            applied_quality: None,
+            temp,
+        },
+    };
+    let hash = hash_file(output.temp.path()).await?;
+
+    // A different source that produced identical output bytes.
+    if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
+        return Ok(existing_stored(record));
     }
 
     let original_name = original_name.as_deref();
-    let size = size as i64;
 
     // Insert first (retrying on id collision) so we never leave an orphan file on disk.
     let mut id = None;
@@ -155,13 +296,19 @@ async fn store(
             pool,
             &NewFile {
                 id: &candidate,
-                ext,
-                mime: &mime,
+                ext: output.ext,
+                mime: &output.mime,
                 original_name,
-                size,
-                width,
-                height,
+                size: output.size,
+                width: output.width,
+                height: output.height,
                 hash: &hash,
+                original_hash: &original_hash,
+                original_ext: source_ext,
+                original_width: source_width,
+                original_height: source_height,
+                requested_quality,
+                applied_quality: output.applied_quality,
             },
         )
         .await?;
@@ -171,23 +318,42 @@ async fn store(
         }
         // A failed insert is an id collision or a concurrent upload of the same
         // bytes winning the hash race; in the latter case, reuse its row.
-        if let Some(existing) = files::find_by_hash(pool, &hash).await? {
-            return Ok(StoredFile {
-                id: existing.id,
-                ext: existing.ext,
-                existed: true,
-            });
+        if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
+            return Ok(existing_stored(record));
         }
     }
     let id = id.ok_or_else(|| Error::BadRequest("could not allocate an id".into()))?;
 
-    storage.persist(temp, &id, ext)?;
+    storage.persist(output.temp, &id, output.ext)?;
 
     Ok(StoredFile {
         id,
-        ext: ext.to_string(),
+        ext: output.ext.to_string(),
         existed: false,
+        actions: describe_actions(
+            source_ext,
+            output.ext,
+            (source_width, source_height),
+            (output.width, output.height),
+            output.applied_quality,
+        ),
     })
+}
+
+/// Build a `StoredFile` for a dedup or skip hit from a stored record.
+fn existing_stored(record: files::FileRecord) -> StoredFile {
+    StoredFile {
+        id: record.id,
+        existed: true,
+        actions: describe_actions(
+            &record.original_ext,
+            &record.ext,
+            (record.original_width, record.original_height),
+            (record.width, record.height),
+            record.applied_quality,
+        ),
+        ext: record.ext,
+    }
 }
 
 /// SHA-256 of a file's bytes, as a hex string. Streamed so large files never
