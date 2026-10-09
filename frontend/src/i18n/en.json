@@ -21,6 +21,10 @@
     "copied": "Link copied",
     "another": "Upload another one",
     "preview_alt": "preview",
+    "step": {
+      "image": "Pick an image",
+      "options": "Options"
+    },
     "uploading": "Uploading… {pct}%",
     "processing": "Processing…",
     "format_override": {

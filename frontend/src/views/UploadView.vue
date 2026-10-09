@@ -1,67 +1,77 @@
 <template>
   <div class="upload-wrap">
-    <div
-      v-if="!urlInput"
-      class="dropzone"
-      :class="{ dragging }"
-      @dragover.prevent
-      @dragenter.prevent="dragging = true"
-      @dragleave.prevent="dragging = false"
-      @drop.prevent="onDrop"
-    >
-      <FileUpload mode="basic" accept="image/*" :auto="false" customUpload :chooseLabel="$t('upload.choose')" @select="onSelect" :disabled="uploading" />
-      <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
-    </div>
+    <section class="card">
+      <header class="card-head">
+        <h2>{{ $t('upload.step.image') }}</h2>
+      </header>
 
-    <div v-if="selectedPreview" class="preview-wrap">
-      <img :src="selectedPreview" :alt="$t('upload.preview_alt')" class="preview" />
-      <Button
-        icon="pi pi-times"
+      <div
+        v-if="!urlInput"
+        class="dropzone"
+        :class="{ dragging }"
+        @dragover.prevent
+        @dragenter.prevent="dragging = true"
+        @dragleave.prevent="dragging = false"
+        @drop.prevent="onDrop"
+      >
+        <FileUpload mode="basic" accept="image/*" :auto="false" customUpload :chooseLabel="$t('upload.choose')" @select="onSelect" :disabled="uploading" />
+        <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
+      </div>
+
+      <div v-if="selectedPreview" class="preview-wrap">
+        <img :src="selectedPreview" :alt="$t('upload.preview_alt')" class="preview" />
+        <Button
+          icon="pi pi-times"
+          size="small"
+          rounded
+          severity="secondary"
+          class="clear-btn"
+          :title="$t('upload.clear')"
+          :aria-label="$t('upload.clear')"
+          :disabled="uploading"
+          @click="clearSelection"
+        />
+      </div>
+
+      <InputText
+        v-if="!selectedFile"
+        v-model="urlInput"
         size="small"
-        rounded
-        severity="secondary"
-        class="clear-btn"
-        :title="$t('upload.clear')"
-        :aria-label="$t('upload.clear')"
-        :disabled="uploading"
-        @click="clearSelection"
-      />
-    </div>
-
-    <InputText
-      v-if="!selectedFile"
-      v-model="urlInput"
-      size="small"
-      :placeholder="$t('upload.url_placeholder')"
-      fluid
-      @keyup.enter="submit"
-      :disabled="uploading"
-    />
-
-    <div v-if="settings?.allow_overriding_file_format" class="format-row">
-      <label>{{ $t('upload.format_override.label') }}</label>
-      <Select
-        v-model="formatOverride"
-        size="small"
+        :placeholder="$t('upload.url_placeholder')"
         fluid
+        @keyup.enter="submit"
         :disabled="uploading"
-        :options="[
-          { label: $t('upload.format_override.keep_default'), value: 'default' },
-          ...Object.values(TargetFormat).map((f) => ({ label: formatLabels[f], value: f })),
-        ]"
-        option-label="label"
-        option-value="value"
       />
-    </div>
+    </section>
 
-    <div v-if="showCompression" class="quality-row">
-      <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
-      <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
-    </div>
+    <section v-if="hasOptions" class="card">
+      <header class="card-head">
+        <h2>{{ $t('upload.step.options') }}</h2>
+      </header>
 
-    <div class="upload-row">
-      <Button :label="$t('upload.upload')" size="small" @click="submit" :disabled="uploading || (!selectedFile && !urlInput)" />
-    </div>
+      <div v-if="settings?.allow_overriding_file_format" class="format-row">
+        <label>{{ $t('upload.format_override.label') }}</label>
+        <Select
+          v-model="formatOverride"
+          size="small"
+          fluid
+          :disabled="uploading"
+          :options="[
+            { label: $t('upload.format_override.keep_default'), value: 'default' },
+            ...Object.values(TargetFormat).map((f) => ({ label: formatLabels[f], value: f })),
+          ]"
+          option-label="label"
+          option-value="value"
+        />
+      </div>
+
+      <div v-if="showCompression" class="quality-row">
+        <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
+        <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
+      </div>
+    </section>
+
+    <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selectedFile && !urlInput)" />
 
     <Transition name="fade">
       <div v-if="uploading" class="progress">
@@ -120,6 +130,8 @@ const effectiveFormat = computed(() => (formatOverride.value === 'default' ? set
 // Quality applies only to lossy-capable formats (every target format but PNG),
 // and only when the settings allow overriding compression.
 const showCompression = computed(() => !!settings.value?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
+// The options section is empty (and hidden) unless the server exposes at least one knob.
+const hasOptions = computed(() => !!settings.value?.allow_overriding_file_format || showCompression.value)
 const qualityValue = () => (showCompression.value ? quality.value : undefined)
 
 // Public upload limits, so files are rejected client-side before a wasted
@@ -256,12 +268,31 @@ const rehost = () => {
 .upload-wrap {
   max-width: 600px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 24px 16px;
   min-height: 80vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 2px solid var(--p-content-border-color);
+  border-radius: 10px;
+  background: var(--p-content-background);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-head h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 .dropzone {
   display: flex;
@@ -282,11 +313,6 @@ const rehost = () => {
 .drop-hint {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
-}
-.upload-row {
-  margin-top: 30px;
-  display: flex;
-  justify-content: center;
 }
 .preview-wrap {
   position: relative;
