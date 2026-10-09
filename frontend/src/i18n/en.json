@@ -19,6 +19,7 @@
     "logout": "Logout",
     "copy": "Copy link",
     "copied": "Link copied",
+    "another": "Upload another one",
     "preview_alt": "preview",
     "uploading": "Uploading… {pct}%",
     "processing": "Processing…",

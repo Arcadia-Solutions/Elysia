@@ -38,10 +38,6 @@
       :disabled="uploading"
     />
 
-    <div class="upload-row">
-      <Button :label="$t('upload.upload')" size="small" @click="submit" :disabled="uploading || (!selectedFile && !urlInput)" />
-    </div>
-
     <div v-if="settings?.allow_overriding_file_format" class="format-row">
       <label>{{ $t('upload.format_override.label') }}</label>
       <Select
@@ -63,6 +59,10 @@
       <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
     </div>
 
+    <div class="upload-row">
+      <Button :label="$t('upload.upload')" size="small" @click="submit" :disabled="uploading || (!selectedFile && !urlInput)" />
+    </div>
+
     <Transition name="fade">
       <div v-if="uploading" class="progress">
         <ProgressBar v-if="phase === 'uploading'" :value="progress" :showValue="false" style="height: 6px" />
@@ -72,19 +72,12 @@
         </span>
       </div>
     </Transition>
-
-    <div v-if="result" class="result">
-      <img :src="link" :alt="$t('upload.preview_alt')" class="preview" />
-      <div class="link-row">
-        <InputText :value="fullLink" size="small" readonly fluid />
-        <Button icon="pi pi-copy" size="small" :title="$t('upload.copy')" :aria-label="$t('upload.copy')" @click="copyLink" />
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -93,11 +86,11 @@ import Select from 'primevue/select'
 import Slider from 'primevue/slider'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
-import { TargetFormat, type PublicElysiaSettings, type UploadResponse } from '@/services/api-schema'
+import { TargetFormat, type PublicElysiaSettings } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
 
 const { t } = useI18n()
-const result = ref<UploadResponse | null>(null)
+const router = useRouter()
 // 'uploading' = bytes in flight (determinate bar), 'processing' = backend
 const phase = ref<'idle' | 'uploading' | 'processing'>('idle')
 const progress = ref(0)
@@ -183,9 +176,6 @@ const validate = (file: File): Promise<string | null> => {
     .catch(() => null) // undecodable: let the backend judge it
 }
 
-const link = computed(() => (result.value ? `/i/${result.value.id}.${result.value.ext}` : ''))
-const fullLink = computed(() => (link.value ? new URL(link.value, window.location.origin).href : ''))
-
 const handleFile = (file: File | undefined) => {
   if (!file) return
   validate(file).then((error) => {
@@ -205,7 +195,7 @@ const handleFile = (file: File | undefined) => {
         },
       })
       .then((uploaded) => {
-        result.value = uploaded.data
+        router.push({ name: 'Uploaded', query: { id: uploaded.data.id, ext: uploaded.data.ext } })
       })
       .finally(() => {
         phase.value = 'idle'
@@ -254,27 +244,23 @@ const rehost = () => {
   api
     .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value)
     .then((uploaded) => {
-      result.value = uploaded.data
-      urlInput.value = ''
+      router.push({ name: 'Uploaded', query: { id: uploaded.data.id, ext: uploaded.data.ext } })
     })
     .finally(() => {
       phase.value = 'idle'
     })
-}
-
-const copyLink = () => {
-  navigator.clipboard.writeText(fullLink.value)
-  showToast('', t('upload.copied'), 'success')
 }
 </script>
 
 <style scoped>
 .upload-wrap {
   max-width: 600px;
-  margin: 40px auto;
+  margin: 0 auto;
   padding: 0 16px;
+  min-height: 80vh;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 20px;
 }
 .dropzone {
@@ -298,6 +284,7 @@ const copyLink = () => {
   font-size: 0.875rem;
 }
 .upload-row {
+  margin-top: 30px;
   display: flex;
   justify-content: center;
 }
@@ -351,15 +338,6 @@ const copyLink = () => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
-}
-.result {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.link-row {
-  display: flex;
-  gap: 8px;
 }
 .preview {
   max-width: 100%;
