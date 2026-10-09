@@ -314,6 +314,16 @@ fn pipeline_avif_lossless_is_rejected() {
 }
 
 #[test]
+/// PNG has no lossy mode, so a quality request must error rather than
+/// silently encode lossless.
+fn pipeline_png_lossy_is_rejected() {
+    let mut options = pipeline_options(TargetFormat::Png);
+    options.requested_quality = Some(80);
+    let result = process(&real_png(16, 16), &options);
+    assert!(matches!(result, Err(ProcessError::Encode(_))));
+}
+
+#[test]
 fn pipeline_encodes_jxl() {
     let out = process(&real_png(16, 16), &pipeline_options(TargetFormat::Jpegxl))
         .unwrap()

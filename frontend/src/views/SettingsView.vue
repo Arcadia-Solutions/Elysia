@@ -52,6 +52,8 @@
           { label: 'WebP', value: 'webp' },
           { label: 'JPEG XL', value: 'jpegxl' },
           { label: 'AVIF', value: 'avif' },
+          { label: 'PNG', value: 'png' },
+          { label: 'JPEG', value: 'jpg' },
         ]"
         option-label="label"
         option-value="value"

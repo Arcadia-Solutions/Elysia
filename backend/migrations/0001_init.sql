@@ -38,7 +38,7 @@ create index files_original_hash_idx on files (original_hash);
 
 -- Runtime-editable elysia settings, edited from the web UI. A single row
 -- (id = 'singleton'); the boot-time infrastructure values stay in config.yml.
-create type target_format as enum ('webp', 'jpegxl', 'avif');
+create type target_format as enum ('webp', 'jpegxl', 'avif', 'png', 'jpg');
 
 create table elysia_settings (
   id text primary key,
@@ -59,7 +59,7 @@ comment on column elysia_settings.max_width_pixels is 'Reject images wider than 
 comment on column elysia_settings.max_height_pixels is 'Reject images taller than this; 0 disables the check';
 comment on column elysia_settings.target_width_pixels is 'Resize width bound; 0 = no resize';
 comment on column elysia_settings.target_height_pixels is 'Resize height bound; 0 = no resize';
-comment on column elysia_settings.target_file_format is 'webp | jpegxl | avif; null stores uploads as-is (processing off)';
+comment on column elysia_settings.target_file_format is 'webp | jpegxl | avif | png | jpg; null stores uploads as-is (processing off)';
 comment on column elysia_settings.target_file_size_bytes is 'Lossy target size in bytes; 0 = no target';
 comment on column elysia_settings.default_compression is 'Lossy quality (1-100) applied when an upload requests none; 0 = none';
 comment on column elysia_settings.allow_overriding_compression is 'When false, uploads may not request their own compression; the default is always used';

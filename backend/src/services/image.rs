@@ -16,6 +16,9 @@ pub enum TargetFormat {
     #[serde(alias = "jxl")]
     Jpegxl,
     Avif,
+    Png,
+    #[serde(alias = "jpeg")]
+    Jpg,
 }
 
 impl TargetFormat {
@@ -24,6 +27,8 @@ impl TargetFormat {
             TargetFormat::Webp => ("webp", "image/webp"),
             TargetFormat::Jpegxl => ("jxl", "image/jxl"),
             TargetFormat::Avif => ("avif", "image/avif"),
+            TargetFormat::Png => ("png", "image/png"),
+            TargetFormat::Jpg => ("jpg", "image/jpeg"),
         }
     }
 }
@@ -64,16 +69,25 @@ pub fn process(input: &[u8], options: &ProcessOptions) -> Result<Option<Processe
 
     // Explicit quality wins; else lossless, then optional target-size search.
     let (bytes, applied_quality) = match options.requested_quality {
-        Some(quality) => (
-            encode(&rgba, width, height, &options.format, Some(quality))?,
-            Some(quality),
-        ),
-        None => {
-            // AVIF has no true lossless mode; refuse rather than encode a
-            // near-lossless frame.
-            if matches!(options.format, TargetFormat::Avif) {
+        Some(quality) => {
+            // PNG has no lossy mode; refuse rather than silently encode lossless.
+            if matches!(options.format, TargetFormat::Png) {
                 return Err(ProcessError::Encode(
-                    "avif has no lossless mode; set lossy_compression_value (1-100)".into(),
+                    "png has no lossy mode; drop lossy_compression_value".into(),
+                ));
+            }
+            (
+                encode(&rgba, width, height, &options.format, Some(quality))?,
+                Some(quality),
+            )
+        }
+        None => {
+            // AVIF and JPEG have no true lossless mode; refuse rather than
+            // encode a near-lossless frame.
+            if matches!(options.format, TargetFormat::Avif | TargetFormat::Jpg) {
+                return Err(ProcessError::Encode(
+                    "this image format has no lossless mode; set lossy_compression_value (1-100)"
+                        .into(),
                 ));
             }
             let lossless = encode(&rgba, width, height, &options.format, None)?;
@@ -144,7 +158,33 @@ fn encode(
         TargetFormat::Webp => Ok(encode_webp(rgba, width, height, quality)),
         TargetFormat::Avif => encode_avif(rgba, width, height, quality),
         TargetFormat::Jpegxl => encode_jxl(rgba, width, height, quality),
+        TargetFormat::Png => encode_png(rgba, width, height),
+        TargetFormat::Jpg => encode_jpeg(rgba, width, height, quality.unwrap_or(85)),
     }
+}
+
+/// PNG encoder; always lossless, `quality` is ignored (PNG has no lossy mode).
+fn encode_png(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>, ProcessError> {
+    use image::ImageEncoder;
+    let mut buffer = Vec::new();
+    image::codecs::png::PngEncoder::new(&mut buffer)
+        .write_image(rgba, width, height, image::ExtendedColorType::Rgba8)
+        .map_err(|e| ProcessError::Encode(e.to_string()))?;
+    Ok(buffer)
+}
+
+/// JPEG encoder; lossy only. Alpha is dropped (JPEG has no alpha channel).
+fn encode_jpeg(rgba: &[u8], width: u32, height: u32, quality: u8) -> Result<Vec<u8>, ProcessError> {
+    use image::ImageEncoder;
+    let rgb: Vec<u8> = rgba
+        .chunks_exact(4)
+        .flat_map(|p| [p[0], p[1], p[2]])
+        .collect();
+    let mut buffer = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, quality)
+        .write_image(&rgb, width, height, image::ExtendedColorType::Rgb8)
+        .map_err(|e| ProcessError::Encode(e.to_string()))?;
+    Ok(buffer)
 }
 
 /// WebP encoder; `quality` None = lossless.
