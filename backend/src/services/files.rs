@@ -374,12 +374,30 @@ async fn hash_file(path: &std::path::Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Format a byte count with a human-readable binary unit (e.g. "1.5 MiB").
+fn human_readable_size(bytes: u64) -> String {
+    const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{bytes} {}", UNITS[unit])
+    } else {
+        format!("{value:.1} {}", UNITS[unit])
+    }
+}
+
 /// Reject files above the configured byte limit (0 = unlimited).
 pub fn check_size(settings: &ElysiaSettings, size: u64) -> Result<()> {
     let limit = settings.max_file_size_bytes;
     if limit > 0 && size > limit {
         return Err(Error::BadRequest(format!(
-            "file too large: {size} bytes, limit is {limit} bytes"
+            "file too large: {}, limit is {}",
+            human_readable_size(size),
+            human_readable_size(limit)
         )));
     }
     Ok(())
@@ -406,4 +424,17 @@ pub fn check_dimensions(settings: &ElysiaSettings, width: u32, height: u32) -> R
 /// path-traversal guard: only ids that exist are ever served.
 pub async fn get(pool: &PgPool, id: &str) -> Result<FileRow> {
     files::find(pool, id).await?.ok_or(Error::NotFound)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::human_readable_size;
+
+    #[test]
+    fn formats_human_readable_size() {
+        assert_eq!(human_readable_size(512), "512 B");
+        assert_eq!(human_readable_size(1024), "1.0 KiB");
+        assert_eq!(human_readable_size(1536), "1.5 KiB");
+        assert_eq!(human_readable_size(5 * 1024 * 1024), "5.0 MiB");
+    }
 }
