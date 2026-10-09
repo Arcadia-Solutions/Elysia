@@ -44,11 +44,11 @@
       <label>{{ $t('settings.target_format.label') }}</label>
       <small>{{ $t('settings.target_format.help') }}</small>
       <Select
-        v-model="form.default_target_file_format"
+        v-model="targetFormat"
         size="small"
         fluid
         :options="[
-          { label: $t('settings.target_format.store_as_is'), value: null },
+          { label: $t('settings.target_format.store_as_is'), value: 'store_as_is' },
           { label: 'WebP', value: 'webp' },
           { label: 'JPEG XL', value: 'jpegxl' },
           { label: 'AVIF', value: 'avif' },
@@ -66,7 +66,11 @@
       <ToggleSwitch v-model="form.allow_overriding_file_format" />
     </div>
 
-    <div class="section" :class="{ disabled: !form.default_target_file_format }">
+    <div
+      class="section"
+      :class="{ disabled: !form.default_target_file_format }"
+      v-tooltip="!form.default_target_file_format ? { value: $t('settings.disabled_reason'), showDelay: 150 } : undefined"
+    >
       <div class="field">
         <label>{{ $t('settings.target_width.label') }}</label>
         <small>{{ $t('settings.target_width.help') }}</small>
@@ -106,7 +110,14 @@
         <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.default_target_file_format" />
       </div>
 
-      <div class="field">
+      <div
+        class="field"
+        v-tooltip="
+          compressionOverrideForced && form.default_target_file_format
+            ? { value: $t('settings.allow_overriding_compression.forced_help'), showDelay: 150 }
+            : undefined
+        "
+      >
         <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
         <small>{{
           compressionOverrideForced ? $t('settings.allow_overriding_compression.forced_help') : $t('settings.allow_overriding_compression.help')
@@ -126,10 +137,13 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Tooltip from 'primevue/tooltip'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
-import type { ElysiaSettings } from '@/services/api-schema'
+import type { ElysiaSettings, TargetFormat } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
+
+const vTooltip = Tooltip
 
 const { t } = useI18n()
 const loading = ref(true)
@@ -170,6 +184,13 @@ const useByteField = () => {
 
 const fileSize = useByteField()
 const targetSize = useByteField()
+
+// PrimeVue Select shows the placeholder (blank) for a null model, so "store
+// as-is" (null) would never appear selected. Map it to a sentinel for the Select.
+const targetFormat = computed({
+  get: () => form.default_target_file_format ?? 'store_as_is',
+  set: (v: TargetFormat | 'store_as_is') => (form.default_target_file_format = v === 'store_as_is' ? null : v),
+})
 
 watch(fileSize.bytes, (value) => (form.max_file_size_bytes = value))
 watch(targetSize.bytes, (value) => (form.target_file_size_bytes = value))

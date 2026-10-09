@@ -35,6 +35,7 @@
     "intro": "Limits and image processing applied to every upload. A value of 0 disables that check. Changes apply immediately, no restart needed.",
     "save": "Save",
     "saved": "Settings saved",
+    "disabled_reason": "Select a default target format to enable this.",
     "errors": {
       "max_file_size_required": "Required: uploads need a byte ceiling.",
       "max_dimension_required": "Required when a target format is set."
