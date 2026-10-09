@@ -99,6 +99,18 @@ export interface ElysiaSettings {
      * Resize width bound; 0 = no resize.
      */
     'target_width_pixels'?: number;
+    /**
+     * Thumbnail box height; 0 on both axes disables thumbnails.
+     */
+    'thumbnail_height_pixels'?: number;
+    /**
+     * Lossy WebP quality (1-100) for generated thumbnails.
+     */
+    'thumbnail_quality'?: number;
+    /**
+     * Thumbnail box width; 0 on both axes disables thumbnails. Not overridable per upload.
+     */
+    'thumbnail_width_pixels'?: number;
 }
 
 
@@ -169,10 +181,13 @@ export interface UploadOptionsQuery {
      */
     'lossy_compression_value'?: number | null;
     /**
+     * Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+     */
+    'strip_exif'?: boolean | null;
+    /**
      * Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
      */
     'target_file_format'?: TargetFormat | null;
-    'strip_exif'?: boolean | null;
 }
 
 
@@ -187,6 +202,10 @@ export interface UploadResponse {
     'existed': boolean;
     'ext': string;
     'id': string;
+    /**
+     * URL of the thumbnail; a generated WebP when one exists, otherwise the original file served from `/t/`.
+     */
+    'thumbnail_url': string;
     'url': string;
 }
 /**
@@ -364,9 +383,43 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnail: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveThumbnail', 'filename', filename)
+            const localVarPath = `/t/{filename}`
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -421,6 +474,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {UploadUrlRequest} uploadUrlRequest 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -534,9 +588,22 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveThumbnail(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -551,6 +618,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
          * @param {UploadUrlRequest} uploadUrlRequest 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -614,9 +682,19 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         },
         /**
          * 
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -628,6 +706,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          * @param {UploadUrlRequest} uploadUrlRequest 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -691,9 +770,20 @@ export class ElysiaApi extends BaseAPI {
 
     /**
      * 
+     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @param {File} file 
      * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
      * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+     * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -706,6 +796,7 @@ export class ElysiaApi extends BaseAPI {
      * @param {UploadUrlRequest} uploadUrlRequest 
      * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
      * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+     * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */

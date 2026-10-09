@@ -18,6 +18,8 @@
     "too_tall": "Image is too tall (max {max}px)",
     "logout": "Logout",
     "copy": "Copy link",
+    "image_link": "Image link",
+    "thumbnail_link": "Thumbnail link",
     "copied": "Link copied",
     "another": "Upload another one",
     "preview_alt": "preview",
@@ -46,7 +48,8 @@
     "disabled_reason": "Select a default target format to enable this.",
     "errors": {
       "max_file_size_required": "Required: uploads need a byte ceiling.",
-      "max_dimension_required": "Required when a target format is set."
+      "max_dimension_required": "Required when a target format is set, or when thumbnails are enabled.",
+      "thumbnail_quality_range": "Must be between 1 and 100."
     },
     "max_file_size": {
       "label": "Maximum file size (bytes)",
@@ -97,6 +100,19 @@
     "allow_overriding_strip_exif": {
       "label": "Allow overriding metadata stripping",
       "help": "Let an upload choose whether to strip its own metadata. When off, the default above is always used."
+    },
+    "thumbnails_intro": "A smaller preview served from /t/ instead of /i/. Enabled when a width or height is set. Not overridable per upload; images already within the box are served unchanged.",
+    "thumbnail_width": {
+      "label": "Thumbnail width (pixels)",
+      "help": "Shrink the thumbnail to fit within this width, keeping aspect ratio. 0 means unconstrained on this axis."
+    },
+    "thumbnail_height": {
+      "label": "Thumbnail height (pixels)",
+      "help": "Shrink the thumbnail to fit within this height, keeping aspect ratio. 0 means unconstrained on this axis."
+    },
+    "thumbnail_quality": {
+      "label": "Thumbnail quality (1-100)",
+      "help": "Lossy WebP quality for generated thumbnails."
     }
   }
 }

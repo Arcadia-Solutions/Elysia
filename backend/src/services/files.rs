@@ -32,6 +32,27 @@ pub struct StoredFile {
     pub existed: bool,
     /// None when the stored file is identical to its source.
     pub actions: Option<Actions>,
+    /// True when a generated WebP thumbnail exists; when false `/t/` serves the
+    /// original file, so the thumbnail URL keeps the original extension.
+    pub has_thumbnail: bool,
+}
+
+impl StoredFile {
+    /// Public URL for the stored image.
+    pub fn image_url(&self) -> String {
+        format!("/i/{}.{}", self.id, self.ext)
+    }
+
+    /// Public URL for the thumbnail. Generated thumbnails are always WebP;
+    /// without one, `/t/` falls back to the original, hence its extension.
+    pub fn thumbnail_url(&self) -> String {
+        let extension = if self.has_thumbnail {
+            "webp"
+        } else {
+            &self.ext
+        };
+        format!("/t/{}.{}", self.id, extension)
+    }
 }
 
 /// Per-upload processing options.
@@ -243,7 +264,15 @@ async fn store(
     let target_file_format = options
         .target_file_format
         .or(settings.default_target_file_format);
-    let processed = match target_file_format {
+    let thumbnails_enabled = settings.thumbnails_enabled();
+    let thumbnail_box = (
+        settings.thumbnail_width_pixels,
+        settings.thumbnail_height_pixels,
+    );
+
+    // The processed main output (`None` = passthrough or animated GIF) and, when
+    // the target-format pipeline runs, its thumbnail decoded from the same pixels.
+    let (processed, mut thumbnail) = match target_file_format {
         Some(format) => {
             let input = tokio::fs::read(path).await?;
             let process_options = image::ProcessOptions {
@@ -253,16 +282,42 @@ async fn store(
                 target_file_size: settings.target_file_size_bytes,
                 requested_quality: options.lossy_compression_value,
             };
-            // Encoding is CPU-heavy; keep it off the async worker threads.
-            tokio::task::spawn_blocking(move || image::process(&input, &process_options))
-                .await
-                .map_err(|_| Error::Io(std::io::Error::other("image processing task failed")))?
-                .map_err(|e| match e {
-                    image::ProcessError::Undecodable => Error::UnsupportedMediaType,
-                    image::ProcessError::Encode(message) => Error::BadRequest(message),
-                })?
+            let thumbnail_options = thumbnails_enabled.then(|| thumbnail_process_options(settings));
+            // Encoding is CPU-heavy; keep it off the async worker threads. Decode
+            // once and reuse the pixels for the thumbnail when one is needed.
+            tokio::task::spawn_blocking(move || {
+                let Some(image) = image::decode(&input)? else {
+                    return Ok::<_, image::ProcessError>((None, None));
+                };
+                let source = thumbnail_options.is_some().then(|| image.clone());
+                let processed = image::process_decoded(image, &process_options)?;
+                let thumbnail = match (thumbnail_options, source) {
+                    (Some(options), Some(source))
+                        if over_thumbnail_box(thumbnail_box, processed.width, processed.height) =>
+                    {
+                        Some(image::process_decoded(source, &options)?.bytes)
+                    }
+                    _ => None,
+                };
+                Ok((Some(processed), thumbnail))
+            })
+            .await
+            .map_err(|_| Error::Io(std::io::Error::other("image processing task failed")))?
+            .map_err(process_error)?
         }
-        None => None,
+        None => (None, None),
+    };
+
+    // Passthrough stores the source, so the output matches the source dimensions;
+    // read its bytes for a thumbnail only when one is actually needed, and before
+    // `temp` may be consumed below.
+    let passthrough_thumbnail_source = if thumbnails_enabled
+        && target_file_format.is_none()
+        && over_thumbnail_box(thumbnail_box, source_width as u32, source_height as u32)
+    {
+        Some(tokio::fs::read(path).await?)
+    } else {
+        None
     };
 
     let output = match processed {
@@ -307,6 +362,12 @@ async fn store(
             temp,
         },
     };
+    // Passthrough: the source was not decoded above, so make the thumbnail from
+    // its own decode. The pipeline path already produced it from the shared decode.
+    if let Some(source) = passthrough_thumbnail_source {
+        thumbnail = generate_thumbnail(source, settings).await?;
+    }
+
     let hash = hash_file(output.temp.path()).await?;
 
     // A different source that produced identical output bytes.
@@ -337,6 +398,7 @@ async fn store(
                 original_height: source_height,
                 requested_quality,
                 applied_quality: output.applied_quality,
+                has_thumbnail: thumbnail.is_some(),
             },
         )
         .await?;
@@ -353,6 +415,9 @@ async fn store(
     let id = id.ok_or_else(|| Error::BadRequest("could not allocate an id".into()))?;
 
     storage.persist(output.temp, &id, output.ext)?;
+    if let Some(bytes) = &thumbnail {
+        storage.write_thumbnail(&id, bytes).await?;
+    }
 
     Ok(StoredFile {
         id,
@@ -365,6 +430,7 @@ async fn store(
             (output.width, output.height),
             output.applied_quality,
         ),
+        has_thumbnail: thumbnail.is_some(),
     })
 }
 
@@ -405,6 +471,7 @@ fn existing_stored(record: files::FileRecord) -> StoredFile {
             record.applied_quality,
         ),
         ext: record.ext,
+        has_thumbnail: record.has_thumbnail,
     }
 }
 
@@ -470,6 +537,43 @@ pub fn check_dimensions(settings: &ElysiaSettings, width: u32, height: u32) -> R
         )));
     }
     Ok(())
+}
+
+/// Whether an image exceeds the thumbnail box on a constrained axis (0 = off).
+/// When it does not, no separate thumbnail is made and /t/ serves the main file.
+fn over_thumbnail_box((box_width, box_height): (u32, u32), width: u32, height: u32) -> bool {
+    (box_width > 0 && width > box_width) || (box_height > 0 && height > box_height)
+}
+
+/// Pipeline options for a thumbnail: fit the box, lossy WebP.
+fn thumbnail_process_options(settings: &ElysiaSettings) -> image::ProcessOptions {
+    image::ProcessOptions {
+        target_width: settings.thumbnail_width_pixels,
+        target_height: settings.thumbnail_height_pixels,
+        format: TargetFormat::Webp,
+        target_file_size: 0,
+        requested_quality: Some(settings.thumbnail_quality),
+    }
+}
+
+/// Map an image pipeline error to the HTTP-facing error.
+fn process_error(error: image::ProcessError) -> Error {
+    match error {
+        image::ProcessError::Undecodable => Error::UnsupportedMediaType,
+        image::ProcessError::Encode(message) => Error::BadRequest(message),
+    }
+}
+
+/// Resize the source into the thumbnail box and encode it as lossy WebP.
+/// `Ok(None)` when the pipeline passes the source through (animated GIF).
+async fn generate_thumbnail(source: Vec<u8>, settings: &ElysiaSettings) -> Result<Option<Vec<u8>>> {
+    let options = thumbnail_process_options(settings);
+    // Encoding is CPU-heavy; keep it off the async worker threads.
+    let processed = tokio::task::spawn_blocking(move || image::process(&source, &options))
+        .await
+        .map_err(|_| Error::Io(std::io::Error::other("thumbnail task failed")))?
+        .map_err(process_error)?;
+    Ok(processed.map(|processed| processed.bytes))
 }
 
 /// Look up a file's metadata by id, or `NotFound`. The row doubles as a

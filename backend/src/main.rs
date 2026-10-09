@@ -13,8 +13,8 @@ use utoipa_swagger_ui::SwaggerUi;
 use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
 use elysia::handlers::{
-    get_elysia_settings, get_public_elysia_settings, login, put_elysia_settings, serve, upload,
-    upload_url,
+    get_elysia_settings, get_public_elysia_settings, login, put_elysia_settings, serve,
+    serve_thumbnail, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
 use elysia::storage::Storage;
@@ -78,6 +78,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/elysia-settings", web::get().to(get_elysia_settings))
             .route("/api/elysia-settings", web::put().to(put_elysia_settings))
             .route("/i/{filename}", web::get().to(serve))
+            .route("/t/{filename}", web::get().to(serve_thumbnail))
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),

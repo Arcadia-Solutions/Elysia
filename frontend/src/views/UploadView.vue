@@ -218,7 +218,7 @@ const handleFile = (file: File | undefined) => {
         },
       })
       .then((uploaded) => {
-        router.push({ name: 'Uploaded', query: { id: uploaded.data.id, ext: uploaded.data.ext } })
+        router.push({ name: 'Uploaded', query: { url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
       })
       .finally(() => {
         phase.value = 'idle'
@@ -267,7 +267,7 @@ const rehost = () => {
   api
     .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue())
     .then((uploaded) => {
-      router.push({ name: 'Uploaded', query: { id: uploaded.data.id, ext: uploaded.data.ext } })
+      router.push({ name: 'Uploaded', query: { url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
     })
     .finally(() => {
       phase.value = 'idle'

@@ -17,12 +17,14 @@ pub struct NewFile<'a> {
     pub original_height: i32,
     pub requested_quality: Option<i32>,
     pub applied_quality: Option<i32>,
+    pub has_thumbnail: bool,
 }
 
 pub struct FileRow {
     pub id: String,
     pub ext: String,
     pub mime: String,
+    pub has_thumbnail: bool,
 }
 
 /// Insert a file row. Ok(true) on success, Ok(false) on a unique-constraint
@@ -33,8 +35,8 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         "insert into files \
          (id, ext, mime, original_name, size, width, height, hash, \
           original_hash, original_ext, original_width, original_height, \
-          requested_quality, applied_quality) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+          requested_quality, applied_quality, has_thumbnail) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         f.id,
         f.ext,
         f.mime,
@@ -49,6 +51,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.original_height,
         f.requested_quality,
         f.applied_quality,
+        f.has_thumbnail,
     )
     .execute(pool)
     .await;
@@ -60,11 +63,13 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
 }
 
 pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
-    Ok(
-        sqlx::query_as!(FileRow, "select id, ext, mime from files where id = $1", id)
-            .fetch_optional(pool)
-            .await?,
+    Ok(sqlx::query_as!(
+        FileRow,
+        "select id, ext, mime, has_thumbnail from files where id = $1",
+        id
     )
+    .fetch_optional(pool)
+    .await?)
 }
 
 /// A stored file with its source and processing metadata.
@@ -78,6 +83,7 @@ pub struct FileRecord {
     pub width: i32,
     pub height: i32,
     pub applied_quality: Option<i32>,
+    pub has_thumbnail: bool,
 }
 
 /// Skip-reprocess lookup: same source bytes under the same requested quality.
@@ -90,7 +96,7 @@ pub async fn find_record_by_source(
     Ok(sqlx::query_as!(
         FileRecord,
         "select id, ext, mime, original_ext, original_width, original_height, \
-                width, height, applied_quality \
+                width, height, applied_quality, has_thumbnail \
          from files where original_hash = $1 \
            and requested_quality is not distinct from $2 \
          order by created_at limit 1",
@@ -106,7 +112,7 @@ pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<Fil
     Ok(sqlx::query_as!(
         FileRecord,
         "select id, ext, mime, original_ext, original_width, original_height, \
-                width, height, applied_quality \
+                width, height, applied_quality, has_thumbnail \
          from files where hash = $1",
         hash,
     )

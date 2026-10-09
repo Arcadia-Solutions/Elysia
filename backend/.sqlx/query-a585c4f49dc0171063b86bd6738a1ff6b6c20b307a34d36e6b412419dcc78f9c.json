@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime, original_ext, original_width, original_height, width, height, applied_quality from files where hash = $1",
+  "query": "select id, ext, mime, original_ext, original_width, original_height, width, height, applied_quality, has_thumbnail from files where hash = $1",
   "describe": {
     "columns": [
       {
@@ -101,6 +101,17 @@
             "name": "applied_quality"
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "has_thumbnail",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "has_thumbnail"
+          }
+        }
       }
     ],
     "parameters": {
@@ -117,8 +128,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "13bdfe83a4076fe29637f63b5d9367aa4897f7c0623359f67f75b1ae6c6e0183"
+  "hash": "a585c4f49dc0171063b86bd6738a1ff6b6c20b307a34d36e6b412419dcc78f9c"
 }

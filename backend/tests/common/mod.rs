@@ -57,6 +57,9 @@ pub fn test_settings() -> ElysiaSettings {
         allow_overriding_compression: true,
         strip_exif_by_default: false,
         allow_overriding_strip_exif: true,
+        thumbnail_width_pixels: 0,
+        thumbnail_height_pixels: 0,
+        thumbnail_quality: 80,
     }
 }
 

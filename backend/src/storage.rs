@@ -52,4 +52,22 @@ impl Storage {
     pub async fn open(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
         NamedFile::open_async(self.path_for(id, ext)).await
     }
+
+    /// On-disk path for a file's thumbnail: `<root>/<id>.thumbnail.webp`.
+    /// Thumbnails are always lossy WebP, so the extension is fixed.
+    pub fn thumbnail_path_for(&self, id: &str) -> PathBuf {
+        self.root.join(format!("{id}.thumbnail.webp"))
+    }
+
+    /// Write a generated thumbnail to disk. Small (a few KiB), so the bytes are
+    /// already in memory and a plain write is enough.
+    pub async fn write_thumbnail(&self, id: &str, bytes: &[u8]) -> Result<()> {
+        tokio::fs::write(self.thumbnail_path_for(id), bytes).await?;
+        Ok(())
+    }
+
+    /// Open a stored thumbnail for streaming.
+    pub async fn open_thumbnail(&self, id: &str) -> std::io::Result<NamedFile> {
+        NamedFile::open_async(self.thumbnail_path_for(id)).await
+    }
 }

@@ -277,5 +277,6 @@ fn sample_file(id: &str) -> NewFile<'_> {
         original_height: 2,
         requested_quality: None,
         applied_quality: None,
+        has_thumbnail: false,
     }
 }

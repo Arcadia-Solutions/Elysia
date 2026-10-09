@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime from files where id = $1",
+  "query": "select id, ext, mime, has_thumbnail from files where id = $1",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,17 @@
             "name": "mime"
           }
         }
+      },
+      {
+        "ordinal": 3,
+        "name": "has_thumbnail",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "has_thumbnail"
+          }
+        }
       }
     ],
     "parameters": {
@@ -45,8 +56,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "686741a17fc827f506c731700a50725e93d24a526eaeaf7a120cfe809da30ff1"
+  "hash": "8cb58ca751ff9ae6dc90fa565811d008678cf59c5f9da1c788d1711c35601404"
 }

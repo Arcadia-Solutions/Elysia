@@ -63,10 +63,28 @@ pub enum ProcessError {
 
 /// `Ok(None)` means pass the source through untouched (animated GIF).
 pub fn process(input: &[u8], options: &ProcessOptions) -> Result<Option<Processed>, ProcessError> {
+    decode(input)?
+        .map(|image| process_decoded(image, options))
+        .transpose()
+}
+
+/// Decode input bytes to an image. `Ok(None)` for an animated GIF, which the
+/// caller passes through untouched.
+pub fn decode(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
     if is_animated_gif(input) {
         return Ok(None);
     }
-    let image = image::load_from_memory(input).map_err(|_| ProcessError::Undecodable)?;
+    image::load_from_memory(input)
+        .map(Some)
+        .map_err(|_| ProcessError::Undecodable)
+}
+
+/// Resize and encode an already-decoded image. Lets callers decode once and
+/// reuse the pixels (e.g. a main output plus a thumbnail from one source).
+pub fn process_decoded(
+    image: DynamicImage,
+    options: &ProcessOptions,
+) -> Result<Processed, ProcessError> {
     let image = resize(image, options.target_width, options.target_height);
     let (width, height) = image.dimensions();
     let rgba = image.to_rgba8();
@@ -108,14 +126,14 @@ pub fn process(input: &[u8], options: &ProcessOptions) -> Result<Option<Processe
         }
     };
 
-    Ok(Some(Processed {
+    Ok(Processed {
         bytes,
         ext,
         mime,
         width,
         height,
         applied_quality,
-    }))
+    })
 }
 
 /// Downscale to fit inside the target box, aspect preserved, never upscale.

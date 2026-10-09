@@ -30,6 +30,9 @@ pub struct UploadResponse {
     pub id: String,
     pub ext: String,
     pub url: String,
+    /// URL of the thumbnail; a generated WebP when one exists, otherwise the
+    /// original file served from `/t/`.
+    pub thumbnail_url: String,
     /// True when the image was already hosted and this is the existing one
     /// (deduplicated), false when it was newly stored.
     pub existed: bool,
@@ -131,7 +134,8 @@ pub async fn upload(
     .await?;
 
     Ok(HttpResponse::Ok().json(UploadResponse {
-        url: format!("/i/{}.{}", stored.id, stored.ext),
+        url: stored.image_url(),
+        thumbnail_url: stored.thumbnail_url(),
         id: stored.id,
         ext: stored.ext,
         existed: stored.existed,

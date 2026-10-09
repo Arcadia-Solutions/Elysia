@@ -50,6 +50,16 @@ pub struct ElysiaSettings {
     /// the default is always used.
     #[serde(default)]
     pub allow_overriding_strip_exif: bool,
+    /// Thumbnail box width; 0 on both axes disables thumbnails. Not overridable
+    /// per upload.
+    #[serde(default)]
+    pub thumbnail_width_pixels: u32,
+    /// Thumbnail box height; 0 on both axes disables thumbnails.
+    #[serde(default)]
+    pub thumbnail_height_pixels: u32,
+    /// Lossy WebP quality (1-100) for generated thumbnails.
+    #[serde(default)]
+    pub thumbnail_quality: u8,
 }
 
 /// The subset of [`ElysiaSettings`] exposed publicly, so the upload page
@@ -95,6 +105,11 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
 }
 
 impl ElysiaSettings {
+    /// Whether thumbnail generation is on (a box is set on at least one axis).
+    pub fn thumbnails_enabled(&self) -> bool {
+        self.thumbnail_width_pixels > 0 || self.thumbnail_height_pixels > 0
+    }
+
     /// Reject contradictory settings. Enforced on every save so the running
     /// state and the stored row are always consistent.
     pub fn validate(&self) -> Result<(), String> {
@@ -157,6 +172,20 @@ impl ElysiaSettings {
                  format is set or overriding it is allowed (they bound the server-side decode)"
                     .into(),
             );
+        }
+        // Thumbnail generation decodes the source too, so it needs the same pixel
+        // caps, and a valid lossy WebP quality.
+        if self.thumbnails_enabled() {
+            if self.max_width_pixels == 0 || self.max_height_pixels == 0 {
+                return Err(
+                    "max_width_pixels and max_height_pixels must be > 0 when thumbnails are \
+                     enabled (they bound the server-side decode)"
+                        .into(),
+                );
+            }
+            if self.thumbnail_quality < 1 || self.thumbnail_quality > 100 {
+                return Err("thumbnail_quality must be between 1 and 100".into());
+            }
         }
         Ok(())
     }

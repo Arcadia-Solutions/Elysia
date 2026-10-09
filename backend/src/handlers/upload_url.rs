@@ -53,7 +53,8 @@ pub async fn upload_url(
     .await?;
 
     Ok(HttpResponse::Ok().json(UploadResponse {
-        url: format!("/i/{}.{}", stored.id, stored.ext),
+        url: stored.image_url(),
+        thumbnail_url: stored.thumbnail_url(),
         id: stored.id,
         ext: stored.ext,
         existed: stored.existed,

@@ -15,6 +15,7 @@ use crate::settings::{ElysiaSettings, PublicElysiaSettings};
         crate::handlers::upload::upload,
         crate::handlers::upload_url::upload_url,
         crate::handlers::serve::serve,
+        crate::handlers::serve_thumbnail::serve_thumbnail,
         crate::handlers::settings::get_elysia_settings,
         crate::handlers::settings::get_public_elysia_settings,
         crate::handlers::settings::put_elysia_settings,
