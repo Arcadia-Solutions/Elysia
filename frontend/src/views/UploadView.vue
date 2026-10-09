@@ -17,6 +17,16 @@
       <Button :label="$t('upload.rehost')" size="small" @click="rehost" :disabled="uploading || !urlInput" />
     </div>
 
+    <Transition name="fade">
+      <div v-if="uploading" class="progress">
+        <ProgressBar v-if="phase === 'uploading'" :value="progress" :showValue="false" style="height: 6px" />
+        <ProgressBar v-else mode="indeterminate" style="height: 6px" />
+        <span class="progress-label">
+          {{ phase === 'uploading' ? $t('upload.uploading', { pct: progress }) : $t('upload.processing') }}
+        </span>
+      </div>
+    </Transition>
+
     <div v-if="result" class="result">
       <img :src="link" :alt="$t('upload.preview_alt')" class="preview" />
       <div class="link-row">
@@ -32,6 +42,7 @@ import { computed, onMounted, ref } from 'vue'
 import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
+import ProgressBar from 'primevue/progressbar'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
 import type { PublicElysiaSettings, UploadResponse } from '@/services/api-schema'
@@ -39,7 +50,10 @@ import { showToast } from '@/services/toast'
 
 const { t } = useI18n()
 const result = ref<UploadResponse | null>(null)
-const uploading = ref(false)
+// 'uploading' = bytes in flight (determinate bar), 'processing' = backend
+const phase = ref<'idle' | 'uploading' | 'processing'>('idle')
+const progress = ref(0)
+const uploading = computed(() => phase.value !== 'idle')
 const dragging = ref(false)
 const urlInput = ref('')
 const settings = ref<PublicElysiaSettings | null>(null)
@@ -108,14 +122,22 @@ const handleFile = (file: File | undefined) => {
       showToast('', error, 'error')
       return
     }
-    uploading.value = true
+    phase.value = 'uploading'
+    progress.value = 0
     api
-      .upload(file)
+      .upload(file, undefined, {
+        onUploadProgress: (event) => {
+          if (!event.total) return
+          progress.value = Math.round((event.loaded / event.total) * 100)
+          // Bytes all sent: backend is now processing, switch to indeterminate.
+          if (progress.value >= 100) phase.value = 'processing'
+        },
+      })
       .then((uploaded) => {
         result.value = uploaded.data
       })
       .finally(() => {
-        uploading.value = false
+        phase.value = 'idle'
       })
   })
 }
@@ -135,7 +157,9 @@ const rehost = () => {
     showToast('', t('upload.invalid_url'), 'error')
     return
   }
-  uploading.value = true
+  // Rehost sends only the URL; the backend fetches and processes, so there is
+  // no client-side transfer to track, just the processing phase.
+  phase.value = 'processing'
   api
     .uploadUrl({ url: urlInput.value })
     .then((uploaded) => {
@@ -143,7 +167,7 @@ const rehost = () => {
       urlInput.value = ''
     })
     .finally(() => {
-      uploading.value = false
+      phase.value = 'idle'
     })
 }
 
@@ -185,6 +209,30 @@ const copyLink = () => {
 .url-row {
   display: flex;
   gap: 8px;
+}
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.progress :deep(.p-progressbar-value) {
+  transition: width 0.3s ease;
+}
+.progress-label {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 .result {
   display: flex;

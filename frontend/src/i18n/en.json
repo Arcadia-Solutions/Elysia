@@ -18,7 +18,9 @@
     "logout": "Logout",
     "copy": "Copy link",
     "copied": "Link copied",
-    "preview_alt": "preview"
+    "preview_alt": "preview",
+    "uploading": "Uploading… {pct}%",
+    "processing": "Processing…"
   },
   "settings": {
     "title": "Elysia settings",
