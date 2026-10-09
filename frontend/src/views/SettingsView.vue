@@ -108,8 +108,10 @@
 
       <div class="field">
         <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
-        <small>{{ $t('settings.allow_overriding_compression.help') }}</small>
-        <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.default_target_file_format" />
+        <small>{{
+          compressionOverrideForced ? $t('settings.allow_overriding_compression.forced_help') : $t('settings.allow_overriding_compression.help')
+        }}</small>
+        <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.default_target_file_format || compressionOverrideForced" />
       </div>
     </div>
 
@@ -171,6 +173,15 @@ const targetSize = useByteField()
 
 watch(fileSize.bytes, (value) => (form.max_file_size_bytes = value))
 watch(targetSize.bytes, (value) => (form.target_file_size_bytes = value))
+
+// AVIF and JPEG have no lossless mode, so if one can be the output there must be
+// a quality source. With no default compression, per-upload overriding is the
+// only source, so it cannot be turned off.
+const losslessIncapableReachable = computed(() => form.allow_overriding_file_format || ['avif', 'jpg'].includes(form.default_target_file_format ?? ''))
+const compressionOverrideForced = computed(() => losslessIncapableReachable.value && form.default_compression === 0)
+watch(compressionOverrideForced, (forced) => {
+  if (forced) form.allow_overriding_compression = true
+})
 
 // Mirrors ElysiaSettings::validate on the backend. The "targets set without a
 // format" rule is unreachable here (those fields are disabled without a format),

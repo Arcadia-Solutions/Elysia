@@ -10,7 +10,8 @@
     "choose": "Choose image",
     "drop_hint": "or drop an image here",
     "url_placeholder": "Paste an image link to rehost",
-    "rehost": "Rehost",
+    "upload": "Upload",
+    "clear": "Remove image",
     "invalid_url": "Please enter a valid URL",
     "too_large": "Image is too large (max {max})",
     "too_wide": "Image is too wide (max {max}px)",
@@ -77,7 +78,8 @@
     },
     "allow_overriding_compression": {
       "label": "Allow overriding compression",
-      "help": "Let an upload request its own compression quality. When off, the default above is always used."
+      "help": "Let an upload request its own compression quality. When off, the default above is always used.",
+      "forced_help": "Required: AVIF and JPEG have no lossless mode, so with no default compression an upload must set its own quality."
     }
   }
 }

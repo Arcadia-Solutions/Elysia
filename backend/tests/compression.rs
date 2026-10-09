@@ -64,6 +64,35 @@ fn validate_rejects_default_compression_without_format() {
 }
 
 #[test]
+fn validate_lossless_incapable_format_needs_quality_source() {
+    // Base: valid AVIF (no lossless mode) processing config.
+    let mut settings = test_settings();
+    settings.default_target_file_format = Some(TargetFormat::Avif);
+    settings.max_file_size_bytes = 50 * 1024 * 1024;
+    settings.max_width_pixels = 10_000;
+    settings.max_height_pixels = 10_000;
+
+    // No default compression and no override: no quality source, rejected.
+    settings.default_compression = 0;
+    settings.allow_overriding_compression = false;
+    assert!(settings.validate().is_err());
+
+    // A default compression supplies the quality.
+    settings.default_compression = 80;
+    assert!(settings.validate().is_ok());
+
+    // Or allowing per-upload override does.
+    settings.default_compression = 0;
+    settings.allow_overriding_compression = true;
+    assert!(settings.validate().is_ok());
+
+    // A lossless-capable default (WebP) is fine with neither.
+    settings.default_target_file_format = Some(TargetFormat::Webp);
+    settings.allow_overriding_compression = false;
+    assert!(settings.validate().is_ok());
+}
+
+#[test]
 fn default_compression_applies_when_none_requested() {
     let mut settings = webp_settings();
     settings.default_compression = 50;

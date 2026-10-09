@@ -111,6 +111,24 @@ impl ElysiaSettings {
                 "default_compression requires a default_target_file_format to re-encode to".into(),
             );
         }
+        // AVIF and JPEG have no lossless mode, so they can only be produced with
+        // a selected quality. If such a format can be the output (it is the default, or an
+        // upload may pick it) there must be a quality source: a default
+        // compression, or the ability to request one per upload.
+        let lossless_incapable_reachable = self.allow_overriding_file_format
+            || self
+                .default_target_file_format
+                .is_some_and(|format| !format.supports_lossless());
+        if lossless_incapable_reachable
+            && self.default_compression == 0
+            && !self.allow_overriding_compression
+        {
+            return Err(
+                "allow_overriding_compression cannot be disabled without a default_compression \
+                 when a format with no lossless mode can be produced (AVIF, JPEG)"
+                    .into(),
+            );
+        }
         // Processing decodes the source into memory (width * height * 4 bytes),
         // so it must run behind pixel caps or a small file declaring huge
         // dimensions is a decompression bomb. An allowed per-upload format

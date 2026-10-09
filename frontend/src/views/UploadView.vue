@@ -1,6 +1,7 @@
 <template>
   <div class="upload-wrap">
     <div
+      v-if="!urlInput"
       class="dropzone"
       :class="{ dragging }"
       @dragover.prevent
@@ -8,13 +9,37 @@
       @dragleave.prevent="dragging = false"
       @drop.prevent="onDrop"
     >
-      <FileUpload mode="basic" accept="image/*" :auto="true" customUpload :chooseLabel="$t('upload.choose')" @uploader="onUpload" :disabled="uploading" />
+      <FileUpload mode="basic" accept="image/*" :auto="false" customUpload :chooseLabel="$t('upload.choose')" @select="onSelect" :disabled="uploading" />
       <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
     </div>
 
-    <div class="url-row">
-      <InputText v-model="urlInput" size="small" :placeholder="$t('upload.url_placeholder')" fluid @keyup.enter="rehost" :disabled="uploading" />
-      <Button :label="$t('upload.rehost')" size="small" @click="rehost" :disabled="uploading || !urlInput" />
+    <div v-if="selectedPreview" class="preview-wrap">
+      <img :src="selectedPreview" :alt="$t('upload.preview_alt')" class="preview" />
+      <Button
+        icon="pi pi-times"
+        size="small"
+        rounded
+        severity="secondary"
+        class="clear-btn"
+        :title="$t('upload.clear')"
+        :aria-label="$t('upload.clear')"
+        :disabled="uploading"
+        @click="clearSelection"
+      />
+    </div>
+
+    <InputText
+      v-if="!selectedFile"
+      v-model="urlInput"
+      size="small"
+      :placeholder="$t('upload.url_placeholder')"
+      fluid
+      @keyup.enter="submit"
+      :disabled="uploading"
+    />
+
+    <div class="upload-row">
+      <Button :label="$t('upload.upload')" size="small" @click="submit" :disabled="uploading || (!selectedFile && !urlInput)" />
     </div>
 
     <div v-if="settings?.allow_overriding_file_format" class="format-row">
@@ -60,7 +85,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
+import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
@@ -79,6 +104,9 @@ const progress = ref(0)
 const uploading = computed(() => phase.value !== 'idle')
 const dragging = ref(false)
 const urlInput = ref('')
+// File chosen but not yet uploaded, with an object URL for the preview.
+const selectedFile = ref<File | null>(null)
+const selectedPreview = ref('')
 const settings = ref<PublicElysiaSettings | null>(null)
 // Per-upload output format; 'default' uses the server's default (a non-empty
 // sentinel so PrimeVue shows it as selected). Only honored when the settings
@@ -181,17 +209,37 @@ const handleFile = (file: File | undefined) => {
       })
       .finally(() => {
         phase.value = 'idle'
+        clearSelection()
       })
   })
 }
 
-const onUpload = (event: FileUploadUploaderEvent) => {
-  handleFile(Array.isArray(event.files) ? event.files[0] : event.files)
+const clearSelection = () => {
+  if (selectedPreview.value) URL.revokeObjectURL(selectedPreview.value)
+  selectedFile.value = null
+  selectedPreview.value = ''
+}
+
+const pick = (file: File | undefined) => {
+  if (!file) return
+  clearSelection()
+  selectedFile.value = file
+  selectedPreview.value = URL.createObjectURL(file)
+}
+
+const onSelect = (event: FileUploadSelectEvent) => {
+  pick(Array.isArray(event.files) ? event.files[0] : event.files)
 }
 
 const onDrop = (event: DragEvent) => {
   dragging.value = false
-  handleFile(event.dataTransfer?.files?.[0])
+  pick(event.dataTransfer?.files?.[0])
+}
+
+// One button: upload the chosen file, else rehost the pasted URL.
+const submit = () => {
+  if (selectedFile.value) return handleFile(selectedFile.value)
+  rehost()
 }
 
 const rehost = () => {
@@ -249,9 +297,17 @@ const copyLink = () => {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }
-.url-row {
+.upload-row {
   display: flex;
-  gap: 8px;
+  justify-content: center;
+}
+.preview-wrap {
+  position: relative;
+}
+.clear-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 .format-row {
   display: flex;

@@ -22,6 +22,11 @@ pub enum TargetFormat {
 }
 
 impl TargetFormat {
+    /// Whether the format has a true lossless mode.
+    pub fn supports_lossless(&self) -> bool {
+        !matches!(self, TargetFormat::Avif | TargetFormat::Jpg)
+    }
+
     fn ext_mime(&self) -> (&'static str, &'static str) {
         match self {
             TargetFormat::Webp => ("webp", "image/webp"),
