@@ -107,6 +107,31 @@ pub async fn find_record_by_source(
     .await?)
 }
 
+pub struct FileMetadata {
+    pub id: String,
+    pub ext: String,
+    pub mime: String,
+    pub original_name: Option<String>,
+    pub size: i64,
+    pub width: i32,
+    pub height: i32,
+    pub created_at: String,
+}
+
+/// Fetch a file's display metadata by id.
+pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadata>> {
+    Ok(sqlx::query_as!(
+        FileMetadata,
+        "select id, ext, mime, original_name, size, width, height, \
+                to_char(created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                  as \"created_at!\" \
+         from files where id = $1",
+        id
+    )
+    .fetch_optional(pool)
+    .await?)
+}
+
 /// Output dedup: a different source that normalized to identical output bytes.
 pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<FileRecord>> {
     Ok(sqlx::query_as!(

@@ -40,6 +40,13 @@
       "label": "Strip EXIF"
     }
   },
+  "image": {
+    "name": "Name",
+    "uploaded_at": "Uploaded at",
+    "dimensions": "Dimensions",
+    "size": "Size",
+    "format": "Format"
+  },
   "settings": {
     "title": "Elysia settings",
     "intro": "Limits and image processing applied to every upload. A value of 0 disables that check. Changes apply immediately, no restart needed.",

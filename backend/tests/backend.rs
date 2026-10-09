@@ -260,6 +260,31 @@ async fn insert_is_collision_safe_and_find_roundtrips(pool: PgPool) {
     assert!(files::find(&pool, "missing0").await.unwrap().is_none());
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn find_metadata_roundtrips_and_formats_created_at(pool: PgPool) {
+    files::insert(&pool, &sample_file("meta1234"))
+        .await
+        .unwrap();
+
+    let meta = files::find_metadata(&pool, "meta1234")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(meta.id, "meta1234");
+    assert_eq!(meta.ext, "png");
+    assert_eq!(meta.size, 33);
+    assert_eq!((meta.width, meta.height), (2, 2));
+    // created_at is rendered as a UTC ISO-8601 string (…T…Z), parseable by JS Date.
+    assert!(meta.created_at.contains('T') && meta.created_at.ends_with('Z'));
+
+    assert!(
+        files::find_metadata(&pool, "missing0")
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
 fn sample_file(id: &str) -> NewFile<'_> {
     NewFile {
         id,

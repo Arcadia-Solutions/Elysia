@@ -582,6 +582,11 @@ pub async fn get(pool: &PgPool, id: &str) -> Result<FileRow> {
     files::find(pool, id).await?.ok_or(Error::NotFound)
 }
 
+/// Look up a file's display metadata by id, or `NotFound`.
+pub async fn get_metadata(pool: &PgPool, id: &str) -> Result<files::FileMetadata> {
+    files::find_metadata(pool, id).await?.ok_or(Error::NotFound)
+}
+
 #[cfg(test)]
 mod tests {
     use super::human_readable_size;

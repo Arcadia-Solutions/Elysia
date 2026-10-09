@@ -2,6 +2,7 @@ use actix_files::NamedFile;
 use actix_web::{HttpRequest, HttpResponse};
 
 pub mod login;
+pub mod metadata;
 pub mod serve;
 pub mod serve_thumbnail;
 pub mod settings;
@@ -9,6 +10,7 @@ pub mod upload;
 pub mod upload_url;
 
 pub use login::login;
+pub use metadata::metadata;
 pub use serve::serve;
 pub use serve_thumbnail::serve_thumbnail;
 pub use settings::{get_elysia_settings, get_public_elysia_settings, put_elysia_settings};
