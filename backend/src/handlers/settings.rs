@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use crate::error::{Error, Result};
 use crate::middlewares::AdminAuth;
 use crate::repository::settings as settings_repo;
-use crate::settings::ElysiaSettings;
+use crate::settings::{ElysiaSettings, PublicElysiaSettings};
 
 /// Shared, hot-swappable elysia settings. Uploads read a snapshot; a save
 /// replaces the whole value, so a change applies without a restart.
@@ -31,6 +31,20 @@ pub async fn get_elysia_settings(
 ) -> Result<HttpResponse> {
     let current = *settings.read().expect("settings lock poisoned");
     Ok(HttpResponse::Ok().json(current))
+}
+
+#[utoipa::path(
+    tag = "elysia",
+    get,
+    path = "/api/public-elysia-settings",
+    description = "The public subset of the settings, so the upload page can validate files client-side before sending them.",
+    responses(
+        (status = 200, body = PublicElysiaSettings),
+    )
+)]
+pub async fn get_public_elysia_settings(settings: SharedElysiaSettings) -> Result<HttpResponse> {
+    let current = *settings.read().expect("settings lock poisoned");
+    Ok(HttpResponse::Ok().json(PublicElysiaSettings::from(current)))
 }
 
 #[utoipa::path(

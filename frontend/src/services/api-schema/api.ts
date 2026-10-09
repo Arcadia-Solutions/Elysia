@@ -89,6 +89,20 @@ export interface LoginResponse {
     'valid': boolean;
 }
 /**
+ * The subset of [`ElysiaSettings`] exposed publicly, so the upload page can validate files client-side.
+ */
+export interface PublicElysiaSettings {
+    'max_file_size_bytes': number;
+    'max_height_pixels': number;
+    'max_width_pixels': number;
+    'target_file_format'?: TargetFormat | null;
+    'target_file_size_bytes': number;
+    'target_height_pixels': number;
+    'target_width_pixels': number;
+}
+
+
+/**
  * Dimensions before and after, as `[width, height]`.
  */
 export interface ResizeAction {
@@ -149,6 +163,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
          */
         getElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/api/elysia-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * The public subset of the settings, so the upload page can validate files client-side before sending them.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getPublicElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/public-elysia-settings`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -380,6 +423,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * The public subset of the settings, so the upload page can validate files client-side before sending them.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getPublicElysiaSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PublicElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getPublicElysiaSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getPublicElysiaSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @param {LoginRequest} loginRequest 
          * @param {*} [options] Override http request option.
@@ -459,6 +513,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
         },
         /**
+         * The public subset of the settings, so the upload page can validate files client-side before sending them.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getPublicElysiaSettings(options?: RawAxiosRequestConfig): AxiosPromise<PublicElysiaSettings> {
+            return localVarFp.getPublicElysiaSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @param {LoginRequest} loginRequest 
          * @param {*} [options] Override http request option.
@@ -519,6 +581,15 @@ export class ElysiaApi extends BaseAPI {
      */
     public getElysiaSettings(options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).getElysiaSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The public subset of the settings, so the upload page can validate files client-side before sending them.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getPublicElysiaSettings(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getPublicElysiaSettings(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -33,6 +33,33 @@ pub struct ElysiaSettings {
     pub target_file_size_bytes: u64,
 }
 
+/// The subset of [`ElysiaSettings`] exposed publicly, so the upload page
+/// can validate files client-side.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+pub struct PublicElysiaSettings {
+    pub max_file_size_bytes: u64,
+    pub max_width_pixels: u32,
+    pub max_height_pixels: u32,
+    pub target_width_pixels: u32,
+    pub target_height_pixels: u32,
+    pub target_file_format: Option<TargetFormat>,
+    pub target_file_size_bytes: u64,
+}
+
+impl From<ElysiaSettings> for PublicElysiaSettings {
+    fn from(s: ElysiaSettings) -> Self {
+        Self {
+            max_file_size_bytes: s.max_file_size_bytes,
+            max_width_pixels: s.max_width_pixels,
+            max_height_pixels: s.max_height_pixels,
+            target_width_pixels: s.target_width_pixels,
+            target_height_pixels: s.target_height_pixels,
+            target_file_format: s.target_file_format,
+            target_file_size_bytes: s.target_file_size_bytes,
+        }
+    }
+}
+
 impl ElysiaSettings {
     /// Reject contradictory settings. Enforced on every save so the running
     /// state and the stored row are always consistent.

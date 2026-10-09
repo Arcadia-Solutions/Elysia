@@ -28,13 +28,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
-import type { UploadResponse } from '@/services/api-schema'
+import type { PublicElysiaSettings, UploadResponse } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
 
 const { t } = useI18n()
@@ -42,21 +42,82 @@ const result = ref<UploadResponse | null>(null)
 const uploading = ref(false)
 const dragging = ref(false)
 const urlInput = ref('')
+const settings = ref<PublicElysiaSettings | null>(null)
+
+// Public upload limits, so files are rejected client-side before a wasted
+// round-trip. The backend still enforces them. A 0 limit means "no limit".
+onMounted(() => {
+  api.getPublicElysiaSettings().then((r) => {
+    settings.value = r.data
+  })
+})
+
+const formatBytes = (n: number): string => {
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024
+    i++
+  }
+  return `${Math.round(n * 10) / 10} ${units[i]}`
+}
+
+const readDimensions = (file: File): Promise<{ width: number; height: number }> =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject()
+    }
+    img.src = url
+  })
+
+// Resolves to an error message when the file breaks a limit, else null.
+const validate = (file: File): Promise<string | null> => {
+  const s = settings.value
+  if (!s) return Promise.resolve(null)
+  if (s.max_file_size_bytes > 0 && file.size > s.max_file_size_bytes) {
+    return Promise.resolve(t('upload.too_large', { max: formatBytes(s.max_file_size_bytes) }))
+  }
+  if (s.max_width_pixels === 0 && s.max_height_pixels === 0) return Promise.resolve(null)
+  return readDimensions(file)
+    .then(({ width, height }) => {
+      if (s.max_width_pixels > 0 && width > s.max_width_pixels) {
+        return t('upload.too_wide', { max: s.max_width_pixels })
+      }
+      if (s.max_height_pixels > 0 && height > s.max_height_pixels) {
+        return t('upload.too_tall', { max: s.max_height_pixels })
+      }
+      return null
+    })
+    .catch(() => null) // undecodable: let the backend judge it
+}
 
 const link = computed(() => (result.value ? `/i/${result.value.id}.${result.value.ext}` : ''))
 const fullLink = computed(() => (link.value ? new URL(link.value, window.location.origin).href : ''))
 
 const handleFile = (file: File | undefined) => {
   if (!file) return
-  uploading.value = true
-  api
-    .upload(file)
-    .then((uploaded) => {
-      result.value = uploaded.data
-    })
-    .finally(() => {
-      uploading.value = false
-    })
+  validate(file).then((error) => {
+    if (error) {
+      showToast('', error, 'error')
+      return
+    }
+    uploading.value = true
+    api
+      .upload(file)
+      .then((uploaded) => {
+        result.value = uploaded.data
+      })
+      .finally(() => {
+        uploading.value = false
+      })
+  })
 }
 
 const onUpload = (event: FileUploadUploaderEvent) => {

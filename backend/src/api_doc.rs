@@ -5,7 +5,7 @@ use crate::handlers::upload::{UploadForm, UploadOptionsQuery, UploadResponse};
 use crate::handlers::upload_url::UploadUrlRequest;
 use crate::services::files::{Actions, CompressionAction, ConvertAction, ResizeAction};
 use crate::services::image::TargetFormat;
-use crate::settings::ElysiaSettings;
+use crate::settings::{ElysiaSettings, PublicElysiaSettings};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -16,6 +16,7 @@ use crate::settings::ElysiaSettings;
         crate::handlers::upload_url::upload_url,
         crate::handlers::serve::serve,
         crate::handlers::settings::get_elysia_settings,
+        crate::handlers::settings::get_public_elysia_settings,
         crate::handlers::settings::put_elysia_settings,
     ),
     components(schemas(
@@ -30,6 +31,7 @@ use crate::settings::ElysiaSettings;
         ConvertAction,
         CompressionAction,
         ElysiaSettings,
+        PublicElysiaSettings,
         TargetFormat
     ))
 )]

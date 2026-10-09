@@ -11,7 +11,9 @@ use actix_web::test as actix_test;
 use actix_web::web::{self, Data};
 use sqlx::PgPool;
 
-use elysia::handlers::settings::{get_elysia_settings, put_elysia_settings};
+use elysia::handlers::settings::{
+    get_elysia_settings, get_public_elysia_settings, put_elysia_settings,
+};
 use elysia::repository::settings as settings_repo;
 use elysia::services::image::TargetFormat;
 use elysia::settings::ElysiaSettings;
@@ -37,7 +39,11 @@ macro_rules! settings_app {
                 .app_data(Data::new($pool))
                 .app_data(Data::new(RwLock::new(current)))
                 .route("/api/elysia-settings", web::get().to(get_elysia_settings))
-                .route("/api/elysia-settings", web::put().to(put_elysia_settings)),
+                .route("/api/elysia-settings", web::put().to(put_elysia_settings))
+                .route(
+                    "/api/public-elysia-settings",
+                    web::get().to(get_public_elysia_settings),
+                ),
         )
         .await
     }};
