@@ -11,6 +11,7 @@ use crate::error::{Error, Result};
 use crate::handlers::settings::SharedElysiaSettings;
 use crate::middlewares::AdminAuth;
 use crate::services::files::{self, Actions, UploadOptions};
+use crate::services::image::TargetFormat;
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
 
@@ -44,6 +45,9 @@ pub struct UploadOptionsQuery {
     /// configured target format.
     #[param(minimum = 1, maximum = 100)]
     pub lossy_compression_value: Option<u8>,
+    /// Requested output format; absent uses the configured default. Rejected
+    /// unless overriding the file format is allowed in settings.
+    pub target_file_format: Option<TargetFormat>,
 }
 
 impl UploadOptionsQuery {
@@ -56,11 +60,19 @@ impl UploadOptionsQuery {
                 "overriding compression is disabled".into(),
             ));
         }
+        if self.target_file_format.is_some() && !settings.allow_overriding_file_format {
+            return Err(Error::BadRequest(
+                "overriding the target file format is disabled".into(),
+            ));
+        }
+        let target_file_format = self
+            .target_file_format
+            .or(settings.default_target_file_format);
         let default = (settings.default_compression > 0).then_some(settings.default_compression);
         let lossy_compression_value = self.lossy_compression_value.or(default);
-        if lossy_compression_value.is_some() && settings.target_file_format.is_none() {
+        if lossy_compression_value.is_some() && target_file_format.is_none() {
             return Err(Error::BadRequest(
-                "compression is disabled: no target_file_format configured".into(),
+                "compression is disabled: no target file format configured".into(),
             ));
         }
         if lossy_compression_value.is_some_and(|q| !(1..=100).contains(&q)) {
@@ -70,6 +82,7 @@ impl UploadOptionsQuery {
         }
         Ok(UploadOptions {
             lossy_compression_value,
+            target_file_format,
         })
     }
 }

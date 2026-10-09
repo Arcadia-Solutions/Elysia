@@ -44,7 +44,7 @@
       <label>{{ $t('settings.target_format.label') }}</label>
       <small>{{ $t('settings.target_format.help') }}</small>
       <Select
-        v-model="form.target_file_format"
+        v-model="form.default_target_file_format"
         size="small"
         fluid
         :options="[
@@ -60,28 +60,34 @@
       />
     </div>
 
-    <div class="section" :class="{ disabled: !form.target_file_format }">
+    <div class="field">
+      <label>{{ $t('settings.allow_overriding_file_format.label') }}</label>
+      <small>{{ $t('settings.allow_overriding_file_format.help') }}</small>
+      <ToggleSwitch v-model="form.allow_overriding_file_format" />
+    </div>
+
+    <div class="section" :class="{ disabled: !form.default_target_file_format }">
       <div class="field">
         <label>{{ $t('settings.target_width.label') }}</label>
         <small>{{ $t('settings.target_width.help') }}</small>
-        <InputNumber v-model="form.target_width_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.target_file_format" />
+        <InputNumber v-model="form.target_width_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.default_target_file_format" />
       </div>
 
       <div class="field">
         <label>{{ $t('settings.target_height.label') }}</label>
         <small>{{ $t('settings.target_height.help') }}</small>
-        <InputNumber v-model="form.target_height_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.target_file_format" />
+        <InputNumber v-model="form.target_height_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.default_target_file_format" />
       </div>
 
       <div class="field">
         <label>{{ $t('settings.target_file_size.label') }}</label>
         <small>{{ $t('settings.target_file_size.help') }}</small>
         <div class="size-row">
-          <InputNumber v-model="targetSize.state.value" size="small" :min="0" fluid :disabled="!form.target_file_format" />
+          <InputNumber v-model="targetSize.state.value" size="small" :min="0" fluid :disabled="!form.default_target_file_format" />
           <Select
             v-model="targetSize.state.unit"
             size="small"
-            :disabled="!form.target_file_format"
+            :disabled="!form.default_target_file_format"
             :options="[
               { label: 'B', value: 1 },
               { label: 'KB', value: 1024 },
@@ -97,13 +103,13 @@
       <div class="field">
         <label>{{ $t('settings.default_compression.label') }}</label>
         <small>{{ $t('settings.default_compression.help') }}</small>
-        <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.target_file_format" />
+        <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.default_target_file_format" />
       </div>
 
       <div class="field">
         <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
         <small>{{ $t('settings.allow_overriding_compression.help') }}</small>
-        <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.target_file_format" />
+        <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.default_target_file_format" />
       </div>
     </div>
 
@@ -133,7 +139,8 @@ const form = reactive<Required<ElysiaSettings>>({
   max_height_pixels: 0,
   target_width_pixels: 0,
   target_height_pixels: 0,
-  target_file_format: null,
+  default_target_file_format: null,
+  allow_overriding_file_format: false,
   target_file_size_bytes: 0,
   default_compression: 0,
   allow_overriding_compression: true,
@@ -173,7 +180,9 @@ const errors = computed(() => {
   if (form.max_file_size_bytes === 0) {
     result.max_file_size_bytes = t('settings.errors.max_file_size_required')
   }
-  if (form.target_file_format) {
+  // A set default format, or an allowed override, can trigger a server-side
+  // decode, so the pixel caps are required in both cases.
+  if (form.default_target_file_format || form.allow_overriding_file_format) {
     if (form.max_width_pixels === 0) result.max_width_pixels = t('settings.errors.max_dimension_required')
     if (form.max_height_pixels === 0) result.max_height_pixels = t('settings.errors.max_dimension_required')
   }

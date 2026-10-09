@@ -25,9 +25,13 @@ pub struct ElysiaSettings {
     /// Resize height bound; 0 = no resize.
     #[serde(default)]
     pub target_height_pixels: u32,
-    /// Output format; null stores uploads as-is (processing off).
+    /// Default output format; null stores uploads as-is (processing off).
     #[serde(default)]
-    pub target_file_format: Option<TargetFormat>,
+    pub default_target_file_format: Option<TargetFormat>,
+    /// When false, an upload may not request its own target file format and the
+    /// default is always used.
+    #[serde(default)]
+    pub allow_overriding_file_format: bool,
     /// Lossy target size in bytes; 0 = no target.
     #[serde(default)]
     pub target_file_size_bytes: u64,
@@ -49,7 +53,13 @@ pub struct PublicElysiaSettings {
     pub max_height_pixels: u32,
     pub target_width_pixels: u32,
     pub target_height_pixels: u32,
-    pub target_file_format: Option<TargetFormat>,
+    pub default_target_file_format: Option<TargetFormat>,
+    /// Whether an upload may pick its own target file format; drives the
+    /// format selector on the upload page.
+    pub allow_overriding_file_format: bool,
+    /// Whether an upload may request its own compression quality; drives the
+    /// quality slider on the upload page.
+    pub allow_overriding_compression: bool,
     pub target_file_size_bytes: u64,
 }
 
@@ -61,7 +71,9 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             max_height_pixels: s.max_height_pixels,
             target_width_pixels: s.target_width_pixels,
             target_height_pixels: s.target_height_pixels,
-            target_file_format: s.target_file_format,
+            default_target_file_format: s.default_target_file_format,
+            allow_overriding_file_format: s.allow_overriding_file_format,
+            allow_overriding_compression: s.allow_overriding_compression,
             target_file_size_bytes: s.target_file_size_bytes,
         }
     }
@@ -73,14 +85,16 @@ impl ElysiaSettings {
     pub fn validate(&self) -> Result<(), String> {
         // Processing options require a target format: we will not re-encode to
         // an unknown format.
-        if self.target_file_format.is_none()
+        if self.default_target_file_format.is_none()
             && (self.target_width_pixels > 0
                 || self.target_height_pixels > 0
                 || self.target_file_size_bytes > 0)
         {
-            return Err("target_file_format is required when target_width_pixels, \
+            return Err(
+                "default_target_file_format is required when target_width_pixels, \
                  target_height_pixels or target_file_size_bytes is set"
-                .into());
+                    .into(),
+            );
         }
         // An upload with no byte ceiling is an unbounded disk/memory write, so
         // require one always.
@@ -92,18 +106,24 @@ impl ElysiaSettings {
         if self.default_compression > 100 {
             return Err("default_compression must be between 0 and 100".into());
         }
-        if self.default_compression > 0 && self.target_file_format.is_none() {
-            return Err("default_compression requires a target_file_format to re-encode to".into());
+        if self.default_compression > 0 && self.default_target_file_format.is_none() {
+            return Err(
+                "default_compression requires a default_target_file_format to re-encode to".into(),
+            );
         }
         // Processing decodes the source into memory (width * height * 4 bytes),
         // so it must run behind pixel caps or a small file declaring huge
-        // dimensions is a decompression bomb.
-        if self.target_file_format.is_some()
+        // dimensions is a decompression bomb. An allowed per-upload format
+        // override can trigger a decode even with no default format, so the caps
+        // are required then too.
+        if (self.default_target_file_format.is_some() || self.allow_overriding_file_format)
             && (self.max_width_pixels == 0 || self.max_height_pixels == 0)
         {
-            return Err("max_width_pixels and max_height_pixels must be > 0 when \
-                 target_file_format is set (they bound the server-side decode)"
-                .into());
+            return Err(
+                "max_width_pixels and max_height_pixels must be > 0 when a target file \
+                 format is set or overriding it is allowed (they bound the server-side decode)"
+                    .into(),
+            );
         }
         Ok(())
     }

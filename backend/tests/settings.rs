@@ -70,7 +70,7 @@ async fn get_returns_the_seeded_defaults(pool: PgPool) {
     let settings: ElysiaSettings = actix_test::call_and_read_body_json(&app, request).await;
     // The migration seeds a 10 MiB ceiling with processing off.
     assert_eq!(settings.max_file_size_bytes, 10 * 1024 * 1024);
-    assert!(settings.target_file_format.is_none());
+    assert!(settings.default_target_file_format.is_none());
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -84,12 +84,12 @@ async fn put_persists_and_reflects_new_settings(pool: PgPool) {
             "max_file_size_bytes": 2048,
             "max_width_pixels": 4000,
             "max_height_pixels": 4000,
-            "target_file_format": "webp",
+            "default_target_file_format": "webp",
         }))
         .to_request();
     let saved: ElysiaSettings = actix_test::call_and_read_body_json(&app, request).await;
     assert_eq!(saved.max_file_size_bytes, 2048);
-    assert_eq!(saved.target_file_format, Some(TargetFormat::Webp));
+    assert_eq!(saved.default_target_file_format, Some(TargetFormat::Webp));
 
     // The change is persisted, not just held in memory.
     let reloaded = settings_repo::load(&pool).await.unwrap();
@@ -107,7 +107,7 @@ async fn put_rejects_contradictory_settings(pool: PgPool) {
         .insert_header((name, value))
         .set_json(serde_json::json!({
             "max_file_size_bytes": 2048,
-            "target_file_format": "webp",
+            "default_target_file_format": "webp",
         }))
         .to_request();
     let status = actix_test::call_service(&app, request).await.status();
@@ -115,5 +115,5 @@ async fn put_rejects_contradictory_settings(pool: PgPool) {
 
     // The rejected save left the stored row untouched.
     let reloaded = settings_repo::load(&pool).await.unwrap();
-    assert!(reloaded.target_file_format.is_none());
+    assert!(reloaded.default_target_file_format.is_none());
 }

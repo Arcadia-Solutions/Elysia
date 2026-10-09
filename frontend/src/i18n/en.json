@@ -20,7 +20,14 @@
     "copied": "Link copied",
     "preview_alt": "preview",
     "uploading": "Uploading… {pct}%",
-    "processing": "Processing…"
+    "processing": "Processing…",
+    "format_override": {
+      "label": "Output format",
+      "keep_default": "Use default"
+    },
+    "quality": {
+      "label": "Compression quality: {value}"
+    }
   },
   "settings": {
     "title": "Elysia settings",
@@ -44,9 +51,13 @@
       "help": "Reject images taller than this. 0 means no limit. Required when a target format is set (it bounds server-side decoding)."
     },
     "target_format": {
-      "label": "Convert uploads to",
-      "help": "Re-encode every upload to this format. 'Store as-is' turns off all processing (resize, conversion and target size below).",
+      "label": "Default convert uploads to",
+      "help": "Re-encode every upload to this format by default. 'Store as-is' turns off all processing (resize, conversion and target size below).",
       "store_as_is": "Store as-is (no processing)"
+    },
+    "allow_overriding_file_format": {
+      "label": "Allow overriding the file format",
+      "help": "Let an upload pick its own output format. When off, the default above is always used. Enabling this requires the maximum width and height above (overrides can trigger server-side decoding)."
     },
     "target_width": {
       "label": "Resize to fit width (pixels)",

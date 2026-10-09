@@ -50,7 +50,8 @@ pub fn test_settings() -> ElysiaSettings {
         max_height_pixels: 0,
         target_width_pixels: 0,
         target_height_pixels: 0,
-        target_file_format: None,
+        default_target_file_format: None,
+        allow_overriding_file_format: false,
         target_file_size_bytes: 0,
         default_compression: 0,
         allow_overriding_compression: true,
@@ -60,7 +61,7 @@ pub fn test_settings() -> ElysiaSettings {
 /// Default settings with WebP processing turned on.
 pub fn webp_settings() -> ElysiaSettings {
     ElysiaSettings {
-        target_file_format: Some(TargetFormat::Webp),
+        default_target_file_format: Some(TargetFormat::Webp),
         ..test_settings()
     }
 }

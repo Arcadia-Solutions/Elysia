@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update elysia_settings set\n            max_file_size_bytes = $1, max_width_pixels = $2, max_height_pixels = $3,\n            target_width_pixels = $4, target_height_pixels = $5,\n            default_target_file_format = $6, allow_overriding_file_format = $7,\n            target_file_size_bytes = $8,\n            default_compression = $9, allow_overriding_compression = $10\n         where id = $11",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        {
+          "Custom": {
+            "name": "target_format",
+            "kind": {
+              "Enum": [
+                "webp",
+                "jpegxl",
+                "avif",
+                "png",
+                "jpg"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Int8",
+        "Int4",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "773a1c6d386481512593e27f30af91af6f43a467b316d702ab44aa4251df59a7"
+}

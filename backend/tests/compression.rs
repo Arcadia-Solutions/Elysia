@@ -16,7 +16,7 @@ use common::*;
 #[test]
 fn validate_rejects_processing_without_target_format() {
     let mut settings = test_settings();
-    settings.target_file_format = None;
+    settings.default_target_file_format = None;
     settings.target_width_pixels = 1920;
     assert!(settings.validate().is_err());
 }
@@ -35,7 +35,7 @@ fn validate_requires_max_file_size() {
 fn validate_rejects_processing_without_decode_caps() {
     let mut settings = test_settings();
     settings.max_file_size_bytes = 50 * 1024 * 1024;
-    settings.target_file_format = Some(TargetFormat::Webp);
+    settings.default_target_file_format = Some(TargetFormat::Webp);
     // pixel caps left at 0 (unlimited): processing would decode unbounded input.
     assert!(settings.validate().is_err());
 }
@@ -43,7 +43,7 @@ fn validate_rejects_processing_without_decode_caps() {
 #[test]
 fn validate_accepts_consistent_settings() {
     let mut settings = test_settings();
-    settings.target_file_format = Some(TargetFormat::Webp);
+    settings.default_target_file_format = Some(TargetFormat::Webp);
     settings.target_width_pixels = 1920;
     settings.max_file_size_bytes = 50 * 1024 * 1024;
     settings.max_width_pixels = 10_000;
@@ -69,6 +69,7 @@ fn default_compression_applies_when_none_requested() {
     settings.default_compression = 50;
     let options = UploadOptionsQuery {
         lossy_compression_value: None,
+        target_file_format: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -81,6 +82,7 @@ fn request_overrides_default_when_allowed() {
     settings.default_compression = 50;
     let options = UploadOptionsQuery {
         lossy_compression_value: Some(90),
+        target_file_format: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -95,16 +97,43 @@ fn override_rejected_when_disabled_but_default_still_used() {
     assert!(
         UploadOptionsQuery {
             lossy_compression_value: Some(90),
+            target_file_format: None,
         }
         .into_options(&settings)
         .is_err()
     );
     let options = UploadOptionsQuery {
         lossy_compression_value: None,
+        target_file_format: None,
     }
     .into_options(&settings)
     .unwrap();
     assert_eq!(options.lossy_compression_value, Some(40));
+}
+
+#[test]
+fn file_format_override_respects_allow_flag() {
+    let mut settings = webp_settings();
+
+    // Forbidden by default: a requested format is rejected.
+    assert!(
+        UploadOptionsQuery {
+            lossy_compression_value: None,
+            target_file_format: Some(TargetFormat::Png),
+        }
+        .into_options(&settings)
+        .is_err()
+    );
+
+    // Allowed: the request wins over the default format.
+    settings.allow_overriding_file_format = true;
+    let options = UploadOptionsQuery {
+        lossy_compression_value: None,
+        target_file_format: Some(TargetFormat::Png),
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert_eq!(options.target_file_format, Some(TargetFormat::Png));
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -160,6 +189,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
     for quality in [80, 30] {
         let options = UploadOptions {
             lossy_compression_value: Some(quality),
+            target_file_format: Some(TargetFormat::Webp),
         };
         let stored = store_from_url(
             &pool,
@@ -380,8 +410,12 @@ fn settings_json_roundtrips_target_format() {
     // The PUT /api/elysia-settings body carries the format by name; the alias
     // `jxl` is accepted on input and canonicalizes to `jpegxl` on output.
     let parsed: ElysiaSettings =
-        serde_json::from_str(r#"{"max_file_size_bytes":1,"target_file_format":"jxl"}"#).unwrap();
-    assert_eq!(parsed.target_file_format, Some(TargetFormat::Jpegxl));
+        serde_json::from_str(r#"{"max_file_size_bytes":1,"default_target_file_format":"jxl"}"#)
+            .unwrap();
+    assert_eq!(
+        parsed.default_target_file_format,
+        Some(TargetFormat::Jpegxl)
+    );
     let json = serde_json::to_string(&parsed).unwrap();
     assert!(json.contains("\"jpegxl\""));
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  target_file_format as \"target_file_format?: TargetFormat\",\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -60,7 +60,7 @@
       },
       {
         "ordinal": 5,
-        "name": "target_file_format?: TargetFormat",
+        "name": "default_target_file_format?: TargetFormat",
         "type_info": {
           "Custom": {
             "name": "target_format",
@@ -68,7 +68,9 @@
               "Enum": [
                 "webp",
                 "jpegxl",
-                "avif"
+                "avif",
+                "png",
+                "jpg"
               ]
             }
           }
@@ -76,12 +78,23 @@
         "origin": {
           "Table": {
             "table": "elysia_settings",
-            "name": "target_file_format"
+            "name": "default_target_file_format"
           }
         }
       },
       {
         "ordinal": 6,
+        "name": "allow_overriding_file_format",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "allow_overriding_file_format"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
         "name": "target_file_size_bytes",
         "type_info": "Int8",
         "origin": {
@@ -92,7 +105,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "default_compression",
         "type_info": "Int4",
         "origin": {
@@ -103,7 +116,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "allow_overriding_compression",
         "type_info": "Bool",
         "origin": {
@@ -128,8 +141,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "867318f03bd9b6e9e805acc830800f558c628a5553048a27535d1112a6ebf7de"
+  "hash": "387c4f974dd677491c2fd202db4e3efbb9f338930dc5c047ad728d9fe187aa38"
 }

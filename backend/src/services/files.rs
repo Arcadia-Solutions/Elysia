@@ -8,7 +8,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::error::{Error, Result};
 use crate::repository::files::{self, FileRow, NewFile};
-use crate::services::image;
+use crate::services::image::{self, TargetFormat};
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
 
@@ -38,6 +38,9 @@ pub struct StoredFile {
 #[derive(Default)]
 pub struct UploadOptions {
     pub lossy_compression_value: Option<u8>,
+    /// Effective output format: the per-upload override, or the configured
+    /// default. `None` stores the upload as-is (processing off).
+    pub target_file_format: Option<TargetFormat>,
 }
 
 /// The bytes to store plus their metadata: either the pipeline's output or, when
@@ -232,8 +235,12 @@ async fn store(
         return Ok(existing_stored(record));
     }
 
-    // Run the pipeline when a target format is configured; `None` passes through.
-    let processed = match settings.target_file_format {
+    // Run the pipeline when a target format is in effect; `None` passes through.
+    // The per-upload override wins, else the configured default.
+    let target_file_format = options
+        .target_file_format
+        .or(settings.default_target_file_format);
+    let processed = match target_file_format {
         Some(format) => {
             let input = tokio::fs::read(path).await?;
             let process_options = image::ProcessOptions {

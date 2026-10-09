@@ -17,6 +17,27 @@
       <Button :label="$t('upload.rehost')" size="small" @click="rehost" :disabled="uploading || !urlInput" />
     </div>
 
+    <div v-if="settings?.allow_overriding_file_format" class="format-row">
+      <label>{{ $t('upload.format_override.label') }}</label>
+      <Select
+        v-model="formatOverride"
+        size="small"
+        fluid
+        :disabled="uploading"
+        :options="[
+          { label: $t('upload.format_override.keep_default'), value: 'default' },
+          ...Object.values(TargetFormat).map((f) => ({ label: formatLabels[f], value: f })),
+        ]"
+        option-label="label"
+        option-value="value"
+      />
+    </div>
+
+    <div v-if="showCompression" class="quality-row">
+      <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
+      <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
+    </div>
+
     <Transition name="fade">
       <div v-if="uploading" class="progress">
         <ProgressBar v-if="phase === 'uploading'" :value="progress" :showValue="false" style="height: 6px" />
@@ -43,9 +64,11 @@ import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
+import Select from 'primevue/select'
+import Slider from 'primevue/slider'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
-import type { PublicElysiaSettings, UploadResponse } from '@/services/api-schema'
+import { TargetFormat, type PublicElysiaSettings, type UploadResponse } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
 
 const { t } = useI18n()
@@ -57,6 +80,26 @@ const uploading = computed(() => phase.value !== 'idle')
 const dragging = ref(false)
 const urlInput = ref('')
 const settings = ref<PublicElysiaSettings | null>(null)
+// Per-upload output format; 'default' uses the server's default (a non-empty
+// sentinel so PrimeVue shows it as selected). Only honored when the settings
+// allow overriding; the backend rejects it otherwise.
+const formatOverride = ref<TargetFormat | 'default'>('default')
+const formatLabels: Record<TargetFormat, string> = {
+  webp: 'WebP',
+  jpegxl: 'JPEG XL',
+  avif: 'AVIF',
+  png: 'PNG',
+  jpg: 'JPEG',
+}
+// Per-upload lossy quality, sent only while the slider is shown.
+const quality = ref(80)
+
+// The format that will actually be applied: the override, or the server default.
+const effectiveFormat = computed(() => (formatOverride.value === 'default' ? settings.value?.default_target_file_format : formatOverride.value))
+// Quality applies only to lossy-capable formats (every target format but PNG),
+// and only when the settings allow overriding compression.
+const showCompression = computed(() => !!settings.value?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
+const qualityValue = () => (showCompression.value ? quality.value : undefined)
 
 // Public upload limits, so files are rejected client-side before a wasted
 // round-trip. The backend still enforces them. A 0 limit means "no limit".
@@ -125,7 +168,7 @@ const handleFile = (file: File | undefined) => {
     phase.value = 'uploading'
     progress.value = 0
     api
-      .upload(file, undefined, {
+      .upload(file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, {
         onUploadProgress: (event) => {
           if (!event.total) return
           progress.value = Math.round((event.loaded / event.total) * 100)
@@ -161,7 +204,7 @@ const rehost = () => {
   // no client-side transfer to track, just the processing phase.
   phase.value = 'processing'
   api
-    .uploadUrl({ url: urlInput.value })
+    .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value)
     .then((uploaded) => {
       result.value = uploaded.data
       urlInput.value = ''
@@ -209,6 +252,25 @@ const copyLink = () => {
 .url-row {
   display: flex;
   gap: 8px;
+}
+.format-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.format-row label {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+.quality-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 4px;
+}
+.quality-row label {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
 }
 .progress {
   display: flex;
