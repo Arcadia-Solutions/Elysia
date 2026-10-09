@@ -114,11 +114,53 @@ export interface ElysiaSettings {
 }
 
 
+/**
+ * One image in a browse page.
+ */
+export interface ImageSummary {
+    'id': string;
+    /**
+     * Thumbnail URL, served from `/t/`.
+     */
+    'thumbnail_url': string;
+}
+/**
+ * A page of stored images, newest first.
+ */
+export interface ImagesPage {
+    'images': Array<ImageSummary>;
+    'page': number;
+    'per_page': number;
+    'total': number;
+}
 export interface LoginRequest {
     'token': string;
 }
 export interface LoginResponse {
     'valid': boolean;
+}
+/**
+ * Display metadata for the `/i/<id>` viewer page.
+ */
+export interface MetadataResponse {
+    /**
+     * Upload time as a UTC ISO-8601 string.
+     */
+    'created_at': string;
+    'ext': string;
+    'height': number;
+    'id': string;
+    'mime': string;
+    /**
+     * Original filename from the upload, if the client sent one.
+     */
+    'original_name'?: string | null;
+    'size': number;
+    /**
+     * Public URL for the raw image.
+     */
+    'url': string;
+    'width': number;
 }
 /**
  * The subset of [`ElysiaSettings`] exposed publicly, so the upload page can validate files client-side.
@@ -280,6 +322,40 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
+         * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        images: async (page?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/images`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {LoginRequest} loginRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -307,6 +383,39 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(loginRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} id File id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        metadata: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('metadata', 'id', id)
+            const localVarPath = `/api/i/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -552,6 +661,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async images(page?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {LoginRequest} loginRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -560,6 +681,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.login(loginRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.login']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} id File id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async metadata(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<MetadataResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.metadata(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.metadata']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -655,12 +788,30 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         },
         /**
          * 
+         * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        images(page?: number, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
+            return localVarFp.images(page, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {LoginRequest} loginRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
             return localVarFp.login(loginRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} id File id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        metadata(id: string, options?: RawAxiosRequestConfig): AxiosPromise<MetadataResponse> {
+            return localVarFp.metadata(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -740,12 +891,32 @@ export class ElysiaApi extends BaseAPI {
 
     /**
      * 
+     * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public images(page?: number, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).images(page, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @param {LoginRequest} loginRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     public login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).login(loginRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} id File id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public metadata(id: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).metadata(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

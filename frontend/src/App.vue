@@ -3,6 +3,16 @@
     <span>{{ $t('app.name') }}</span>
     <span v-if="route.path !== '/login'" class="actions">
       <Button
+        icon="pi pi-images"
+        size="small"
+        severity="secondary"
+        text
+        rounded
+        :title="$t('browse.title')"
+        :aria-label="$t('browse.title')"
+        @click="router.push('/browse')"
+      />
+      <Button
         icon="pi pi-cog"
         size="small"
         severity="secondary"

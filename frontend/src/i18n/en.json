@@ -47,6 +47,11 @@
     "size": "Size",
     "format": "Format"
   },
+  "browse": {
+    "title": "Browse images",
+    "empty": "No images uploaded yet",
+    "load_error": "Could not load images"
+  },
   "settings": {
     "title": "Elysia settings",
     "intro": "Limits and image processing applied to every upload. A value of 0 disables that check. Changes apply immediately, no restart needed.",

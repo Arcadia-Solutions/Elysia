@@ -1,6 +1,7 @@
 use actix_files::NamedFile;
 use actix_web::{HttpRequest, HttpResponse};
 
+pub mod images;
 pub mod login;
 pub mod metadata;
 pub mod serve;
@@ -9,6 +10,7 @@ pub mod settings;
 pub mod upload;
 pub mod upload_url;
 
+pub use images::images;
 pub use login::login;
 pub use metadata::metadata;
 pub use serve::serve;

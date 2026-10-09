@@ -4,6 +4,7 @@ import UploadView from '@/views/UploadView.vue'
 import UploadedView from '@/views/UploadedView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import ImageView from '@/views/ImageView.vue'
+import BrowseView from '@/views/BrowseView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: '/', redirect: '/upload' },
     { path: '/upload', name: 'Upload', component: UploadView },
     { path: '/uploaded', name: 'Uploaded', component: UploadedView },
+    { path: '/browse', name: 'Browse', component: BrowseView },
     { path: '/settings', name: 'Settings', component: SettingsView },
     { path: '/i/:id', name: 'Image', component: ImageView },
   ],

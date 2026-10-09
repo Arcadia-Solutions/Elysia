@@ -1,5 +1,6 @@
 use utoipa::OpenApi;
 
+use crate::handlers::images::{ImageSummary, ImagesPage};
 use crate::handlers::login::{LoginRequest, LoginResponse};
 use crate::handlers::metadata::MetadataResponse;
 use crate::handlers::upload::{UploadForm, UploadOptionsQuery, UploadResponse};
@@ -18,6 +19,7 @@ use crate::settings::{ElysiaSettings, PublicElysiaSettings};
         crate::handlers::serve::serve,
         crate::handlers::serve_thumbnail::serve_thumbnail,
         crate::handlers::metadata::metadata,
+        crate::handlers::images::images,
         crate::handlers::settings::get_elysia_settings,
         crate::handlers::settings::get_public_elysia_settings,
         crate::handlers::settings::put_elysia_settings,
@@ -26,6 +28,8 @@ use crate::settings::{ElysiaSettings, PublicElysiaSettings};
         LoginRequest,
         LoginResponse,
         MetadataResponse,
+        ImageSummary,
+        ImagesPage,
         UploadForm,
         UploadResponse,
         UploadUrlRequest,

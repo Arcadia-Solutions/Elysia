@@ -46,13 +46,32 @@ impl StoredFile {
     /// Public URL for the thumbnail. Generated thumbnails are always WebP;
     /// without one, `/t/` falls back to the original, hence its extension.
     pub fn thumbnail_url(&self) -> String {
-        let extension = if self.has_thumbnail {
-            "webp"
-        } else {
-            &self.ext
-        };
-        format!("/t/{}.{}", self.id, extension)
+        thumbnail_url(&self.id, &self.ext, self.has_thumbnail)
     }
+}
+
+/// Images returned per browse page.
+pub const IMAGES_PER_PAGE: i64 = 100;
+
+/// Public thumbnail URL for a stored file. Generated thumbnails are always
+/// WebP; without one, `/t/` falls back to the original, hence its extension.
+pub fn thumbnail_url(id: &str, ext: &str, has_thumbnail: bool) -> String {
+    let extension = if has_thumbnail { "webp" } else { ext };
+    format!("/t/{id}.{extension}")
+}
+
+/// Fetch one page (1-based) of stored images, newest first, with the total
+/// count and the clamped page actually used. An out-of-range page returns no
+/// rows but still reports the real total, so callers can show the pager.
+pub async fn list_images(pool: &PgPool, page: i64) -> Result<(Vec<files::ImageListRow>, i64, i64)> {
+    let page = page.max(1);
+    let offset = (page - 1) * IMAGES_PER_PAGE;
+    let rows = files::list_page(pool, offset, IMAGES_PER_PAGE).await?;
+    let total = match rows.first() {
+        Some(row) => row.total,
+        None => files::count(pool).await?,
+    };
+    Ok((rows, total, page))
 }
 
 /// Per-upload processing options.

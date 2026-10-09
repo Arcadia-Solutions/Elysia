@@ -38,6 +38,9 @@ comment on column files.created_at is 'When the file was uploaded';
 -- Skip-reprocess lookup filters on original_hash (see find_record_by_source).
 create index files_original_hash_idx on files (original_hash);
 
+-- Browse pagination sorts by created_at then id (see list_page).
+create index files_created_at_idx on files (created_at desc, id desc);
+
 -- Runtime-editable elysia settings, edited from the web UI. A single row
 -- (id = 'singleton'); the boot-time infrastructure values stay in config.yml.
 create type target_format as enum ('webp', 'jpegxl', 'avif', 'png', 'jpg');

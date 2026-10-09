@@ -132,6 +132,39 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
     .await?)
 }
 
+/// One image in a browse page, plus the total row count (same on every row,
+/// from a window function, so one query returns the page and its total).
+pub struct ImageListRow {
+    pub id: String,
+    pub ext: String,
+    pub has_thumbnail: bool,
+    pub total: i64,
+}
+
+/// Fetch one page of images, newest first, with the total count. `id` breaks
+/// created_at ties so rows never shift across pages.
+pub async fn list_page(pool: &PgPool, offset: i64, limit: i64) -> Result<Vec<ImageListRow>> {
+    Ok(sqlx::query_as!(
+        ImageListRow,
+        "select id, ext, has_thumbnail, count(*) over() as \"total!\" \
+         from files order by created_at desc, id desc offset $1 limit $2",
+        offset,
+        limit,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Total number of stored files; the count for an out-of-range page, where the
+/// window count in `list_page` returns no rows.
+pub async fn count(pool: &PgPool) -> Result<i64> {
+    Ok(
+        sqlx::query_scalar!("select count(*) as \"count!\" from files")
+            .fetch_one(pool)
+            .await?,
+    )
+}
+
 /// Output dedup: a different source that normalized to identical output bytes.
 pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<FileRecord>> {
     Ok(sqlx::query_as!(
