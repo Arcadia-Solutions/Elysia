@@ -59,6 +59,14 @@
     "target_file_size": {
       "label": "Target file size (bytes)",
       "help": "If a processed image is still larger than this, lossy-compress it down to fit. 0 means off."
+    },
+    "default_compression": {
+      "label": "Default compression quality (1-100)",
+      "help": "Lossy quality applied when an upload does not request one. 0 means lossless by default."
+    },
+    "allow_overriding_compression": {
+      "label": "Allow overriding compression",
+      "help": "Let an upload request its own compression quality. When off, the default above is always used."
     }
   }
 }

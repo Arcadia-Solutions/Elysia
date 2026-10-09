@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  target_file_format as \"target_file_format?: TargetFormat\",\n                  target_file_size_bytes\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  target_file_format as \"target_file_format?: TargetFormat\",\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -90,6 +90,28 @@
             "name": "target_file_size_bytes"
           }
         }
+      },
+      {
+        "ordinal": 7,
+        "name": "default_compression",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "default_compression"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "allow_overriding_compression",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "allow_overriding_compression"
+          }
+        }
       }
     ],
     "parameters": {
@@ -104,8 +126,10 @@
       false,
       false,
       true,
+      false,
+      false,
       false
     ]
   },
-  "hash": "30acffec5515c707bffba80a109db8bd94e1589e08cc66801597a72af551f7d7"
+  "hash": "867318f03bd9b6e9e805acc830800f558c628a5553048a27535d1112a6ebf7de"
 }

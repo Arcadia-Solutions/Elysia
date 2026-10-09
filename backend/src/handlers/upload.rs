@@ -47,23 +47,29 @@ pub struct UploadOptionsQuery {
 }
 
 impl UploadOptionsQuery {
-    /// Convert to service options, rejecting compression when processing is off.
+    /// Convert to service options: reject a client-supplied quality when
+    /// overriding is disabled, fall back to the configured default, then reject
+    /// compression when processing is off or the quality is out of range.
     pub fn into_options(self, settings: &ElysiaSettings) -> Result<UploadOptions> {
-        if self.lossy_compression_value.is_some() && settings.target_file_format.is_none() {
+        if self.lossy_compression_value.is_some() && !settings.allow_overriding_compression {
+            return Err(Error::BadRequest(
+                "overriding compression is disabled".into(),
+            ));
+        }
+        let default = (settings.default_compression > 0).then_some(settings.default_compression);
+        let lossy_compression_value = self.lossy_compression_value.or(default);
+        if lossy_compression_value.is_some() && settings.target_file_format.is_none() {
             return Err(Error::BadRequest(
                 "compression is disabled: no target_file_format configured".into(),
             ));
         }
-        if self
-            .lossy_compression_value
-            .is_some_and(|q| !(1..=100).contains(&q))
-        {
+        if lossy_compression_value.is_some_and(|q| !(1..=100).contains(&q)) {
             return Err(Error::BadRequest(
                 "lossy_compression_value must be between 1 and 100".into(),
             ));
         }
         Ok(UploadOptions {
-            lossy_compression_value: self.lossy_compression_value,
+            lossy_compression_value,
         })
     }
 }

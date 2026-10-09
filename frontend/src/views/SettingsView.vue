@@ -91,6 +91,18 @@
           />
         </div>
       </div>
+
+      <div class="field">
+        <label>{{ $t('settings.default_compression.label') }}</label>
+        <small>{{ $t('settings.default_compression.help') }}</small>
+        <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.target_file_format" />
+      </div>
+
+      <div class="field">
+        <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
+        <small>{{ $t('settings.allow_overriding_compression.help') }}</small>
+        <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.target_file_format" />
+      </div>
     </div>
 
     <Button :label="$t('settings.save')" size="small" :loading="saving" :disabled="loading || Object.keys(errors).length > 0" @click="save" />
@@ -103,6 +115,7 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
 import type { ElysiaSettings } from '@/services/api-schema'
@@ -120,6 +133,8 @@ const form = reactive<Required<ElysiaSettings>>({
   target_height_pixels: 0,
   target_file_format: null,
   target_file_size_bytes: 0,
+  default_compression: 0,
+  allow_overriding_compression: true,
 })
 
 // A byte count edited as value + unit. `bytes` is the canonical count sent to

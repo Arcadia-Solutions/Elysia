@@ -52,6 +52,14 @@ export interface ConvertAction {
  */
 export interface ElysiaSettings {
     /**
+     * When false, an upload may not request its own compression and the default is always used.
+     */
+    'allow_overriding_compression'?: boolean;
+    /**
+     * Lossy quality (1-100) applied when an upload requests none; 0 = none.
+     */
+    'default_compression'?: number;
+    /**
      * Reject uploads larger than this; 0 disables the check.
      */
     'max_file_size_bytes'?: number;

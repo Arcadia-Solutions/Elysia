@@ -52,6 +52,8 @@ pub fn test_settings() -> ElysiaSettings {
         target_height_pixels: 0,
         target_file_format: None,
         target_file_size_bytes: 0,
+        default_compression: 0,
+        allow_overriding_compression: true,
     }
 }
 

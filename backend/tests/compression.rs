@@ -6,6 +6,7 @@ mod common;
 use actix_web::http::StatusCode;
 use sqlx::PgPool;
 
+use elysia::handlers::upload::UploadOptionsQuery;
 use elysia::services::files::{UploadOptions, store_from_url};
 use elysia::services::image::{ProcessError, TargetFormat, process};
 use elysia::settings::ElysiaSettings;
@@ -52,6 +53,58 @@ fn validate_accepts_consistent_settings() {
     let mut off = test_settings();
     off.max_file_size_bytes = 50 * 1024 * 1024;
     assert!(off.validate().is_ok());
+}
+
+#[test]
+fn validate_rejects_default_compression_without_format() {
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 50 * 1024 * 1024;
+    settings.default_compression = 50; // no target format to re-encode to
+    assert!(settings.validate().is_err());
+}
+
+#[test]
+fn default_compression_applies_when_none_requested() {
+    let mut settings = webp_settings();
+    settings.default_compression = 50;
+    let options = UploadOptionsQuery {
+        lossy_compression_value: None,
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert_eq!(options.lossy_compression_value, Some(50));
+}
+
+#[test]
+fn request_overrides_default_when_allowed() {
+    let mut settings = webp_settings();
+    settings.default_compression = 50;
+    let options = UploadOptionsQuery {
+        lossy_compression_value: Some(90),
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert_eq!(options.lossy_compression_value, Some(90));
+}
+
+#[test]
+fn override_rejected_when_disabled_but_default_still_used() {
+    let mut settings = webp_settings();
+    settings.allow_overriding_compression = false;
+    settings.default_compression = 40;
+    assert!(
+        UploadOptionsQuery {
+            lossy_compression_value: Some(90),
+        }
+        .into_options(&settings)
+        .is_err()
+    );
+    let options = UploadOptionsQuery {
+        lossy_compression_value: None,
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert_eq!(options.lossy_compression_value, Some(40));
 }
 
 #[sqlx::test(migrations = "./migrations")]

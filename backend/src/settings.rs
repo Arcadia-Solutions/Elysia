@@ -31,6 +31,13 @@ pub struct ElysiaSettings {
     /// Lossy target size in bytes; 0 = no target.
     #[serde(default)]
     pub target_file_size_bytes: u64,
+    /// Lossy quality (1-100) applied when an upload requests none; 0 = none.
+    #[serde(default)]
+    pub default_compression: u8,
+    /// When false, an upload may not request its own compression and the
+    /// default is always used.
+    #[serde(default)]
+    pub allow_overriding_compression: bool,
 }
 
 /// The subset of [`ElysiaSettings`] exposed publicly, so the upload page
@@ -79,6 +86,14 @@ impl ElysiaSettings {
         // require one always.
         if self.max_file_size_bytes == 0 {
             return Err("max_file_size_bytes must be > 0".into());
+        }
+        // A default compression is a lossy quality, so it needs both a valid
+        // range and a format to re-encode to.
+        if self.default_compression > 100 {
+            return Err("default_compression must be between 0 and 100".into());
+        }
+        if self.default_compression > 0 && self.target_file_format.is_none() {
+            return Err("default_compression requires a target_file_format to re-encode to".into());
         }
         // Processing decodes the source into memory (width * height * 4 bytes),
         // so it must run behind pixel caps or a small file declaring huge

@@ -48,7 +48,9 @@ create table elysia_settings (
   target_width_pixels int not null,
   target_height_pixels int not null,
   target_file_format target_format,
-  target_file_size_bytes bigint not null
+  target_file_size_bytes bigint not null,
+  default_compression int not null default 0,
+  allow_overriding_compression boolean not null default true
 );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -59,10 +61,13 @@ comment on column elysia_settings.target_width_pixels is 'Resize width bound; 0 
 comment on column elysia_settings.target_height_pixels is 'Resize height bound; 0 = no resize';
 comment on column elysia_settings.target_file_format is 'webp | jpegxl | avif; null stores uploads as-is (processing off)';
 comment on column elysia_settings.target_file_size_bytes is 'Lossy target size in bytes; 0 = no target';
+comment on column elysia_settings.default_compression is 'Lossy quality (1-100) applied when an upload requests none; 0 = none';
+comment on column elysia_settings.allow_overriding_compression is 'When false, uploads may not request their own compression; the default is always used';
 
 -- Default row: processing off, 10 MiB upload ceiling (valid against the same
 -- rules the API enforces on every save).
 insert into elysia_settings
   (id, max_file_size_bytes, max_width_pixels, max_height_pixels,
-   target_width_pixels, target_height_pixels, target_file_format, target_file_size_bytes)
-values ('singleton', 10485760, 0, 0, 0, 0, null, 0);
+   target_width_pixels, target_height_pixels, target_file_format, target_file_size_bytes,
+   default_compression, allow_overriding_compression)
+values ('singleton', 10485760, 0, 0, 0, 0, null, 0, 0, true);
