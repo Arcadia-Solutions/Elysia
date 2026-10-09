@@ -126,6 +126,20 @@
       </div>
     </div>
 
+    <hr />
+
+    <div class="field">
+      <label>{{ $t('settings.strip_exif_by_default.label') }}</label>
+      <small>{{ $t('settings.strip_exif_by_default.help') }}</small>
+      <ToggleSwitch v-model="form.strip_exif_by_default" />
+    </div>
+
+    <div class="field">
+      <label>{{ $t('settings.allow_overriding_strip_exif.label') }}</label>
+      <small>{{ $t('settings.allow_overriding_strip_exif.help') }}</small>
+      <ToggleSwitch v-model="form.allow_overriding_strip_exif" />
+    </div>
+
     <Button :label="$t('settings.save')" size="small" :loading="saving" :disabled="loading || Object.keys(errors).length > 0" @click="save" />
   </div>
 </template>
@@ -160,6 +174,8 @@ const form = reactive<Required<ElysiaSettings>>({
   target_file_size_bytes: 0,
   default_compression: 0,
   allow_overriding_compression: true,
+  strip_exif_by_default: false,
+  allow_overriding_strip_exif: true,
 })
 
 // A byte count edited as value + unit. `bytes` is the canonical count sent to

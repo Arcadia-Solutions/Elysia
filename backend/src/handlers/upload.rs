@@ -48,6 +48,9 @@ pub struct UploadOptionsQuery {
     /// Requested output format; absent uses the configured default. Rejected
     /// unless overriding the file format is allowed in settings.
     pub target_file_format: Option<TargetFormat>,
+    /// Requested EXIF-stripping choice; absent uses the configured default.
+    /// Rejected unless overriding EXIF stripping is allowed in settings.
+    pub strip_exif: Option<bool>,
 }
 
 impl UploadOptionsQuery {
@@ -65,6 +68,12 @@ impl UploadOptionsQuery {
                 "overriding the target file format is disabled".into(),
             ));
         }
+        if self.strip_exif.is_some() && !settings.allow_overriding_strip_exif {
+            return Err(Error::BadRequest(
+                "overriding EXIF stripping is disabled".into(),
+            ));
+        }
+        let strip_exif = self.strip_exif.unwrap_or(settings.strip_exif_by_default);
         let target_file_format = self
             .target_file_format
             .or(settings.default_target_file_format);
@@ -83,6 +92,7 @@ impl UploadOptionsQuery {
         Ok(UploadOptions {
             lossy_compression_value,
             target_file_format,
+            strip_exif,
         })
     }
 }

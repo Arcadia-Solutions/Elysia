@@ -99,6 +99,7 @@ fn default_compression_applies_when_none_requested() {
     let options = UploadOptionsQuery {
         lossy_compression_value: None,
         target_file_format: None,
+        strip_exif: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -112,6 +113,7 @@ fn request_overrides_default_when_allowed() {
     let options = UploadOptionsQuery {
         lossy_compression_value: Some(90),
         target_file_format: None,
+        strip_exif: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -127,6 +129,7 @@ fn override_rejected_when_disabled_but_default_still_used() {
         UploadOptionsQuery {
             lossy_compression_value: Some(90),
             target_file_format: None,
+            strip_exif: None,
         }
         .into_options(&settings)
         .is_err()
@@ -134,6 +137,7 @@ fn override_rejected_when_disabled_but_default_still_used() {
     let options = UploadOptionsQuery {
         lossy_compression_value: None,
         target_file_format: None,
+        strip_exif: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -149,6 +153,7 @@ fn file_format_override_respects_allow_flag() {
         UploadOptionsQuery {
             lossy_compression_value: None,
             target_file_format: Some(TargetFormat::Png),
+            strip_exif: None,
         }
         .into_options(&settings)
         .is_err()
@@ -159,10 +164,47 @@ fn file_format_override_respects_allow_flag() {
     let options = UploadOptionsQuery {
         lossy_compression_value: None,
         target_file_format: Some(TargetFormat::Png),
+        strip_exif: None,
     }
     .into_options(&settings)
     .unwrap();
     assert_eq!(options.target_file_format, Some(TargetFormat::Png));
+}
+
+#[test]
+fn strip_exif_override_respects_allow_flag() {
+    let mut settings = webp_settings();
+    settings.strip_exif_by_default = true;
+
+    // Allowed by default: a request wins over the configured default.
+    let options = UploadOptionsQuery {
+        lossy_compression_value: None,
+        target_file_format: None,
+        strip_exif: Some(false),
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert!(!options.strip_exif);
+
+    // Forbidden: a request is rejected, and the default still applies when absent.
+    settings.allow_overriding_strip_exif = false;
+    assert!(
+        UploadOptionsQuery {
+            lossy_compression_value: None,
+            target_file_format: None,
+            strip_exif: Some(false),
+        }
+        .into_options(&settings)
+        .is_err()
+    );
+    let options = UploadOptionsQuery {
+        lossy_compression_value: None,
+        target_file_format: None,
+        strip_exif: None,
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert!(options.strip_exif);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -219,6 +261,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
         let options = UploadOptions {
             lossy_compression_value: Some(quality),
             target_file_format: Some(TargetFormat::Webp),
+            strip_exif: false,
         };
         let stored = store_from_url(
             &pool,
@@ -258,6 +301,98 @@ async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+/// A real baseline JPEG carrying an EXIF APP1 segment. `color` varies the pixels
+/// so two fixtures hash differently (the store dedups identical sources).
+fn jpeg_with_exif(color: [u8; 3]) -> Vec<u8> {
+    let image = image::RgbImage::from_pixel(8, 8, image::Rgb(color));
+    let mut jpeg = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(image)
+        .write_to(&mut jpeg, image::ImageFormat::Jpeg)
+        .unwrap();
+    let jpeg = jpeg.into_inner();
+
+    // Minimal EXIF: little-endian TIFF header + an IFD0 holding zero entries.
+    let tiff = [
+        0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, // "II", 42, IFD0 at offset 8
+        0x00, 0x00, // entry count = 0
+        0x00, 0x00, 0x00, 0x00, // next IFD = 0
+    ];
+    let mut payload = b"Exif\0\0".to_vec();
+    payload.extend_from_slice(&tiff);
+    let segment_len = (payload.len() + 2) as u16; // length field counts itself
+
+    let mut app1 = vec![0xFF, 0xE1];
+    app1.extend_from_slice(&segment_len.to_be_bytes());
+    app1.extend_from_slice(&payload);
+
+    // APP1 EXIF goes right after the SOI marker (the first two bytes).
+    let mut out = Vec::with_capacity(jpeg.len() + app1.len());
+    out.extend_from_slice(&jpeg[..2]);
+    out.extend_from_slice(&app1);
+    out.extend_from_slice(&jpeg[2..]);
+    out
+}
+
+fn contains(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack
+        .windows(needle.len())
+        .any(|window| window == needle)
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    let exif_marker = &b"Exif\0\0"[..];
+    // Processing off (store as-is), so stripping is the only thing touching bytes.
+    let settings = test_settings();
+
+    // Stripping on: the stored file must have no EXIF.
+    let source = jpeg_with_exif([10, 20, 30]);
+    assert!(contains(&source, exif_marker), "fixture should carry EXIF");
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &settings,
+        &serve_once("HTTP/1.1 200 OK", "image/jpeg", source),
+        &UploadOptions {
+            lossy_compression_value: None,
+            target_file_format: None,
+            strip_exif: true,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(stored.ext, "jpg");
+    let stored_bytes = std::fs::read(storage.path_for(&stored.id, &stored.ext)).unwrap();
+    assert!(
+        !contains(&stored_bytes, exif_marker),
+        "EXIF must be gone after stripping"
+    );
+
+    // Stripping off (a different source to dodge dedup): EXIF survives passthrough.
+    let kept_source = jpeg_with_exif([200, 100, 50]);
+    let kept = store_from_url(
+        &pool,
+        &storage,
+        &settings,
+        &serve_once("HTTP/1.1 200 OK", "image/jpeg", kept_source),
+        &UploadOptions {
+            lossy_compression_value: None,
+            target_file_format: None,
+            strip_exif: false,
+        },
+    )
+    .await
+    .unwrap();
+    let kept_bytes = std::fs::read(storage.path_for(&kept.id, &kept.ext)).unwrap();
+    assert!(
+        contains(&kept_bytes, exif_marker),
+        "passthrough without stripping keeps EXIF"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]

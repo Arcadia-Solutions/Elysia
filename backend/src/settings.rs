@@ -42,6 +42,14 @@ pub struct ElysiaSettings {
     /// default is always used.
     #[serde(default)]
     pub allow_overriding_compression: bool,
+    /// When true, EXIF is stripped from an upload that does not
+    /// request otherwise.
+    #[serde(default)]
+    pub strip_exif_by_default: bool,
+    /// When false, an upload may not request its own EXIF-stripping choice and
+    /// the default is always used.
+    #[serde(default)]
+    pub allow_overriding_strip_exif: bool,
 }
 
 /// The subset of [`ElysiaSettings`] exposed publicly, so the upload page
@@ -60,6 +68,11 @@ pub struct PublicElysiaSettings {
     /// Whether an upload may request its own compression quality; drives the
     /// quality slider on the upload page.
     pub allow_overriding_compression: bool,
+    /// Whether an upload may choose to strip its own metadata; drives the
+    /// EXIF-stripping control on the upload page.
+    pub allow_overriding_strip_exif: bool,
+    /// Default EXIF-stripping choice; pre-sets the control on the upload page.
+    pub strip_exif_by_default: bool,
     pub target_file_size_bytes: u64,
 }
 
@@ -74,6 +87,8 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             default_target_file_format: s.default_target_file_format,
             allow_overriding_file_format: s.allow_overriding_file_format,
             allow_overriding_compression: s.allow_overriding_compression,
+            allow_overriding_strip_exif: s.allow_overriding_strip_exif,
+            strip_exif_by_default: s.strip_exif_by_default,
             target_file_size_bytes: s.target_file_size_bytes,
         }
     }

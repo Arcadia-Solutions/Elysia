@@ -60,6 +60,10 @@ export interface ElysiaSettings {
      */
     'allow_overriding_file_format'?: boolean;
     /**
+     * When false, an upload may not request its own EXIF-stripping choice and the default is always used.
+     */
+    'allow_overriding_strip_exif'?: boolean;
+    /**
      * Lossy quality (1-100) applied when an upload requests none; 0 = none.
      */
     'default_compression'?: number;
@@ -79,6 +83,10 @@ export interface ElysiaSettings {
      * Reject images wider than this; 0 disables the check.
      */
     'max_width_pixels'?: number;
+    /**
+     * When true, EXIF is stripped from an upload that does not request otherwise.
+     */
+    'strip_exif_by_default'?: boolean;
     /**
      * Lossy target size in bytes; 0 = no target.
      */
@@ -112,10 +120,18 @@ export interface PublicElysiaSettings {
      * Whether an upload may pick its own target file format; drives the format selector on the upload page.
      */
     'allow_overriding_file_format': boolean;
+    /**
+     * Whether an upload may choose to strip its own metadata; drives the EXIF-stripping control on the upload page.
+     */
+    'allow_overriding_strip_exif': boolean;
     'default_target_file_format'?: TargetFormat | null;
     'max_file_size_bytes': number;
     'max_height_pixels': number;
     'max_width_pixels': number;
+    /**
+     * Default EXIF-stripping choice; pre-sets the control on the upload page.
+     */
+    'strip_exif_by_default': boolean;
     'target_file_size_bytes': number;
     'target_height_pixels': number;
     'target_width_pixels': number;
@@ -156,6 +172,7 @@ export interface UploadOptionsQuery {
      * Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
      */
     'target_file_format'?: TargetFormat | null;
+    'strip_exif'?: boolean | null;
 }
 
 
@@ -353,7 +370,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        upload: async (file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        upload: async (file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'file' is not null or undefined
             assertParamExists('upload', 'file', file)
             const localVarPath = `/api/upload`;
@@ -375,6 +392,10 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (targetFileFormat !== undefined) {
                 localVarQueryParameter['target_file_format'] = targetFileFormat;
+            }
+
+            if (stripExif !== undefined) {
+                localVarQueryParameter['strip_exif'] = stripExif;
             }
 
 
@@ -403,7 +424,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'uploadUrlRequest' is not null or undefined
             assertParamExists('uploadUrl', 'uploadUrlRequest', uploadUrlRequest)
             const localVarPath = `/api/upload-url`;
@@ -424,6 +445,10 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (targetFileFormat !== undefined) {
                 localVarQueryParameter['target_file_format'] = targetFileFormat;
+            }
+
+            if (stripExif !== undefined) {
+                localVarQueryParameter['strip_exif'] = stripExif;
             }
 
 
@@ -515,8 +540,8 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossyCompressionValue, targetFileFormat, options);
+        async upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossyCompressionValue, targetFileFormat, stripExif, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.upload']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -529,8 +554,8 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, options);
+        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.uploadUrl']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -595,8 +620,8 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.upload(file, lossyCompressionValue, targetFileFormat, options).then((request) => request(axios, basePath));
+        upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.upload(file, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -606,8 +631,8 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, options).then((request) => request(axios, basePath));
+        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -672,8 +697,8 @@ export class ElysiaApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).upload(file, lossyCompressionValue, targetFileFormat, options).then((request) => request(this.axios, this.basePath));
+    public upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).upload(file, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -684,8 +709,8 @@ export class ElysiaApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, options).then((request) => request(this.axios, this.basePath));
+    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

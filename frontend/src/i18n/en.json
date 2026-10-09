@@ -33,6 +33,9 @@
     },
     "quality": {
       "label": "Compression quality: {value}"
+    },
+    "strip_exif": {
+      "label": "Strip EXIF"
     }
   },
   "settings": {
@@ -86,6 +89,14 @@
       "label": "Allow overriding compression",
       "help": "Let an upload request its own compression quality. When off, the default above is always used.",
       "forced_help": "Required: AVIF and JPEG have no lossless mode, so with no default compression an upload must set its own quality."
+    },
+    "strip_exif_by_default": {
+      "label": "Strip EXIF by default",
+      "help": "Remove metadata such as camera model, GPS location and timestamps from uploads that do not request otherwise."
+    },
+    "allow_overriding_strip_exif": {
+      "label": "Allow overriding metadata stripping",
+      "help": "Let an upload choose whether to strip its own metadata. When off, the default above is always used."
     }
   }
 }

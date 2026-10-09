@@ -51,7 +51,9 @@ create table elysia_settings (
   allow_overriding_file_format boolean not null default false,
   target_file_size_bytes bigint not null,
   default_compression int not null default 0,
-  allow_overriding_compression boolean not null default true
+  allow_overriding_compression boolean not null default true,
+  strip_exif_by_default boolean not null default false,
+  allow_overriding_strip_exif boolean not null default true
 );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -65,6 +67,8 @@ comment on column elysia_settings.allow_overriding_file_format is 'When false, u
 comment on column elysia_settings.target_file_size_bytes is 'Lossy target size in bytes; 0 = no target';
 comment on column elysia_settings.default_compression is 'Lossy quality (1-100) applied when an upload requests none; 0 = none';
 comment on column elysia_settings.allow_overriding_compression is 'When false, uploads may not request their own compression; the default is always used';
+comment on column elysia_settings.strip_exif_by_default is 'When true, EXIF is stripped from an upload that does not request otherwise';
+comment on column elysia_settings.allow_overriding_strip_exif is 'When false, uploads may not request their own EXIF-stripping choice; the default is always used';
 
 -- Default row: processing off, 10 MiB upload ceiling (valid against the same
 -- rules the API enforces on every save).
@@ -72,5 +76,6 @@ insert into elysia_settings
   (id, max_file_size_bytes, max_width_pixels, max_height_pixels,
    target_width_pixels, target_height_pixels, default_target_file_format,
    allow_overriding_file_format, target_file_size_bytes,
-   default_compression, allow_overriding_compression)
-values ('singleton', 10485760, 0, 0, 0, 0, null, false, 0, 0, true);
+   default_compression, allow_overriding_compression,
+   strip_exif_by_default, allow_overriding_strip_exif)
+values ('singleton', 10485760, 0, 0, 0, 0, null, false, 0, 0, true, false, true);

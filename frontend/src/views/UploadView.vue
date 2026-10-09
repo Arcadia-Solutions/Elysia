@@ -69,6 +69,11 @@
         <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
         <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
       </div>
+
+      <div v-if="settings?.allow_overriding_strip_exif" class="strip-exif-row">
+        <label>{{ $t('upload.strip_exif.label') }}</label>
+        <ToggleSwitch v-model="stripExif" :disabled="uploading" />
+      </div>
     </section>
 
     <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selectedFile && !urlInput)" />
@@ -94,6 +99,7 @@ import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import Slider from 'primevue/slider'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/services/api/http'
 import { TargetFormat, type PublicElysiaSettings } from '@/services/api-schema'
@@ -124,6 +130,9 @@ const formatLabels: Record<TargetFormat, string> = {
 }
 // Per-upload lossy quality, sent only while the slider is shown.
 const quality = ref(80)
+// Per-upload EXIF-stripping choice, initialized from the server default once
+// settings load. Only honored when the settings allow overriding.
+const stripExif = ref(false)
 
 // The format that will actually be applied: the override, or the server default.
 const effectiveFormat = computed(() => (formatOverride.value === 'default' ? settings.value?.default_target_file_format : formatOverride.value))
@@ -131,14 +140,16 @@ const effectiveFormat = computed(() => (formatOverride.value === 'default' ? set
 // and only when the settings allow overriding compression.
 const showCompression = computed(() => !!settings.value?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
 // The options section is empty (and hidden) unless the server exposes at least one knob.
-const hasOptions = computed(() => !!settings.value?.allow_overriding_file_format || showCompression.value)
+const hasOptions = computed(() => !!settings.value?.allow_overriding_file_format || showCompression.value || !!settings.value?.allow_overriding_strip_exif)
 const qualityValue = () => (showCompression.value ? quality.value : undefined)
+const stripExifValue = () => (settings.value?.allow_overriding_strip_exif ? stripExif.value : undefined)
 
 // Public upload limits, so files are rejected client-side before a wasted
 // round-trip. The backend still enforces them. A 0 limit means "no limit".
 onMounted(() => {
   api.getPublicElysiaSettings().then((r) => {
     settings.value = r.data
+    stripExif.value = r.data.strip_exif_by_default
   })
 })
 
@@ -198,7 +209,7 @@ const handleFile = (file: File | undefined) => {
     phase.value = 'uploading'
     progress.value = 0
     api
-      .upload(file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, {
+      .upload(file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue(), {
         onUploadProgress: (event) => {
           if (!event.total) return
           progress.value = Math.round((event.loaded / event.total) * 100)
@@ -254,7 +265,7 @@ const rehost = () => {
   // no client-side transfer to track, just the processing phase.
   phase.value = 'processing'
   api
-    .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value)
+    .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue())
     .then((uploaded) => {
       router.push({ name: 'Uploaded', query: { id: uploaded.data.id, ext: uploaded.data.ext } })
     })
@@ -338,6 +349,16 @@ const rehost = () => {
   padding: 0 4px;
 }
 .quality-row label {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+.strip-exif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.strip-exif-row label {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }

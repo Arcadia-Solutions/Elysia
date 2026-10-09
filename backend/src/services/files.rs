@@ -41,6 +41,9 @@ pub struct UploadOptions {
     /// Effective output format: the per-upload override, or the configured
     /// default. `None` stores the upload as-is (processing off).
     pub target_file_format: Option<TargetFormat>,
+    /// Effective EXIF-stripping choice: the per-upload override, or the
+    /// configured default.
+    pub strip_exif: bool,
 }
 
 /// The bytes to store plus their metadata: either the pipeline's output or, when
@@ -276,6 +279,24 @@ async fn store(
                 temp,
             }
         }
+        // Passthrough: store the source bytes. The conversion branch above already
+        // drops metadata (re-encode starts from a bare pixel buffer), so EXIF is
+        // only stripped here, when requested, by rewriting the container.
+        None if options.strip_exif => {
+            let input = tokio::fs::read(path).await?;
+            let stripped = strip_exif(input)?;
+            let mut temp = storage.new_temp()?;
+            temp.write_all(&stripped)?;
+            Output {
+                size: stripped.len() as i64,
+                ext: source_ext,
+                mime,
+                width: source_width,
+                height: source_height,
+                applied_quality: None,
+                temp,
+            }
+        }
         None => Output {
             size: size as i64,
             ext: source_ext,
@@ -345,6 +366,30 @@ async fn store(
             output.applied_quality,
         ),
     })
+}
+
+/// Strip EXIF (and other sidecar metadata) from an image container without
+/// re-encoding the pixels. JPEG, PNG and WebP carry EXIF; anything else
+/// (e.g. GIF) is returned unchanged.
+fn strip_exif(input: Vec<u8>) -> Result<Vec<u8>> {
+    use img_parts::{DynImage, ImageEXIF};
+
+    let bytes = img_parts::Bytes::from(input);
+    match DynImage::from_bytes(bytes.clone())
+        .map_err(|e| Error::BadRequest(format!("could not parse image to strip EXIF: {e}")))?
+    {
+        Some(mut image) => {
+            image.set_exif(None);
+            let mut output = Vec::new();
+            image
+                .encoder()
+                .write_to(&mut output)
+                .map_err(|e| Error::Io(std::io::Error::other(format!("EXIF strip failed: {e}"))))?;
+            Ok(output)
+        }
+        // Not an EXIF-bearing container (GIF, or an unrecognized wrapper): nothing to strip.
+        None => Ok(bytes.to_vec()),
+    }
 }
 
 /// Build a `StoredFile` for a dedup or skip hit from a stored record.

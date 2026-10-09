@@ -16,7 +16,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                   default_target_file_format as "default_target_file_format?: TargetFormat",
                   allow_overriding_file_format,
                   target_file_size_bytes, default_compression,
-                  allow_overriding_compression
+                  allow_overriding_compression,
+                  strip_exif_by_default, allow_overriding_strip_exif
            from elysia_settings where id = $1"#,
         SINGLETON_ID,
     )
@@ -34,6 +35,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         target_file_size_bytes: row.target_file_size_bytes as u64,
         default_compression: row.default_compression as u8,
         allow_overriding_compression: row.allow_overriding_compression,
+        strip_exif_by_default: row.strip_exif_by_default,
+        allow_overriding_strip_exif: row.allow_overriding_strip_exif,
     })
 }
 
@@ -46,8 +49,9 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             target_width_pixels = $4, target_height_pixels = $5,
             default_target_file_format = $6, allow_overriding_file_format = $7,
             target_file_size_bytes = $8,
-            default_compression = $9, allow_overriding_compression = $10
-         where id = $11"#,
+            default_compression = $9, allow_overriding_compression = $10,
+            strip_exif_by_default = $11, allow_overriding_strip_exif = $12
+         where id = $13"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
         settings.max_height_pixels as i32,
@@ -58,6 +62,8 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         settings.target_file_size_bytes as i64,
         settings.default_compression as i32,
         settings.allow_overriding_compression,
+        settings.strip_exif_by_default,
+        settings.allow_overriding_strip_exif,
         SINGLETON_ID,
     )
     .execute(pool)
