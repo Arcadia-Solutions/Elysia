@@ -32,6 +32,13 @@ export interface Actions {
     'resize'?: ResizeAction | null;
 }
 /**
+ * Current plus replacement password for a self-service password change.
+ */
+export interface ChangePasswordRequest {
+    'current_password': string;
+    'new_password': string;
+}
+/**
  * @type CompressionAction
  * `\"lossless\"` or the applied lossy quality.
  */
@@ -63,6 +70,10 @@ export interface ElysiaSettings {
      * When false, an upload may not request its own EXIF-stripping choice and the default is always used.
      */
     'allow_overriding_strip_exif'?: boolean;
+    /**
+     * When true, anyone may create a local account via the register endpoint. When false, only an external sign-on backend can provision users.
+     */
+    'allow_registration'?: boolean;
     /**
      * Lossy quality (1-100) applied when an upload requests none; 0 = none.
      */
@@ -133,11 +144,21 @@ export interface ImagesPage {
     'per_page': number;
     'total': number;
 }
+/**
+ * Username-or-email plus password sign-in.
+ */
 export interface LoginRequest {
-    'token': string;
+    'login': string;
+    'password': string;
 }
+/**
+ * A signed session token plus the caller's profile, so login seeds client
+ * state without a second request. New `ProfileResponse` fields show up here
+ * automatically.
+ */
 export interface LoginResponse {
-    'valid': boolean;
+    'token': string;
+    'user': ProfileResponse;
 }
 /**
  * Display metadata for the `/i/<id>` viewer page.
@@ -163,6 +184,16 @@ export interface MetadataResponse {
     'width': number;
 }
 /**
+ * The caller\'s own account.
+ */
+export interface ProfileResponse {
+    'email'?: string | null;
+    'id': string;
+    'is_admin': boolean;
+    'provider': string;
+    'username': string;
+}
+/**
  * The subset of [`ElysiaSettings`] exposed publicly, so the upload page can validate files client-side.
  */
 export interface PublicElysiaSettings {
@@ -178,6 +209,10 @@ export interface PublicElysiaSettings {
      * Whether an upload may choose to strip its own metadata; drives the EXIF-stripping control on the upload page.
      */
     'allow_overriding_strip_exif': boolean;
+    /**
+     * Whether open registration is allowed; lets the login page offer signup.
+     */
+    'allow_registration': boolean;
     'default_target_file_format'?: TargetFormat | null;
     'max_file_size_bytes': number;
     'max_height_pixels': number;
@@ -192,6 +227,23 @@ export interface PublicElysiaSettings {
 }
 
 
+/**
+ * Registration details for a new local account.
+ */
+export interface RegisterRequest {
+    'email': string;
+    'password': string;
+    'username': string;
+}
+/**
+ * The account that was created.
+ */
+export interface RegisterResponse {
+    'email': string;
+    'id': string;
+    'is_admin': boolean;
+    'username': string;
+}
 /**
  * Dimensions before and after, as `[width, height]`.
  */
@@ -214,6 +266,15 @@ export const TargetFormat = {
 export type TargetFormat = typeof TargetFormat[keyof typeof TargetFormat];
 
 
+/**
+ * The subset of [`ElysiaSettings`] exposed without authentication, so the login and register pages can offer signup.
+ */
+export interface UnauthElysiaSettings {
+    /**
+     * Whether open registration is allowed; lets the login page offer signup.
+     */
+    'allow_registration': boolean;
+}
 /**
  * Per-upload processing options (query string, shared by both upload routes).
  */
@@ -264,6 +325,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
     return {
         /**
          * 
+         * @param {ChangePasswordRequest} changePasswordRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        changePassword: async (changePasswordRequest: ChangePasswordRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'changePasswordRequest' is not null or undefined
+            assertParamExists('changePassword', 'changePasswordRequest', changePasswordRequest)
+            const localVarPath = `/api/auth/password`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(changePasswordRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -292,7 +388,36 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * The public subset of the settings, so the upload page can validate files client-side before sending them.
+         * Whether registrations are open, so the login and register pages can offer signup without a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getElysiaUnauthSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/elysia-unauth-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -391,6 +516,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        me: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/auth/me`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {string} id File id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -451,6 +605,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(elysiaSettings, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {RegisterRequest} registerRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        register: async (registerRequest: RegisterRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'registerRequest' is not null or undefined
+            assertParamExists('register', 'registerRequest', registerRequest)
+            const localVarPath = `/api/auth/register`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(registerRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -639,6 +828,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @param {ChangePasswordRequest} changePasswordRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.changePassword(changePasswordRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.changePassword']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -649,7 +850,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * The public subset of the settings, so the upload page can validate files client-side before sending them.
+         * Whether registrations are open, so the login and register pages can offer signup without a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getElysiaUnauthSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnauthElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaUnauthSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getElysiaUnauthSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -685,6 +897,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async me(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ProfileResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.me(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.me']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {string} id File id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -705,6 +928,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.putElysiaSettings(elysiaSettings, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.putElysiaSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {RegisterRequest} registerRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RegisterResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.register(registerRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.register']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -772,6 +1007,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
     return {
         /**
          * 
+         * @param {ChangePasswordRequest} changePasswordRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.changePassword(changePasswordRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -779,7 +1023,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
         },
         /**
-         * The public subset of the settings, so the upload page can validate files client-side before sending them.
+         * Whether registrations are open, so the login and register pages can offer signup without a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getElysiaUnauthSettings(options?: RawAxiosRequestConfig): AxiosPromise<UnauthElysiaSettings> {
+            return localVarFp.getElysiaUnauthSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -806,6 +1058,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         },
         /**
          * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        me(options?: RawAxiosRequestConfig): AxiosPromise<ProfileResponse> {
+            return localVarFp.me(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {string} id File id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -821,6 +1081,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
             return localVarFp.putElysiaSettings(elysiaSettings, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {RegisterRequest} registerRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): AxiosPromise<RegisterResponse> {
+            return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -873,6 +1142,16 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
 export class ElysiaApi extends BaseAPI {
     /**
      * 
+     * @param {ChangePasswordRequest} changePasswordRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).changePassword(changePasswordRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -881,7 +1160,16 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * The public subset of the settings, so the upload page can validate files client-side before sending them.
+     * Whether registrations are open, so the login and register pages can offer signup without a session.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getElysiaUnauthSettings(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getElysiaUnauthSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -911,6 +1199,15 @@ export class ElysiaApi extends BaseAPI {
 
     /**
      * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public me(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).me(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @param {string} id File id
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -927,6 +1224,16 @@ export class ElysiaApi extends BaseAPI {
      */
     public putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).putElysiaSettings(elysiaSettings, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {RegisterRequest} registerRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).register(registerRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

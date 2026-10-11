@@ -9,6 +9,7 @@ use elysia::services::files::{IMAGES_PER_PAGE, list_images};
 
 /// Insert `count` bare file rows with unique ids and hashes.
 async fn seed(pool: &PgPool, count: usize) {
+    let uploader = common::test_user(pool, "browser").await.0.id;
     for index in 0..count {
         let id = format!("id{index:06}");
         let hash = format!("hash{index:06}");
@@ -30,6 +31,7 @@ async fn seed(pool: &PgPool, count: usize) {
                 requested_quality: None,
                 applied_quality: None,
                 has_thumbnail: false,
+                uploaded_by_user_id: uploader,
             },
         )
         .await

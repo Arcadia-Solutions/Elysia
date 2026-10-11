@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::error::Result;
-use crate::middlewares::AdminAuth;
+use crate::middlewares::AuthUser;
 use crate::services::files::{self, IMAGES_PER_PAGE};
 
 /// One image in a browse page.
@@ -40,16 +40,19 @@ pub struct ImagesQuery {
     get,
     path = "/api/images",
     params(ImagesQuery),
+    security(("bearer" = [])),
     responses(
         (status = 200, description = "A page of stored images", body = ImagesPage),
-        (status = 401, description = "Unauthorized"),
+        (status = 401, description = "Missing or invalid session"),
+        (status = 403, description = "Authenticated but not an admin"),
     )
 )]
 pub async fn images(
+    authenticated: AuthUser,
     pool: Data<PgPool>,
     query: Query<ImagesQuery>,
-    _auth: AdminAuth,
 ) -> Result<HttpResponse> {
+    authenticated.require_admin()?;
     let (rows, total, page) = files::list_images(pool.get_ref(), query.page.unwrap_or(1)).await?;
     let images = rows
         .into_iter()

@@ -211,9 +211,17 @@ fn strip_exif_override_respects_allow_flag() {
 async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
-    let stored = store_from_url(&pool, &storage, &webp_settings(), &url, &Default::default())
-        .await
-        .unwrap();
+    let uploader = test_user(&pool, "converter").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &webp_settings(),
+        &url,
+        &Default::default(),
+        uploader,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored.ext, "webp");
     let convert = stored.actions.unwrap().convert.unwrap();
     assert_eq!(
@@ -228,12 +236,14 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
 async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let image = real_png(8, 8);
+    let uploader = test_user(&pool, "skipper").await.0.id;
     let first = store_from_url(
         &pool,
         &storage,
         &webp_settings(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
+        uploader,
     )
     .await
     .unwrap();
@@ -244,6 +254,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
         &webp_settings(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
+        uploader,
     )
     .await
     .unwrap();
@@ -256,6 +267,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
 async fn different_quality_reprocesses(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let image = noisy_png(32, 32);
+    let uploader = test_user(&pool, "qualitychecker").await.0.id;
     let mut ids = Vec::new();
     for quality in [80, 30] {
         let options = UploadOptions {
@@ -269,6 +281,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
             &webp_settings(),
             &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
             &options,
+            uploader,
         )
         .await
         .unwrap();
@@ -283,9 +296,17 @@ async fn different_quality_reprocesses(pool: PgPool) {
 async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
-    let stored = store_from_url(&pool, &storage, &test_settings(), &url, &Default::default())
-        .await
-        .unwrap();
+    let uploader = test_user(&pool, "passthrough").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &test_settings(),
+        &url,
+        &Default::default(),
+        uploader,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored.ext, "png");
     assert!(stored.actions.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -347,6 +368,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
     let exif_marker = &b"Exif\0\0"[..];
     // Processing off (store as-is), so stripping is the only thing touching bytes.
     let settings = test_settings();
+    let uploader = test_user(&pool, "exifstripper").await.0.id;
 
     // Stripping on: the stored file must have no EXIF.
     let source = jpeg_with_exif([10, 20, 30]);
@@ -361,6 +383,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
             target_file_format: None,
             strip_exif: true,
         },
+        uploader,
     )
     .await
     .unwrap();
@@ -383,6 +406,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
             target_file_format: None,
             strip_exif: false,
         },
+        uploader,
     )
     .await
     .unwrap();

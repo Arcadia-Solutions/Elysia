@@ -1,0 +1,178 @@
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand_core::OsRng;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use crate::error::{Error, Result};
+
+/// Session token lifetime: 24 hours.
+const SESSION_LIFETIME_SECONDS: u64 = 24 * 60 * 60;
+
+/// Session token claims. Admin rights are re-read from the database on every
+/// request. The wire names are the standard JWT ones (`sub`/`exp`/`iat`) so
+/// signature and expiry validation apply; the Rust names stay explicit.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionClaims {
+    #[serde(rename = "sub")]
+    pub subject: String,
+    #[serde(rename = "exp")]
+    pub expiration: u64,
+    #[serde(rename = "iat")]
+    pub issued_at: u64,
+}
+
+impl SessionClaims {
+    /// The user id the token was minted for.
+    pub fn user_id(&self) -> Result<Uuid> {
+        Uuid::parse_str(&self.subject).map_err(|_| Error::Unauthorized)
+    }
+}
+
+/// Current unix time in seconds.
+fn now_seconds() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system clock before unix epoch")
+        .as_secs()
+}
+
+/// Hash a password with Argon2 and a fresh random salt. CPU-heavy: callers
+/// on async runtimes must use `hash_password_async`.
+pub fn hash_password(password: &str) -> Result<String> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(|_| Error::Internal)
+}
+
+/// Offload `hash_password` to the blocking pool so Actix workers stay free.
+pub async fn hash_password_async(password: String) -> Result<String> {
+    tokio::task::spawn_blocking(move || hash_password(&password))
+        .await
+        .map_err(|_| Error::Internal)?
+}
+
+/// Password length bounds for local accounts.
+pub const MINIMUM_PASSWORD_LENGTH: usize = 12;
+pub const MAXIMUM_PASSWORD_LENGTH: usize = 120;
+
+/// Maximum length of a username or email, to bound stored rows.
+pub const MAXIMUM_LOGIN_LENGTH: usize = 254;
+
+/// Usernames are 3-32 ASCII letters, digits, `_` or `-`.
+pub fn valid_username(username: &str) -> bool {
+    let length = username.chars().count();
+    (3..=32).contains(&length)
+        && username.chars().all(|character| {
+            character.is_ascii_alphanumeric() || character == '_' || character == '-'
+        })
+}
+
+/// Emails are lowercased at rest, so `Alice@Example.com` and
+/// `alice@example.com` are the same account.
+pub fn normalize_email(email: &str) -> String {
+    email.trim().to_lowercase()
+}
+
+/// Usernames stay case-sensitive but never keep surrounding whitespace.
+pub fn normalize_username(username: &str) -> String {
+    username.trim().to_string()
+}
+
+/// A login is an email when it contains `@` (usernames cannot contain one),
+/// so normalize it the same way the stored value was normalized.
+pub fn normalize_login(login: &str) -> String {
+    let trimmed = login.trim();
+    if trimmed.contains('@') {
+        trimmed.to_lowercase()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+pub fn valid_email(email: &str) -> bool {
+    if email.len() > MAXIMUM_LOGIN_LENGTH || email.contains(' ') {
+        return false;
+    }
+    let mut parts = email.split('@');
+    match (parts.next(), parts.next(), parts.next()) {
+        (Some(local), Some(domain), None) => {
+            !local.is_empty() && !domain.is_empty() && domain.contains('.')
+        }
+        _ => false,
+    }
+}
+
+/// Reject passwords outside the length bounds, with the message for the response.
+pub fn validate_password(password: &str) -> Result<()> {
+    let length = password.chars().count();
+    if length < MINIMUM_PASSWORD_LENGTH {
+        return Err(Error::BadRequest(
+            "password must be at least 12 characters".into(),
+        ));
+    }
+    if length > MAXIMUM_PASSWORD_LENGTH {
+        return Err(Error::BadRequest(
+            "password must be at most 120 characters".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// A valid Argon2 hash used only to equalize login timing for unknown users
+/// and SSO rows, which have no password hash to check against.
+pub fn dummy_hash() -> &'static str {
+    "$argon2id$v=19$m=19456,t=2,p=1$jPojWbnVBAX8ShW6rTqduA$KiXMlsmfe39aYNAKHYsWPSJS1+9EqnIOAHXwhEbDE1M"
+}
+
+/// Check a password against its stored hash. Unparseable hashes fail closed.
+/// CPU-heavy: callers on async runtimes must use `verify_password_async`.
+pub fn verify_password(password_hash: &str, password: &str) -> bool {
+    let parsed = match PasswordHash::new(password_hash) {
+        Ok(parsed) => parsed,
+        Err(_) => return false,
+    };
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed)
+        .is_ok()
+}
+
+/// Offload `verify_password` to the blocking pool so Actix workers stay free.
+pub async fn verify_password_async(password_hash: String, password: String) -> bool {
+    tokio::task::spawn_blocking(move || verify_password(&password_hash, &password))
+        .await
+        .unwrap_or(false)
+}
+
+/// Mint a session token for a user, valid for 24 hours.
+pub fn mint_jwt(user_id: &Uuid, jwt_secret: &str) -> Result<String> {
+    let issued_at = now_seconds();
+    let claims = SessionClaims {
+        subject: user_id.to_string(),
+        expiration: issued_at + SESSION_LIFETIME_SECONDS,
+        issued_at,
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(jwt_secret.as_bytes()),
+    )
+    .map_err(|_| Error::Internal)
+}
+
+/// Decode and validate a session token (signature + expiry). Anything wrong
+/// with the token is an `Unauthorized`, never a server error.
+pub fn decode_jwt(token: &str, jwt_secret: &str) -> Result<SessionClaims> {
+    decode::<SessionClaims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &Validation::new(Algorithm::HS256),
+    )
+    .map(|valid| valid.claims)
+    .map_err(|_| Error::Unauthorized)
+}

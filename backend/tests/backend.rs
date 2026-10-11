@@ -32,6 +32,8 @@ fn error_status_codes_map() {
         StatusCode::BAD_REQUEST
     );
     assert_eq!(Error::Unauthorized.status_code(), StatusCode::UNAUTHORIZED);
+    assert_eq!(Error::Forbidden.status_code(), StatusCode::FORBIDDEN);
+    assert_eq!(Error::Conflict.status_code(), StatusCode::CONFLICT);
     assert_eq!(Error::NotFound.status_code(), StatusCode::NOT_FOUND);
     assert_eq!(
         Error::UnsupportedMediaType.status_code(),
@@ -39,6 +41,10 @@ fn error_status_codes_map() {
     );
     assert_eq!(
         Error::Io(std::io::Error::other("boom")).status_code(),
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+    assert_eq!(
+        Error::Internal.status_code(),
         StatusCode::INTERNAL_SERVER_ERROR
     );
 }
@@ -151,9 +157,17 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
 async fn rehost_stores_a_fetched_image(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(2, 2));
-    let stored = store_from_url(&pool, &storage, &test_settings(), &url, &Default::default())
-        .await
-        .unwrap();
+    let uploader = test_user(&pool, "rehoster").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &test_settings(),
+        &url,
+        &Default::default(),
+        uploader,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored.ext, "png");
     assert!(storage.path_for(&stored.id, "png").exists());
     let _ = std::fs::remove_dir_all(&dir);
@@ -166,6 +180,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let settings = test_settings();
     let image = tiny_png(2, 2);
+    let uploader = test_user(&pool, "deduplicator").await.0.id;
 
     let first = store_from_url(
         &pool,
@@ -173,6 +188,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         &settings,
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
+        uploader,
     )
     .await
     .unwrap();
@@ -184,6 +200,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         &settings,
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         &Default::default(),
+        uploader,
     )
     .await
     .unwrap();
@@ -204,8 +221,17 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
 async fn rehost_rejects_a_non_image_link(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
+    let uploader = test_user(&pool, "linkchecker").await.0.id;
     assert!(matches!(
-        store_from_url(&pool, &storage, &test_settings(), &url, &Default::default()).await,
+        store_from_url(
+            &pool,
+            &storage,
+            &test_settings(),
+            &url,
+            &Default::default(),
+            uploader
+        )
+        .await,
         Err(Error::UnsupportedMediaType)
     ));
     let _ = std::fs::remove_dir_all(&dir);
@@ -215,8 +241,17 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
 async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let url = serve_once("HTTP/1.1 404 Not Found", "text/plain", b"nope".to_vec());
+    let uploader = test_user(&pool, "fetchchecker").await.0.id;
     assert!(matches!(
-        store_from_url(&pool, &storage, &test_settings(), &url, &Default::default()).await,
+        store_from_url(
+            &pool,
+            &storage,
+            &test_settings(),
+            &url,
+            &Default::default(),
+            uploader
+        )
+        .await,
         Err(Error::BadRequest(_))
     ));
     let _ = std::fs::remove_dir_all(&dir);
@@ -237,15 +272,16 @@ fn generate_id_varies_between_calls() {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn insert_is_collision_safe_and_find_roundtrips(pool: PgPool) {
+    let uploader = test_user(&pool, "inserter").await.0.id;
     // First insert of an id succeeds.
     assert!(
-        files::insert(&pool, &sample_file("abc12345"))
+        files::insert(&pool, &sample_file("abc12345", uploader))
             .await
             .unwrap()
     );
     // Re-inserting the same id hits the unique constraint: Ok(false), not an error.
     assert!(
-        !files::insert(&pool, &sample_file("abc12345"))
+        !files::insert(&pool, &sample_file("abc12345", uploader))
             .await
             .unwrap()
     );
@@ -262,7 +298,8 @@ async fn insert_is_collision_safe_and_find_roundtrips(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn find_metadata_roundtrips_and_formats_created_at(pool: PgPool) {
-    files::insert(&pool, &sample_file("meta1234"))
+    let uploader = test_user(&pool, "metareader").await.0.id;
+    files::insert(&pool, &sample_file("meta1234", uploader))
         .await
         .unwrap();
 
@@ -285,7 +322,7 @@ async fn find_metadata_roundtrips_and_formats_created_at(pool: PgPool) {
     );
 }
 
-fn sample_file(id: &str) -> NewFile<'_> {
+fn sample_file(id: &str, uploaded_by_user_id: uuid::Uuid) -> NewFile<'_> {
     NewFile {
         id,
         ext: "png",
@@ -303,5 +340,6 @@ fn sample_file(id: &str) -> NewFile<'_> {
         requested_quality: None,
         applied_quality: None,
         has_thumbnail: false,
+        uploaded_by_user_id,
     }
 }

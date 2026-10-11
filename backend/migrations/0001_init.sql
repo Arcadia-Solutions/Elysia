@@ -1,3 +1,36 @@
+-- Local user accounts, SSO-ready: a future sign-on backend provisions shadow
+-- rows with provider = 'sso' (issuer + subject) instead of a password hash.
+-- gen_random_uuid() is built into postgres 18, no extension needed.
+create type auth_provider as enum ('local', 'sso');
+
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  provider auth_provider not null default 'local',
+  email text unique,
+  username text not null unique,
+  password_hash text,
+  external_issuer text,
+  external_sub text,
+  is_admin boolean not null default false,
+  banned boolean not null default false,
+  created_at timestamptz not null default now(),
+  last_seen timestamptz,
+  unique (external_issuer, external_sub),
+  check ((provider = 'local' and password_hash is not null and external_issuer is null and external_sub is null)
+      or (provider = 'sso' and password_hash is null and external_issuer is not null and external_sub is not null))
+);
+
+comment on table users is 'Login accounts: local rows hold an Argon2 hash, sso rows are JIT-provisioned from an external sign-on backend (issuer/subject)';
+comment on column users.provider is 'local = password login, sso = shadow row provisioned on first sign-in';
+
+-- Default admin account (username `admin`, password `change-me-123`).
+-- Change the password right after the first login. The hash below is the
+-- Argon2id encoding of that password.
+insert into users (username, email, password_hash, is_admin)
+values ('admin', 'admin@example.com',
+  '$argon2id$v=19$m=19456,t=2,p=1$jPojWbnVBAX8ShW6rTqduA$KiXMlsmfe39aYNAKHYsWPSJS1+9EqnIOAHXwhEbDE1M',
+  true);
+
 create table files (
   id text primary key,
   ext text not null,
@@ -14,6 +47,7 @@ create table files (
   requested_quality int,
   applied_quality int,
   has_thumbnail boolean not null default false,
+  uploaded_by_user_id uuid not null references users(id),
   created_at timestamptz not null default now()
 );
 
@@ -33,6 +67,7 @@ comment on column files.original_height is 'Source image height in pixels before
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
 comment on column files.applied_quality is 'Effective quality used; null means lossless';
 comment on column files.has_thumbnail is 'True when a separate <id>.thumbnail.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
+comment on column files.uploaded_by_user_id is 'Who uploaded the file';
 comment on column files.created_at is 'When the file was uploaded';
 
 -- Skip-reprocess lookup filters on original_hash (see find_record_by_source).
@@ -57,12 +92,13 @@ create table elysia_settings (
   target_file_size_bytes bigint not null,
   default_compression int not null default 0,
   allow_overriding_compression boolean not null default true,
-  strip_exif_by_default boolean not null default false,
-  allow_overriding_strip_exif boolean not null default true,
-  thumbnail_width_pixels int not null default 0,
-  thumbnail_height_pixels int not null default 0,
-  thumbnail_quality int not null default 80
-);
+   strip_exif_by_default boolean not null default false,
+   allow_overriding_strip_exif boolean not null default true,
+   thumbnail_width_pixels int not null default 0,
+   thumbnail_height_pixels int not null default 0,
+   thumbnail_quality int not null default 80,
+   allow_registration boolean not null default true
+ );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
 comment on column elysia_settings.max_file_size_bytes is 'Reject uploads larger than this; 0 disables the check';
@@ -80,6 +116,7 @@ comment on column elysia_settings.allow_overriding_strip_exif is 'When false, up
 comment on column elysia_settings.thumbnail_width_pixels is 'Thumbnail box width; 0 on both axes disables thumbnails';
 comment on column elysia_settings.thumbnail_height_pixels is 'Thumbnail box height; 0 on both axes disables thumbnails';
 comment on column elysia_settings.thumbnail_quality is 'Lossy WebP quality (1-100) for generated thumbnails';
+comment on column elysia_settings.allow_registration is 'When true, anyone may create a local account via the register endpoint';
 
 -- Default row: processing off, 10 MiB upload ceiling (valid against the same
 -- rules the API enforces on every save).
@@ -89,5 +126,6 @@ insert into elysia_settings
    allow_overriding_file_format, target_file_size_bytes,
    default_compression, allow_overriding_compression,
    strip_exif_by_default, allow_overriding_strip_exif,
-   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality)
-values ('singleton', 10485760, 0, 0, 0, 0, null, false, 0, 0, true, false, true, 0, 0, 80);
+   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
+   allow_registration)
+values ('singleton', 10485760, 0, 0, 0, 0, null, false, 0, 0, true, false, true, 0, 0, 80, true);

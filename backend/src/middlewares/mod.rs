@@ -1,3 +1,3 @@
 pub mod auth;
 
-pub use auth::AdminAuth;
+pub use auth::AuthUser;

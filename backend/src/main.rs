@@ -13,8 +13,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
 use elysia::handlers::{
-    get_elysia_settings, get_public_elysia_settings, images, login, metadata, put_elysia_settings,
-    serve, serve_thumbnail, upload, upload_url,
+    change_password, get_elysia_settings, get_elysia_unauth_settings, get_public_elysia_settings,
+    images, login, me, metadata, put_elysia_settings, register, serve, serve_thumbnail, upload,
+    upload_url,
 };
 use elysia::repository::settings as settings_repo;
 use elysia::storage::Storage;
@@ -22,6 +23,7 @@ use elysia::storage::Storage;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let cfg = Config::load();
+    cfg.validate();
     let (host, port) = (cfg.server.host.clone(), cfg.server.port);
 
     let pool = PgPoolOptions::new()
@@ -68,12 +70,19 @@ async fn main() -> std::io::Result<()> {
             .app_data(elysia_settings.clone())
             .app_data(MultipartFormConfig::default().total_limit(upload_limit))
             .app_data(TempFileConfig::default().directory(&upload_dir))
+            .route("/api/auth/register", web::post().to(register))
             .route("/api/auth/login", web::post().to(login))
+            .route("/api/auth/me", web::get().to(me))
+            .route("/api/auth/password", web::put().to(change_password))
             .route("/api/upload", web::post().to(upload))
             .route("/api/upload-url", web::post().to(upload_url))
             .route(
                 "/api/public-elysia-settings",
                 web::get().to(get_public_elysia_settings),
+            )
+            .route(
+                "/api/elysia-unauth-settings",
+                web::get().to(get_elysia_unauth_settings),
             )
             .route("/api/elysia-settings", web::get().to(get_elysia_settings))
             .route("/api/elysia-settings", web::put().to(put_elysia_settings))

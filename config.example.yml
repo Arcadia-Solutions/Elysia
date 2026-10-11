@@ -17,4 +17,5 @@ storage:
   max_upload_stream_bytes: 10737418240
 
 auth:
-  admin_token: "change-me"
+  # HS256 secret signing user session tokens (required). Use a long random value.
+  jwt_secret: "change-me-to-a-long-random-secret"

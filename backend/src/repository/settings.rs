@@ -17,8 +17,9 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                   allow_overriding_file_format,
                   target_file_size_bytes, default_compression,
                   allow_overriding_compression,
-                  strip_exif_by_default, allow_overriding_strip_exif,
-                  thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality
+                   strip_exif_by_default, allow_overriding_strip_exif,
+                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
+                   allow_registration
            from elysia_settings where id = $1"#,
         SINGLETON_ID,
     )
@@ -41,6 +42,7 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         thumbnail_width_pixels: row.thumbnail_width_pixels as u32,
         thumbnail_height_pixels: row.thumbnail_height_pixels as u32,
         thumbnail_quality: row.thumbnail_quality as u8,
+        allow_registration: row.allow_registration,
     })
 }
 
@@ -56,8 +58,8 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             default_compression = $9, allow_overriding_compression = $10,
             strip_exif_by_default = $11, allow_overriding_strip_exif = $12,
             thumbnail_width_pixels = $13, thumbnail_height_pixels = $14,
-            thumbnail_quality = $15
-         where id = $16"#,
+            thumbnail_quality = $15, allow_registration = $16
+         where id = $17"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
         settings.max_height_pixels as i32,
@@ -73,6 +75,7 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         settings.thumbnail_width_pixels as i32,
         settings.thumbnail_height_pixels as i32,
         settings.thumbnail_quality as i32,
+        settings.allow_registration,
         SINGLETON_ID,
     )
     .execute(pool)

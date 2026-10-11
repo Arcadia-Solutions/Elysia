@@ -40,9 +40,17 @@ async fn thumbnail_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let settings = thumbnail_settings(4);
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(16, 16));
-    let stored = store_from_url(&pool, &storage, &settings, &url, &Default::default())
-        .await
-        .unwrap();
+    let uploader = test_user(&pool, "thumbnailer").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &settings,
+        &url,
+        &Default::default(),
+        uploader,
+    )
+    .await
+    .unwrap();
 
     let row = files::find(&pool, &stored.id).await.unwrap().unwrap();
     assert!(row.has_thumbnail);
@@ -57,9 +65,17 @@ async fn no_thumbnail_when_image_fits_box(pool: PgPool) {
     let (storage, dir) = temp_storage();
     let settings = thumbnail_settings(64);
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(16, 16));
-    let stored = store_from_url(&pool, &storage, &settings, &url, &Default::default())
-        .await
-        .unwrap();
+    let uploader = test_user(&pool, "thumbnailer").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &settings,
+        &url,
+        &Default::default(),
+        uploader,
+    )
+    .await
+    .unwrap();
 
     let row = files::find(&pool, &stored.id).await.unwrap().unwrap();
     assert!(!row.has_thumbnail);

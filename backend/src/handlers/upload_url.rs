@@ -9,7 +9,7 @@ use utoipa::ToSchema;
 use crate::error::Result;
 use crate::handlers::settings::SharedElysiaSettings;
 use crate::handlers::upload::{UploadOptionsQuery, UploadResponse};
-use crate::middlewares::AdminAuth;
+use crate::middlewares::AuthUser;
 use crate::services::files;
 use crate::storage::Storage;
 
@@ -29,12 +29,12 @@ pub struct UploadUrlRequest {
     responses(
         (status = 200, description = "Image rehosted", body = UploadResponse),
         (status = 400, description = "Could not fetch the url, or file too large"),
-        (status = 401, description = "Missing or invalid admin token"),
+        (status = 401, description = "Missing or invalid session"),
         (status = 415, description = "Link does not point to a supported image"),
     )
 )]
 pub async fn upload_url(
-    _auth: AdminAuth,
+    authenticated: AuthUser,
     settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     storage: Data<Storage>,
@@ -49,6 +49,7 @@ pub async fn upload_url(
         &settings,
         &body.url,
         &options,
+        authenticated.user_id,
     )
     .await?;
 

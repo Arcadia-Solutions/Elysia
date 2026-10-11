@@ -142,6 +142,16 @@
 
     <hr />
 
+    <p class="intro">{{ $t('settings.accounts_intro') }}</p>
+
+    <div class="field">
+      <label>{{ $t('settings.allow_registration.label') }}</label>
+      <small>{{ $t('settings.allow_registration.help') }}</small>
+      <ToggleSwitch v-model="form.allow_registration" />
+    </div>
+
+    <hr />
+
     <p class="intro">{{ $t('settings.thumbnails_intro') }}</p>
 
     <div class="field">
@@ -210,6 +220,7 @@ const form = reactive<Required<ElysiaSettings>>({
   thumbnail_width_pixels: 0,
   thumbnail_height_pixels: 0,
   thumbnail_quality: 80,
+  allow_registration: true,
 })
 
 // Thumbnails are on when a box is set on either axis.

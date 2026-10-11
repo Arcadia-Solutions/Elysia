@@ -12,6 +12,8 @@ use sqlx::PgPool;
 
 use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, StorageConfig};
 use elysia::handlers::upload;
+use elysia::repository::users::{self, AuthUserRow};
+use elysia::services::auth as auth_service;
 use elysia::services::files::generate_id;
 use elysia::services::image::{ProcessOptions, TargetFormat};
 use elysia::settings::ElysiaSettings;
@@ -35,7 +37,7 @@ pub fn test_config() -> Config {
             max_upload_stream_bytes: 10 * 1024 * 1024,
         },
         auth: AuthConfig {
-            admin_token: "admin-token".into(),
+            jwt_secret: "test-jwt-secret-with-enough-bytes".into(),
         },
     }
 }
@@ -60,6 +62,7 @@ pub fn test_settings() -> ElysiaSettings {
         thumbnail_width_pixels: 0,
         thumbnail_height_pixels: 0,
         thumbnail_quality: 80,
+        allow_registration: true,
     }
 }
 
@@ -102,6 +105,19 @@ pub fn tiny_png(width: u32, height: u32) -> Vec<u8> {
     bytes
 }
 
+/// Create a local user in `pool` and mint a session token for them. Used by
+/// tests that need an authenticated (non-admin) caller.
+pub async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
+    let password_hash = auth_service::hash_password("long-test-password").unwrap();
+    let email = format!("{username}@example.com");
+    let row = users::create_local_user(pool, username, Some(&email), &password_hash, false)
+        .await
+        .unwrap();
+    let config = test_config();
+    let token = auth_service::mint_jwt(&row.id, &config.auth.jwt_secret).unwrap();
+    (row, token)
+}
+
 /// POST `image` to `/api/upload` against an app built from `settings` and `pool`,
 /// returning the status.
 pub async fn upload_status(pool: PgPool, settings: ElysiaSettings, image: Vec<u8>) -> StatusCode {
@@ -115,10 +131,24 @@ pub async fn upload_status_with_query(
     image: Vec<u8>,
     query: &str,
 ) -> StatusCode {
+    let (_, token) = test_user(&pool, &format!("uploader-{}", generate_id())).await;
+    upload_with_token(pool, settings, image, query, &token)
+        .await
+        .0
+}
+
+/// POST `image` to `/api/upload` with `token` as the bearer, returning the
+/// status and the parsed JSON body.
+pub async fn upload_with_token(
+    pool: PgPool,
+    settings: ElysiaSettings,
+    image: Vec<u8>,
+    query: &str,
+    token: &str,
+) -> (StatusCode, serde_json::Value) {
     let upload_dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
     std::fs::create_dir_all(&upload_dir).unwrap();
     let config = test_config();
-    let token = config.auth.admin_token.clone();
     let storage = Storage::new(upload_dir.to_str().unwrap());
 
     let app = actix_test::init_service(
@@ -152,9 +182,11 @@ pub async fn upload_status_with_query(
         .set_payload(body)
         .to_request();
 
-    let status = actix_test::call_service(&app, request).await.status();
+    let response = actix_test::call_service(&app, request).await;
+    let status = response.status();
+    let response_body: serde_json::Value = actix_test::read_body_json(response).await;
     let _ = std::fs::remove_dir_all(&upload_dir);
-    status
+    (status, response_body)
 }
 
 /// One-shot HTTP server on a loopback port: answers a single request with the

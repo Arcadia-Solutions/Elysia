@@ -5,6 +5,12 @@ pub enum Error {
     #[error("unauthorized")]
     Unauthorized,
 
+    #[error("forbidden")]
+    Forbidden,
+
+    #[error("conflict")]
+    Conflict,
+
     #[error("not found")]
     NotFound,
 
@@ -13,6 +19,9 @@ pub enum Error {
 
     #[error("{0}")]
     BadRequest(String),
+
+    #[error("internal server error")]
+    Internal,
 
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
@@ -28,9 +37,11 @@ impl ResponseError for Error {
         match self {
             Error::BadRequest(_) => StatusCode::BAD_REQUEST,
             Error::Unauthorized => StatusCode::UNAUTHORIZED,
+            Error::Forbidden => StatusCode::FORBIDDEN,
+            Error::Conflict => StatusCode::CONFLICT,
             Error::NotFound => StatusCode::NOT_FOUND,
             Error::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            Error::Io(_) | Error::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::Io(_) | Error::Db(_) | Error::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

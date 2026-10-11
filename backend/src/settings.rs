@@ -60,6 +60,14 @@ pub struct ElysiaSettings {
     /// Lossy WebP quality (1-100) for generated thumbnails.
     #[serde(default)]
     pub thumbnail_quality: u8,
+    /// When true, anyone may create a local account via the register endpoint.
+    /// When false, only an external sign-on backend can provision users.
+    #[serde(default = "default_allow_registration")]
+    pub allow_registration: bool,
+}
+
+fn default_allow_registration() -> bool {
+    true
 }
 
 /// The subset of [`ElysiaSettings`] exposed publicly, so the upload page
@@ -84,6 +92,8 @@ pub struct PublicElysiaSettings {
     /// Default EXIF-stripping choice; pre-sets the control on the upload page.
     pub strip_exif_by_default: bool,
     pub target_file_size_bytes: u64,
+    /// Whether open registration is allowed; lets the login page offer signup.
+    pub allow_registration: bool,
 }
 
 impl From<ElysiaSettings> for PublicElysiaSettings {
@@ -100,6 +110,23 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             allow_overriding_strip_exif: s.allow_overriding_strip_exif,
             strip_exif_by_default: s.strip_exif_by_default,
             target_file_size_bytes: s.target_file_size_bytes,
+            allow_registration: s.allow_registration,
+        }
+    }
+}
+
+/// The subset of [`ElysiaSettings`] exposed without authentication, so the
+/// login and register pages can offer signup.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+pub struct UnauthElysiaSettings {
+    /// Whether open registration is allowed; lets the login page offer signup.
+    pub allow_registration: bool,
+}
+
+impl From<ElysiaSettings> for UnauthElysiaSettings {
+    fn from(s: ElysiaSettings) -> Self {
+        Self {
+            allow_registration: s.allow_registration,
         }
     }
 }

@@ -9,7 +9,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::error::{Error, Result};
 use crate::handlers::settings::SharedElysiaSettings;
-use crate::middlewares::AdminAuth;
+use crate::middlewares::AuthUser;
 use crate::services::files::{self, Actions, UploadOptions};
 use crate::services::image::TargetFormat;
 use crate::settings::ElysiaSettings;
@@ -110,12 +110,12 @@ impl UploadOptionsQuery {
     responses(
         (status = 200, description = "Image uploaded", body = UploadResponse),
         (status = 400, description = "File too large"),
-        (status = 401, description = "Missing or invalid admin token"),
+        (status = 401, description = "Missing or invalid session"),
         (status = 415, description = "Not a supported image"),
     )
 )]
 pub async fn upload(
-    _auth: AdminAuth,
+    authenticated: AuthUser,
     settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     storage: Data<Storage>,
@@ -130,6 +130,7 @@ pub async fn upload(
         &settings,
         form.file,
         &options,
+        authenticated.user_id,
     )
     .await?;
 

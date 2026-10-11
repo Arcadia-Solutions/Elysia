@@ -3,8 +3,40 @@
     "name": "Elysia"
   },
   "login": {
-    "token_placeholder": "Admin token",
-    "submit": "Login"
+    "login_placeholder": "Username or email",
+    "password_placeholder": "Password",
+    "submit": "Login",
+    "failed": "Wrong username or password.",
+    "create_account": "Register",
+    "back_to_login": "Login"
+  },
+  "register": {
+    "title": "Register",
+    "username_placeholder": "Username",
+    "email_placeholder": "Email",
+    "password_placeholder": "Password (12+ characters)",
+    "submit": "Register",
+    "success": "Account created, you can now log in.",
+    "disabled": "Open registration is disabled on this instance.",
+    "failed": "Could not create the account."
+  },
+  "account": {
+    "title": "Account",
+    "username": "Username",
+    "email": "Email",
+    "provider": "Provider",
+    "role": "Role",
+    "role_admin": "Admin",
+    "role_user": "User",
+    "provider_local": "Local password",
+    "provider_sso": "Single sign-on",
+    "password_title": "Change password",
+    "current_placeholder": "Current password",
+    "new_placeholder": "New password (12+ characters)",
+    "confirm_placeholder": "Confirm new password",
+    "mismatch": "The new passwords do not match.",
+    "submit": "Change password",
+    "success": "Password changed."
   },
   "upload": {
     "choose": "Choose image",
@@ -125,6 +157,11 @@
     "thumbnail_quality": {
       "label": "Thumbnail quality (1-100)",
       "help": "Lossy WebP quality for generated thumbnails."
+    },
+    "accounts_intro": "Who may create an account on this instance.",
+    "allow_registration": {
+      "label": "Allow open registration",
+      "help": "When on, anyone may create a local account. When off, only a future single sign-on provider can provision users."
     }
   }
 }

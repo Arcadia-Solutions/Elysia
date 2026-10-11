@@ -50,10 +50,29 @@ fn default_upload_stream_bytes() -> u64 {
 
 #[derive(Debug, Deserialize)]
 pub struct AuthConfig {
-    pub admin_token: String,
+    /// HS256 secret used to sign user session tokens.
+    pub jwt_secret: String,
 }
 
+/// Secrets that must never sign session tokens.
+const EXAMPLE_JWT_SECRET: &str = "change-me-to-a-long-random-secret";
+
+/// Minimum HS256 secret length in bytes. Short secrets let attackers brute
+/// force session tokens offline.
+const MINIMUM_JWT_SECRET_LENGTH: usize = 32;
+
 impl Config {
+    /// Refuse to boot with a placeholder or short session secret.
+    pub fn validate(&self) {
+        if self.auth.jwt_secret.len() < MINIMUM_JWT_SECRET_LENGTH
+            || self.auth.jwt_secret == EXAMPLE_JWT_SECRET
+        {
+            panic!(
+                "auth.jwt_secret must be a random value of at least {MINIMUM_JWT_SECRET_LENGTH} characters, not the config.example.yml placeholder"
+            );
+        }
+    }
+
     /// Loads `config.yml`. Honors `ELYSIA_CONFIG` (explicit path); otherwise walks
     /// up from the cwd until it finds one.
     pub fn load() -> Self {

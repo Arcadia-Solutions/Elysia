@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime, has_thumbnail from files where id = $1",
+  "query": "select id, ext, mime, has_thumbnail, uploaded_by_user_id from files where id = $1",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,17 @@
             "name": "has_thumbnail"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "uploaded_by_user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "uploaded_by_user_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -57,8 +68,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "8cb58ca751ff9ae6dc90fa565811d008678cf59c5f9da1c788d1711c35601404"
+  "hash": "a586e0d079dfd3fdb1e055a8f20e4ee9799885795e6a6d4563c48b23a00020bc"
 }

@@ -1,4 +1,5 @@
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::error::Result;
 
@@ -18,6 +19,7 @@ pub struct NewFile<'a> {
     pub requested_quality: Option<i32>,
     pub applied_quality: Option<i32>,
     pub has_thumbnail: bool,
+    pub uploaded_by_user_id: Uuid,
 }
 
 pub struct FileRow {
@@ -25,6 +27,7 @@ pub struct FileRow {
     pub ext: String,
     pub mime: String,
     pub has_thumbnail: bool,
+    pub uploaded_by_user_id: Uuid,
 }
 
 /// Insert a file row. Ok(true) on success, Ok(false) on a unique-constraint
@@ -35,8 +38,8 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         "insert into files \
          (id, ext, mime, original_name, size, width, height, hash, \
           original_hash, original_ext, original_width, original_height, \
-          requested_quality, applied_quality, has_thumbnail) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
+          requested_quality, applied_quality, has_thumbnail, uploaded_by_user_id) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
         f.id,
         f.ext,
         f.mime,
@@ -52,6 +55,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.requested_quality,
         f.applied_quality,
         f.has_thumbnail,
+        f.uploaded_by_user_id,
     )
     .execute(pool)
     .await;
@@ -65,7 +69,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
 pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     Ok(sqlx::query_as!(
         FileRow,
-        "select id, ext, mime, has_thumbnail from files where id = $1",
+        "select id, ext, mime, has_thumbnail, uploaded_by_user_id from files where id = $1",
         id
     )
     .fetch_optional(pool)

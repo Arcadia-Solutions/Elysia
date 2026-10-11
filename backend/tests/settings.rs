@@ -11,21 +11,26 @@ use actix_web::test as actix_test;
 use actix_web::web::{self, Data};
 use sqlx::PgPool;
 
-use elysia::handlers::settings::{
-    get_elysia_settings, get_public_elysia_settings, put_elysia_settings,
-};
-use elysia::repository::settings as settings_repo;
+use elysia::handlers::get_elysia_settings::get_elysia_settings;
+use elysia::handlers::get_elysia_unauth_settings::get_elysia_unauth_settings;
+use elysia::handlers::get_public_elysia_settings::get_public_elysia_settings;
+use elysia::handlers::put_elysia_settings::put_elysia_settings;
+use elysia::repository::{settings as settings_repo, users};
+use elysia::services::auth as auth_service;
 use elysia::services::image::TargetFormat;
 use elysia::settings::ElysiaSettings;
 
 use common::test_config;
 
-/// `(header-name, value)` carrying the test admin token.
-fn auth_header() -> (&'static str, String) {
-    (
-        "Authorization",
-        format!("Bearer {}", test_config().auth.admin_token),
-    )
+/// `(header-name, value)` carrying a session token for the seeded admin.
+async fn auth_header(pool: &PgPool) -> (&'static str, String) {
+    let admin = users::find_by_username_or_email(pool, "admin")
+        .await
+        .unwrap()
+        .expect("migration seeds a default admin");
+    assert!(admin.is_admin);
+    let token = auth_service::mint_jwt(&admin.id, &test_config().auth.jwt_secret).unwrap();
+    ("Authorization", format!("Bearer {token}"))
 }
 
 /// Build the two settings routes over `pool`, seeding shared state from the DB.
@@ -43,6 +48,10 @@ macro_rules! settings_app {
                 .route(
                     "/api/public-elysia-settings",
                     web::get().to(get_public_elysia_settings),
+                )
+                .route(
+                    "/api/elysia-unauth-settings",
+                    web::get().to(get_elysia_unauth_settings),
                 ),
         )
         .await
@@ -50,7 +59,7 @@ macro_rules! settings_app {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn get_requires_admin_token(pool: PgPool) {
+async fn get_requires_an_admin_session(pool: PgPool) {
     let app = settings_app!(pool);
     let request = actix_test::TestRequest::get()
         .uri("/api/elysia-settings")
@@ -60,9 +69,44 @@ async fn get_requires_admin_token(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn get_returns_the_seeded_defaults(pool: PgPool) {
+async fn public_settings_require_a_session(pool: PgPool) {
+    let app = settings_app!(pool.clone());
+    let request = actix_test::TestRequest::get()
+        .uri("/api/public-elysia-settings")
+        .to_request();
+    assert_eq!(
+        actix_test::call_service(&app, request).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+
+    let (name, value) = auth_header(&pool).await;
+    let request = actix_test::TestRequest::get()
+        .uri("/api/public-elysia-settings")
+        .insert_header((name, value))
+        .to_request();
+    assert_eq!(
+        actix_test::call_service(&app, request).await.status(),
+        StatusCode::OK
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn unauth_settings_are_open_and_registration_only(pool: PgPool) {
     let app = settings_app!(pool);
-    let (name, value) = auth_header();
+    let request = actix_test::TestRequest::get()
+        .uri("/api/elysia-unauth-settings")
+        .to_request();
+    let body: serde_json::Value = actix_test::call_and_read_body_json(&app, request).await;
+    assert_eq!(
+        body.as_object().unwrap().keys().collect::<Vec<_>>(),
+        vec!["allow_registration"]
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_returns_the_seeded_defaults(pool: PgPool) {
+    let app = settings_app!(pool.clone());
+    let (name, value) = auth_header(&pool).await;
     let request = actix_test::TestRequest::get()
         .uri("/api/elysia-settings")
         .insert_header((name, value))
@@ -76,7 +120,7 @@ async fn get_returns_the_seeded_defaults(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn put_persists_and_reflects_new_settings(pool: PgPool) {
     let app = settings_app!(pool.clone());
-    let (name, value) = auth_header();
+    let (name, value) = auth_header(&pool).await;
     let request = actix_test::TestRequest::put()
         .uri("/api/elysia-settings")
         .insert_header((name, value))
@@ -100,7 +144,7 @@ async fn put_persists_and_reflects_new_settings(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn put_rejects_contradictory_settings(pool: PgPool) {
     let app = settings_app!(pool.clone());
-    let (name, value) = auth_header();
+    let (name, value) = auth_header(&pool).await;
     // A target format with no decode caps is a decompression-bomb risk.
     let request = actix_test::TestRequest::put()
         .uri("/api/elysia-settings")

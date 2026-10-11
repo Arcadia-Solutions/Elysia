@@ -5,13 +5,13 @@ use serde::Serialize;
 use sqlx::PgPool;
 use tempfile::NamedTempFile;
 use tokio::io::AsyncReadExt;
+use uuid::Uuid;
 
 use crate::error::{Error, Result};
 use crate::repository::files::{self, FileRow, NewFile};
 use crate::services::image::{self, TargetFormat};
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
-
 const ALPHABET: [char; 62] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
     'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
@@ -169,6 +169,7 @@ pub async fn store_upload(
     settings: &ElysiaSettings,
     file: TempFile,
     options: &UploadOptions,
+    uploaded_by_user_id: Uuid,
 ) -> Result<StoredFile> {
     store(
         pool,
@@ -178,6 +179,7 @@ pub async fn store_upload(
         file.size as u64,
         file.file_name,
         options,
+        uploaded_by_user_id,
     )
     .await
 }
@@ -191,6 +193,7 @@ pub async fn store_from_url(
     settings: &ElysiaSettings,
     url: &str,
     options: &UploadOptions,
+    uploaded_by_user_id: Uuid,
 ) -> Result<StoredFile> {
     let response = reqwest::get(url)
         .await
@@ -225,12 +228,14 @@ pub async fn store_from_url(
         bytes.len() as u64,
         original_name,
         options,
+        uploaded_by_user_id,
     )
     .await
 }
 
 /// Shared core: validate the temp file, sniff its type, check dimensions,
 /// insert a collision-safe row, then persist it to disk.
+#[allow(clippy::too_many_arguments)]
 async fn store(
     pool: &PgPool,
     storage: &Storage,
@@ -239,6 +244,7 @@ async fn store(
     size: u64,
     original_name: Option<String>,
     options: &UploadOptions,
+    uploaded_by_user_id: Uuid,
 ) -> Result<StoredFile> {
     check_size(settings, size)?;
 
@@ -418,6 +424,7 @@ async fn store(
                 requested_quality,
                 applied_quality: output.applied_quality,
                 has_thumbnail: thumbnail.is_some(),
+                uploaded_by_user_id,
             },
         )
         .await?;

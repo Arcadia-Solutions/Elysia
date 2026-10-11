@@ -1,21 +1,34 @@
 use actix_files::NamedFile;
 use actix_web::{HttpRequest, HttpResponse};
 
+pub mod change_password;
+pub mod get_elysia_settings;
+pub mod get_elysia_unauth_settings;
+pub mod get_public_elysia_settings;
 pub mod images;
 pub mod login;
+pub mod me;
 pub mod metadata;
+pub mod put_elysia_settings;
+pub mod register;
 pub mod serve;
 pub mod serve_thumbnail;
 pub mod settings;
 pub mod upload;
 pub mod upload_url;
 
+pub use change_password::change_password;
+pub use get_elysia_settings::get_elysia_settings;
+pub use get_elysia_unauth_settings::get_elysia_unauth_settings;
+pub use get_public_elysia_settings::get_public_elysia_settings;
 pub use images::images;
 pub use login::login;
+pub use me::me;
 pub use metadata::metadata;
+pub use put_elysia_settings::put_elysia_settings;
+pub use register::register;
 pub use serve::serve;
 pub use serve_thumbnail::serve_thumbnail;
-pub use settings::{get_elysia_settings, get_public_elysia_settings, put_elysia_settings};
 pub use upload::upload;
 pub use upload_url::upload_url;
 
