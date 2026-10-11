@@ -20,6 +20,7 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { api } from '@/services/api/http'
+import { saveSession } from '@/services/session'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -39,8 +40,7 @@ const handleLogin = () => {
   api
     .login({ login: login.value, password: password.value })
     .then((response) => {
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('is_admin', response.data.user.is_admin ? '1' : '0')
+      saveSession(response.data.token, response.data.user.is_admin)
       router.push('/')
     })
     .catch(() => {

@@ -13,7 +13,6 @@ pub mod put_elysia_settings;
 pub mod register;
 pub mod serve;
 pub mod serve_thumbnail;
-pub mod settings;
 pub mod upload;
 pub mod upload_url;
 

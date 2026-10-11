@@ -1,7 +1,7 @@
 use actix_web::HttpResponse;
 
 use crate::error::Result;
-use crate::handlers::settings::SharedElysiaSettings;
+use crate::settings::SharedElysiaSettings;
 use crate::settings::UnauthElysiaSettings;
 
 #[utoipa::path(

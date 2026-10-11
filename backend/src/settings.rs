@@ -3,6 +3,10 @@ use utoipa::ToSchema;
 
 use crate::services::image::TargetFormat;
 
+/// Shared, hot-swappable elysia settings. Uploads read a snapshot; a save
+/// replaces the whole value, so a change applies without a restart.
+pub type SharedElysiaSettings = actix_web::web::Data<std::sync::RwLock<ElysiaSettings>>;
+
 /// Runtime-editable elysia settings: the upload limits and processing options
 /// edited from the web UI and persisted as the single `elysia_settings` row.
 ///

@@ -8,11 +8,11 @@ use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::error::{Error, Result};
-use crate::handlers::settings::SharedElysiaSettings;
 use crate::middlewares::AuthUser;
 use crate::services::files::{self, Actions, UploadOptions};
 use crate::services::image::TargetFormat;
 use crate::settings::ElysiaSettings;
+use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
 #[derive(Debug, MultipartForm, ToSchema)]

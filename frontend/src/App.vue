@@ -1,46 +1,18 @@
 <template>
   <header class="topbar">
     <span>{{ $t('app.name') }}</span>
-    <span v-if="route.path !== '/login' && route.path !== '/register'" class="actions">
+    <span v-if="!route.meta.public" class="actions">
       <Button
-        icon="pi pi-images"
+        v-for="item in navItems"
+        :key="item.to"
+        :icon="item.icon"
         size="small"
         severity="secondary"
         text
         rounded
-        :title="$t('browse.title')"
-        :aria-label="$t('browse.title')"
-        @click="router.push('/browse')"
-      />
-      <Button
-        icon="pi pi-cog"
-        size="small"
-        severity="secondary"
-        text
-        rounded
-        :title="$t('settings.title')"
-        :aria-label="$t('settings.title')"
-        @click="router.push('/settings')"
-      />
-      <Button
-        icon="pi pi-user"
-        size="small"
-        severity="secondary"
-        text
-        rounded
-        :title="$t('account.title')"
-        :aria-label="$t('account.title')"
-        @click="router.push('/account')"
-      />
-      <Button
-        icon="pi pi-sign-out"
-        size="small"
-        severity="secondary"
-        text
-        rounded
-        :title="$t('upload.logout')"
-        :aria-label="$t('upload.logout')"
-        @click="logout"
+        :title="$t(item.label)"
+        :aria-label="$t(item.label)"
+        @click="item.action"
       />
     </span>
   </header>
@@ -54,27 +26,37 @@ import Toast from 'primevue/toast'
 import Button from 'primevue/button'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/services/api/http'
+import { clearSession, getToken, saveSession } from '@/services/session'
 
 const route = useRoute()
 const router = useRouter()
 
+const logout = () => {
+  clearSession()
+  router.push('/login')
+}
+
+const navItems = [
+  { icon: 'pi pi-images', to: '/browse', label: 'browse.title', action: () => router.push('/browse') },
+  { icon: 'pi pi-cog', to: '/settings', label: 'settings.title', action: () => router.push('/settings') },
+  { icon: 'pi pi-user', to: '/account', label: 'account.title', action: () => router.push('/account') },
+  { icon: 'pi pi-sign-out', to: '/logout', label: 'upload.logout', action: logout },
+]
+
 // The admin flag in storage can go stale (role changed elsewhere), so refresh
 // it once per page load. The server stays the source of truth for authz.
+// The interceptor already clears the session and redirects on 401, so there is
+// nothing left to do on failure.
 onMounted(() => {
-  if (!localStorage.getItem('token')) return
+  if (!getToken()) return
   api
     .me()
     .then((response) => {
-      localStorage.setItem('is_admin', response.data.is_admin ? '1' : '0')
+      const token = getToken()
+      if (token) saveSession(token, response.data.is_admin)
     })
     .catch(() => {})
 })
-
-const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('is_admin')
-  router.push('/login')
-}
 </script>
 
 <style>

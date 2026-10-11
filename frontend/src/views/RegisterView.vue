@@ -59,7 +59,7 @@ const handleRegister = () => {
   api
     .register({ username: username.value, email: email.value, password: password.value })
     .then(() => {
-      showToast('', t('register.success'), 'success')
+      showToast(t('register.success'), 'success')
       router.push('/login')
     })
     .catch((err) => {

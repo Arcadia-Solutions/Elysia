@@ -1,9 +1,9 @@
 use actix_web::HttpResponse;
 
 use crate::error::Result;
-use crate::handlers::settings::SharedElysiaSettings;
 use crate::middlewares::AuthUser;
 use crate::settings::PublicElysiaSettings;
+use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
     tag = "elysia",

@@ -7,9 +7,9 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::error::{Error, Result};
-use crate::handlers::settings::SharedElysiaSettings;
 use crate::repository::users;
 use crate::services::auth as auth_service;
+use crate::settings::SharedElysiaSettings;
 
 /// Registration details for a new local account.
 #[derive(Deserialize, ToSchema)]

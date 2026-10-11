@@ -69,10 +69,11 @@ pub fn process(input: &[u8], options: &ProcessOptions) -> Result<Option<Processe
 }
 
 /// Decode input bytes to an image. `Ok(None)` for an animated GIF, which the
-/// caller passes through untouched.
+/// caller passes through untouched. GIFs are decoded only once: up to two
+/// frames are read and a still GIF reuses its single frame.
 pub fn decode(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
-    if is_animated_gif(input) {
-        return Ok(None);
+    if input.starts_with(b"GIF") {
+        return decode_gif(input);
     }
     image::load_from_memory(input)
         .map(Some)
@@ -156,17 +157,29 @@ fn resize(image: DynamicImage, target_width: u32, target_height: u32) -> Dynamic
     image.resize(max_width, max_height, image::imageops::FilterType::Lanczos3)
 }
 
-/// True for a GIF with more than one frame; such files are passed through.
-fn is_animated_gif(input: &[u8]) -> bool {
+/// Decode a GIF once: animated files pass through (`Ok(None)`), a still GIF
+/// reuses its single frame instead of decoding a second time.
+fn decode_gif(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
     use image::AnimationDecoder;
     use image::codecs::gif::GifDecoder;
-    if !input.starts_with(b"GIF") {
-        return false;
+    let decoder =
+        GifDecoder::new(std::io::Cursor::new(input)).map_err(|_| ProcessError::Undecodable)?;
+    let mut frames = decoder.into_frames().take(2);
+    let first = frames
+        .next()
+        .transpose()
+        .map_err(|_| ProcessError::Undecodable)?;
+    let Some(first) = first else {
+        return Err(ProcessError::Undecodable);
+    };
+    let second = frames
+        .next()
+        .transpose()
+        .map_err(|_| ProcessError::Undecodable)?;
+    if second.is_some() {
+        return Ok(None);
     }
-    match GifDecoder::new(std::io::Cursor::new(input)) {
-        Ok(decoder) => decoder.into_frames().take(2).count() > 1,
-        Err(_) => false,
-    }
+    Ok(Some(DynamicImage::ImageRgba8(first.into_buffer())))
 }
 
 /// Encode RGBA pixels to the target format. `quality` None = lossless.

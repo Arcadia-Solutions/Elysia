@@ -16,9 +16,9 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Paginator, { type PageState } from 'primevue/paginator'
-import http from '@/services/api/http'
+import { api } from '@/services/api/http'
 import { showToast } from '@/services/toast'
-import type { ImageSummary, ImagesPage } from '@/services/api-schema'
+import type { ImageSummary } from '@/services/api-schema'
 
 const { t } = useI18n()
 
@@ -28,8 +28,8 @@ const perPage = ref(100)
 const total = ref(0)
 
 const load = (target: number) => {
-  http
-    .get<ImagesPage>(`/api/images?page=${target}`)
+  api
+    .images(target)
     .then((response) => {
       images.value = response.data.images
       page.value = response.data.page
@@ -37,7 +37,7 @@ const load = (target: number) => {
       total.value = response.data.total
     })
     .catch(() => {
-      showToast('', t('browse.load_error'), 'error')
+      showToast(t('browse.load_error'), 'error')
     })
 }
 

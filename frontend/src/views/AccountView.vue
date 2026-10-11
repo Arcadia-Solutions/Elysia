@@ -8,7 +8,7 @@
     </div>
     <div v-if="profile" class="field">
       <label>{{ $t('account.email') }}</label>
-      <span>{{ profile.email ?? '—' }}</span>
+      <span>{{ profile.email ?? '-' }}</span>
     </div>
     <div v-if="profile" class="field">
       <label>{{ $t('account.provider') }}</label>

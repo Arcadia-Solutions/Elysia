@@ -71,7 +71,7 @@ const handleChange = () => {
     .then(() => {
       resetForm()
       visible.value = false
-      showToast('', t('account.success'), 'success')
+      showToast(t('account.success'), 'success')
     })
     .catch((err) => {
       error.value = err?.response?.data?.error ?? t('register.failed')

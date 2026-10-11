@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -33,15 +33,22 @@ const router = useRouter()
 
 // Reached only via the upload flow, which passes the image and thumbnail URLs
 // in the query. A direct visit with no url has nothing to show, so bounce to the form.
-if (!route.query.url) router.replace({ name: 'Upload' })
+onBeforeMount(() => {
+  if (!route.query.url) router.replace({ name: 'Upload' })
+})
 
-const link = computed(() => String(route.query.url))
-const fullLink = computed(() => new URL(link.value, window.location.origin).href)
-const fullThumbLink = computed(() => new URL(String(route.query.thumbnailUrl), window.location.origin).href)
+const link = computed(() => String(route.query.url ?? ''))
+const fullLink = computed(() => (link.value ? new URL(link.value, window.location.origin).href : ''))
+const fullThumbLink = computed(() => {
+  const thumbnail = String(route.query.thumbnailUrl ?? '')
+  return thumbnail ? new URL(thumbnail, window.location.origin).href : ''
+})
 
 const copyLink = (value: string) => {
-  navigator.clipboard.writeText(value)
-  showToast('', t('upload.copied'), 'success')
+  navigator.clipboard
+    .writeText(value)
+    .then(() => showToast(t('upload.copied'), 'success'))
+    .catch(() => showToast(t('upload.copy_failed'), 'error'))
 }
 </script>
 

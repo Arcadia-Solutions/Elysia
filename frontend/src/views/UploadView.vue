@@ -203,7 +203,7 @@ const handleFile = (file: File | undefined) => {
   if (!file) return
   validate(file).then((error) => {
     if (error) {
-      showToast('', error, 'error')
+      showToast(error, 'error')
       return
     }
     phase.value = 'uploading'
@@ -241,7 +241,7 @@ const pick = (file: File | undefined) => {
 }
 
 const onSelect = (event: FileUploadSelectEvent) => {
-  pick(Array.isArray(event.files) ? event.files[0] : event.files)
+  pick(event.files[0])
 }
 
 const onDrop = (event: DragEvent) => {
@@ -258,7 +258,7 @@ const submit = () => {
 const rehost = () => {
   if (!urlInput.value) return
   if (!URL.canParse(urlInput.value)) {
-    showToast('', t('upload.invalid_url'), 'error')
+    showToast(t('upload.invalid_url'), 'error')
     return
   }
   // Rehost sends only the URL; the backend fetches and processes, so there is

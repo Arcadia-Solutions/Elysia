@@ -53,6 +53,7 @@
     "image_link": "Image link",
     "thumbnail_link": "Thumbnail link",
     "copied": "Link copied",
+    "copy_failed": "Could not copy the link",
     "another": "Upload another one",
     "preview_alt": "preview",
     "step": {

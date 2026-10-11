@@ -308,7 +308,7 @@ const save = () => {
       Object.assign(form, response.data)
       fileSize.set(form.max_file_size_bytes)
       targetSize.set(form.target_file_size_bytes)
-      showToast('', t('settings.saved'), 'success')
+      showToast(t('settings.saved'), 'success')
     })
     .finally(() => {
       saving.value = false

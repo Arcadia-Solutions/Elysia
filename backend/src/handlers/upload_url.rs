@@ -7,10 +7,10 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::error::Result;
-use crate::handlers::settings::SharedElysiaSettings;
 use crate::handlers::upload::{UploadOptionsQuery, UploadResponse};
 use crate::middlewares::AuthUser;
 use crate::services::files;
+use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
 /// A link to an image to rehost.

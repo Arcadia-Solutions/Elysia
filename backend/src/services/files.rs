@@ -12,15 +12,8 @@ use crate::repository::files::{self, FileRow, NewFile};
 use crate::services::image::{self, TargetFormat};
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
-const ALPHABET: [char; 62] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
-    'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
-    'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4',
-    '5', '6', '7', '8', '9',
-];
-
 pub fn generate_id() -> String {
-    nanoid::nanoid!(8, &ALPHABET)
+    nanoid::nanoid!(8)
 }
 
 /// Outcome of a stored upload; the handler shapes the HTTP response from this.
@@ -40,7 +33,7 @@ pub struct StoredFile {
 impl StoredFile {
     /// Public URL for the stored image.
     pub fn image_url(&self) -> String {
-        format!("/i/{}.{}", self.id, self.ext)
+        image_url(&self.id, &self.ext)
     }
 
     /// Public URL for the thumbnail. Generated thumbnails are always WebP;
@@ -48,6 +41,11 @@ impl StoredFile {
     pub fn thumbnail_url(&self) -> String {
         thumbnail_url(&self.id, &self.ext, self.has_thumbnail)
     }
+}
+
+/// Public URL for a stored image.
+pub fn image_url(id: &str, ext: &str) -> String {
+    format!("/i/{id}.{ext}")
 }
 
 /// Images returned per browse page.
@@ -124,7 +122,7 @@ pub struct ConvertAction {
 #[derive(Serialize, utoipa::ToSchema)]
 #[serde(untagged)]
 pub enum CompressionAction {
-    Lossless(String),
+    Lossless(&'static str),
     Lossy { lossy_quality: i32 },
 }
 
@@ -152,7 +150,7 @@ fn describe_actions(
         }),
         compression: match applied_quality {
             Some(lossy_quality) => CompressionAction::Lossy { lossy_quality },
-            None => CompressionAction::Lossless("lossless".into()),
+            None => CompressionAction::Lossless("lossless"),
         },
     })
 }
@@ -195,7 +193,13 @@ pub async fn store_from_url(
     options: &UploadOptions,
     uploaded_by_user_id: Uuid,
 ) -> Result<StoredFile> {
-    let response = reqwest::get(url)
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|_| Error::Internal)?;
+    let mut response = client
+        .get(url)
+        .send()
         .await
         .map_err(|e| Error::BadRequest(format!("could not fetch url: {e}")))?;
     if !response.status().is_success() {
@@ -205,17 +209,26 @@ pub async fn store_from_url(
         )));
     }
 
-    let bytes = response
-        .bytes()
+    let limit = settings.max_file_size_bytes;
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
         .await
-        .map_err(|e| Error::BadRequest(format!("could not read url body: {e}")))?;
+        .map_err(|e| Error::BadRequest(format!("could not read url body: {e}")))?
+    {
+        bytes.extend_from_slice(&chunk);
+        if limit > 0 && bytes.len() as u64 > limit {
+            check_size(settings, bytes.len() as u64)?;
+        }
+    }
     check_size(settings, bytes.len() as u64)?;
 
     let original_name = url
         .rsplit('/')
         .next()
         .filter(|s| !s.is_empty())
-        .map(str::to_string);
+        .map(|s| s.split(['?', '#']).next().unwrap_or(s).to_string())
+        .filter(|s| !s.is_empty());
 
     let mut temp = storage.new_temp()?;
     temp.write_all(&bytes)?;
@@ -271,13 +284,15 @@ async fn store(
     check_dimensions(settings, dimensions.width as u32, dimensions.height as u32)?;
     let source_ext = ext;
     let (source_width, source_height) = (dimensions.width as i32, dimensions.height as i32);
-    let original_hash = hash_file(path).await?;
+    // Single read reused for the pipeline, EXIF strip and thumbnails below.
+    let source_bytes = tokio::fs::read(path).await?;
+    let original_hash = hash_bytes(&source_bytes);
     let requested_quality = options.lossy_compression_value.map(|q| q as i32);
 
     // Same source under the same requested quality was already processed.
-    // ponytail: key is (original_hash, requested_quality) only, ignoring the target
-    // format/size/dimensions config. If an operator changes that config, a re-upload
-    // of the same source returns the file processed under the old config.
+    // Note: the key is (original_hash, requested_quality) only, ignoring the
+    // target format/size/dimensions config. If an operator changes that config,
+    // a re-upload of the same source returns the file processed under the old config.
     if let Some(record) =
         files::find_record_by_source(pool, &original_hash, requested_quality).await?
     {
@@ -299,7 +314,7 @@ async fn store(
     // the target-format pipeline runs, its thumbnail decoded from the same pixels.
     let (processed, mut thumbnail) = match target_file_format {
         Some(format) => {
-            let input = tokio::fs::read(path).await?;
+            let input = source_bytes.clone();
             let process_options = image::ProcessOptions {
                 target_width: settings.target_width_pixels,
                 target_height: settings.target_height_pixels,
@@ -333,14 +348,13 @@ async fn store(
         None => (None, None),
     };
 
-    // Passthrough stores the source, so the output matches the source dimensions;
-    // read its bytes for a thumbnail only when one is actually needed, and before
-    // `temp` may be consumed below.
+    // Passthrough stores the source, so the output matches the source dimensions.
+    // Reuse the single read above when a thumbnail is actually needed.
     let passthrough_thumbnail_source = if thumbnails_enabled
         && target_file_format.is_none()
         && over_thumbnail_box(thumbnail_box, source_width as u32, source_height as u32)
     {
-        Some(tokio::fs::read(path).await?)
+        Some(source_bytes.clone())
     } else {
         None
     };
@@ -363,8 +377,7 @@ async fn store(
         // drops metadata (re-encode starts from a bare pixel buffer), so EXIF is
         // only stripped here, when requested, by rewriting the container.
         None if options.strip_exif => {
-            let input = tokio::fs::read(path).await?;
-            let stripped = strip_exif(input)?;
+            let stripped = strip_exif(source_bytes.clone())?;
             let mut temp = storage.new_temp()?;
             temp.write_all(&stripped)?;
             Output {
@@ -402,10 +415,21 @@ async fn store(
 
     let original_name = original_name.as_deref();
 
-    // Insert first (retrying on id collision) so we never leave an orphan file on disk.
+    // Files hit disk before the row exists, so a failed persist never leaves a
+    // row with no file. On an id/hash conflict the just-written files are
+    // removed again before retrying.
+    const ID_ALLOC_RETRIES: u8 = 5;
     let mut id = None;
-    for _ in 0..5 {
+    for _ in 0..ID_ALLOC_RETRIES {
         let candidate = generate_id();
+        let dest = storage.path_for(&candidate, output.ext);
+        tokio::fs::copy(output.temp.path(), &dest).await?;
+        if let Some(bytes) = &thumbnail
+            && let Err(error) = storage.write_thumbnail(&candidate, bytes).await
+        {
+            let _ = tokio::fs::remove_file(&dest).await;
+            return Err(error);
+        }
         let inserted = files::insert(
             pool,
             &NewFile {
@@ -427,23 +451,29 @@ async fn store(
                 uploaded_by_user_id,
             },
         )
-        .await?;
-        if inserted {
-            id = Some(candidate);
-            break;
-        }
-        // A failed insert is an id collision or a concurrent upload of the same
-        // bytes winning the hash race; in the latter case, reuse its row.
-        if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
-            return Ok(existing_stored(record));
+        .await;
+        match inserted {
+            Ok(true) => {
+                id = Some(candidate);
+                break;
+            }
+            Ok(false) => {
+                let _ = tokio::fs::remove_file(&dest).await;
+                let _ = tokio::fs::remove_file(storage.thumbnail_path_for(&candidate)).await;
+                // A failed insert is an id collision or a concurrent upload of the same
+                // bytes winning the hash race; in the latter case, reuse its row.
+                if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
+                    return Ok(existing_stored(record));
+                }
+            }
+            Err(error) => {
+                let _ = tokio::fs::remove_file(&dest).await;
+                let _ = tokio::fs::remove_file(storage.thumbnail_path_for(&candidate)).await;
+                return Err(error);
+            }
         }
     }
-    let id = id.ok_or_else(|| Error::BadRequest("could not allocate an id".into()))?;
-
-    storage.persist(output.temp, &id, output.ext)?;
-    if let Some(bytes) = &thumbnail {
-        storage.write_thumbnail(&id, bytes).await?;
-    }
+    let id = id.ok_or(Error::Internal)?;
 
     Ok(StoredFile {
         id,
@@ -499,6 +529,15 @@ fn existing_stored(record: files::FileRecord) -> StoredFile {
         ext: record.ext,
         has_thumbnail: record.has_thumbnail,
     }
+}
+
+/// SHA-256 of bytes in memory, as a hex string.
+fn hash_bytes(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 /// SHA-256 of a file's bytes, as a hex string. Streamed so large files never

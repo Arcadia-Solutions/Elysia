@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::error::Result;
-use crate::services::files;
+use crate::services::files::{self, image_url};
 
 /// Display metadata for the `/i/<id>` viewer page.
 #[derive(Serialize, ToSchema)]
@@ -39,7 +39,7 @@ pub struct MetadataResponse {
 pub async fn metadata(pool: Data<PgPool>, id: Path<String>) -> Result<HttpResponse> {
     let row = files::get_metadata(pool.get_ref(), &id.into_inner()).await?;
     Ok(HttpResponse::Ok().json(MetadataResponse {
-        url: format!("/i/{}.{}", row.id, row.ext),
+        url: image_url(&row.id, &row.ext),
         id: row.id,
         ext: row.ext,
         mime: row.mime,

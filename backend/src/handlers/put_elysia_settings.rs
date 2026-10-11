@@ -5,10 +5,10 @@ use actix_web::{
 use sqlx::PgPool;
 
 use crate::error::{Error, Result};
-use crate::handlers::settings::SharedElysiaSettings;
 use crate::middlewares::AuthUser;
 use crate::repository::settings as settings_repo;
 use crate::settings::ElysiaSettings;
+use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
     tag = "elysia",

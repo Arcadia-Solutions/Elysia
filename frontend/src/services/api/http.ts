@@ -1,5 +1,6 @@
 import { config } from '@/config'
 import { showToast } from '@/services/toast'
+import { clearSession, getToken } from '@/services/session'
 import { ElysiaApiFactory } from '@/services/api-schema'
 import axios from 'axios'
 
@@ -11,7 +12,7 @@ const http = axios.create({
 })
 
 http.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (token && !cfg.url?.includes('/auth/login')) {
     cfg.headers.Authorization = `Bearer ${token}`
   }
@@ -29,18 +30,17 @@ http.interceptors.response.use(
     // A 401 with a stored token means the session expired: drop it and bounce to
     // login. A 401 without one is a failed login attempt, so let it fall through
     // to the form below.
-    if (error.response?.status === 401 && localStorage.getItem('token')) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('is_admin')
+    if (error.response?.status === 401 && getToken()) {
+      clearSession()
       window.location.replace('/login')
-      return new Promise(() => {})
+      return Promise.reject(error)
     }
     // Auth forms (login, register, password change) show their own inline
     // errors, so skip the global toast for them.
     if (error.config?.url?.includes('/auth/')) {
       return Promise.reject(error)
     }
-    showToast('', error.response?.data?.error ?? 'An unexpected error occurred.', 'error', 4000)
+    showToast(error.response?.data?.error ?? 'An unexpected error occurred.', 'error')
     return Promise.reject(error)
   },
 )

@@ -21,24 +21,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import http from '@/services/api/http'
-
-interface Metadata {
-  id: string
-  ext: string
-  mime: string
-  original_name: string | null
-  size: number
-  width: number
-  height: number
-  created_at: string
-  url: string
-}
+import { api } from '@/services/api/http'
+import type { MetadataResponse } from '@/services/api-schema'
 
 const route = useRoute()
-const meta = ref<Metadata | null>(null)
+const meta = ref<MetadataResponse | null>(null)
 
-http.get<Metadata>(`/api/i/${route.params.id}`).then((response) => {
+api.metadata(String(route.params.id)).then((response) => {
   meta.value = response.data
 })
 

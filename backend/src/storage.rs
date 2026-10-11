@@ -39,14 +39,6 @@ impl Storage {
         Ok(NamedTempFile::new_in(&self.root)?)
     }
 
-    /// Move a finished upload into place. `file` sits in a temp file inside
-    /// `root` already (multipart's TempFileConfig, or `new_temp`), so this is a
-    /// same-filesystem rename: atomic, no re-copy of the bytes.
-    pub fn persist(&self, file: NamedTempFile, id: &str, ext: &str) -> Result<()> {
-        file.persist(self.path_for(id, ext)).map_err(|e| e.error)?;
-        Ok(())
-    }
-
     /// Open a stored file for streaming. NamedFile handles range requests and
     /// conditional GET (ETag/Last-Modified) for free.
     pub async fn open(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
