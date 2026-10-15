@@ -13,6 +13,8 @@ pub mod put_elysia_settings;
 pub mod register;
 pub mod serve;
 pub mod serve_thumbnail;
+pub mod sso_callback;
+pub mod sso_login;
 pub mod upload;
 pub mod upload_url;
 
@@ -28,6 +30,8 @@ pub use put_elysia_settings::put_elysia_settings;
 pub use register::register;
 pub use serve::serve;
 pub use serve_thumbnail::serve_thumbnail;
+pub use sso_callback::sso_callback;
+pub use sso_login::sso_login;
 pub use upload::upload;
 pub use upload_url::upload_url;
 

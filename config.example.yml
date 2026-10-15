@@ -20,3 +20,19 @@ storage:
 auth:
   # HS256 secret signing user session tokens (required). Use a long random value.
   jwt_secret: "change-me-to-a-long-random-secret"
+  # Optional OpenID Connect sign-on (e.g. "Login with Arcadia"), disabled
+  # while this block is absent. The endpoints are discovered from
+  # {issuer}/.well-known/openid-configuration. redirect_uri must be registered
+  # verbatim at the provider for this client_id. It is the frontend callback
+  # page (not the API): the provider sends the browser there with ?code&state,
+  # the page checks the state and exchanges the code at /api/auth/sso/callback.
+  # status_endpoint is optional and provider specific (Arcadia has one): when
+  # set, SSO sessions end as soon as the provider bans the user, instead of
+  # when the session token expires.
+  # sso:
+  #   name: "Arcadia"
+  #   issuer: "https://arcadia.example.com/api/oauth"
+  #   client_id: "elysia"
+  #   client_secret: "the-secret-registered-at-the-provider"
+  #   redirect_uri: "https://elysia.example.com/auth/sso/callback"
+  #   status_endpoint: "https://arcadia.example.com/api/oauth/users/{sub}/status"

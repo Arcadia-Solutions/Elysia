@@ -119,20 +119,15 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
     }
 }
 
-/// The subset of [`ElysiaSettings`] exposed without authentication, so the
-/// login and register pages can offer signup.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+/// The subset of settings exposed without authentication, so the
+/// login and register pages can offer signup and single sign-on.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct UnauthElysiaSettings {
     /// Whether open registration is allowed; lets the login page offer signup.
     pub allow_registration: bool,
-}
-
-impl From<ElysiaSettings> for UnauthElysiaSettings {
-    fn from(s: ElysiaSettings) -> Self {
-        Self {
-            allow_registration: s.allow_registration,
-        }
-    }
+    /// Name of the single sign-on provider, when enabled; lets the login page
+    /// offer "Login with <name>".
+    pub sso_provider_name: Option<String>,
 }
 
 impl ElysiaSettings {

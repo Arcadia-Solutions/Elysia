@@ -6,6 +6,8 @@ use crate::handlers::login::{LoginRequest, LoginResponse};
 use crate::handlers::me::ProfileResponse;
 use crate::handlers::metadata::MetadataResponse;
 use crate::handlers::register::{RegisterRequest, RegisterResponse};
+use crate::handlers::sso_callback::SsoCallbackRequest;
+use crate::handlers::sso_login::SsoLoginResponse;
 use crate::handlers::upload::{UploadForm, UploadOptionsQuery, UploadResponse};
 use crate::handlers::upload_url::UploadUrlRequest;
 use crate::services::files::{Actions, CompressionAction, ConvertAction, ResizeAction};
@@ -20,6 +22,8 @@ use crate::settings::{ElysiaSettings, PublicElysiaSettings, UnauthElysiaSettings
         crate::handlers::login::login,
         crate::handlers::me::me,
         crate::handlers::change_password::change_password,
+        crate::handlers::sso_login::sso_login,
+        crate::handlers::sso_callback::sso_callback,
         crate::handlers::upload::upload,
         crate::handlers::upload_url::upload_url,
         crate::handlers::serve::serve,
@@ -38,6 +42,8 @@ use crate::settings::{ElysiaSettings, PublicElysiaSettings, UnauthElysiaSettings
         LoginResponse,
         ProfileResponse,
         ChangePasswordRequest,
+        SsoLoginResponse,
+        SsoCallbackRequest,
         MetadataResponse,
         ImageSummary,
         ImagesPage,

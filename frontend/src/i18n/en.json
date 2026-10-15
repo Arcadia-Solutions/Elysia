@@ -8,7 +8,10 @@
     "submit": "Login",
     "failed": "Wrong username or password.",
     "create_account": "Register",
-    "back_to_login": "Login"
+    "back_to_login": "Login",
+    "sso_submit": "Login with {0}",
+    "sso_working": "Signing you in…",
+    "sso_failed": "Single sign-on failed, please try again."
   },
   "register": {
     "title": "Register",

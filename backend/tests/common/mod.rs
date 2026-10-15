@@ -10,7 +10,7 @@ use actix_web::web::Data;
 use actix_web::{App, web};
 use sqlx::PgPool;
 
-use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, StorageConfig};
+use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, SsoConfig, StorageConfig};
 use elysia::handlers::upload;
 use elysia::repository::users::{self, AuthUserRow};
 use elysia::services::auth as auth_service;
@@ -38,8 +38,25 @@ pub fn test_config() -> Config {
         },
         auth: AuthConfig {
             jwt_secret: "test-jwt-secret-with-enough-bytes".into(),
+            sso: None,
         },
     }
+}
+
+/// Test config with single sign-on enabled against a mock issuer. The
+/// redirect URI is never visited in tests; it is only echoed into the
+/// authorize URL and the token request.
+pub fn sso_config(issuer: &str) -> Config {
+    let mut config = test_config();
+    config.auth.sso = Some(SsoConfig {
+        name: "Arcadia".into(),
+        issuer: issuer.into(),
+        client_id: "elysia-test-client".into(),
+        client_secret: "elysia-test-secret".into(),
+        redirect_uri: "http://localhost:3000/auth/sso/callback".into(),
+        status_endpoint: Some(format!("{issuer}/users/{{sub}}/status")),
+    });
+    config
 }
 
 /// Default elysia settings: all checks off and processing off. Note this fails

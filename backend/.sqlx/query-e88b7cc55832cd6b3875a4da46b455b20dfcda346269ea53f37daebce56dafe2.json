@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, username, email, password_hash, is_admin, banned,\n                      provider::text as \"provider!\"\n               from users where username = $1 limit 1",
+  "query": "insert into users (username, email, password_hash, is_admin)\n           values ($1, $2, $3, $4)\n           returning id, username, email, password_hash, is_admin, banned,\n                     provider::text as \"provider!\", external_sub",
   "describe": {
     "columns": [
       {
@@ -74,11 +74,25 @@
         "name": "provider!",
         "type_info": "Text",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "external_sub",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "external_sub"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
       ]
     },
     "nullable": [
@@ -88,8 +102,9 @@
       true,
       false,
       false,
-      null
+      null,
+      true
     ]
   },
-  "hash": "4cf28ee70340f73274c7d0bd90ec28c98cc1a2cb77ddb5a2e517a6c321bc77ad"
+  "hash": "e88b7cc55832cd6b3875a4da46b455b20dfcda346269ea53f37daebce56dafe2"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, username, email, password_hash, is_admin, banned,\n                      provider::text as \"provider!\"\n               from users where email = $1 limit 1",
+  "query": "select id, username, email, password_hash, is_admin, banned,\n                      provider::text as \"provider!\", external_sub\n               from users where username = $1 limit 1",
   "describe": {
     "columns": [
       {
@@ -74,6 +74,17 @@
         "name": "provider!",
         "type_info": "Text",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "external_sub",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "external_sub"
+          }
+        }
       }
     ],
     "parameters": {
@@ -88,8 +99,9 @@
       true,
       false,
       false,
-      null
+      null,
+      true
     ]
   },
-  "hash": "a7ac1371195ee57bf3d9b2a8ace37e9bccec7cde1dfbb2937193918a8a98573c"
+  "hash": "639878b77eca5d6adfbe6733abee262f4cd171d802d8ac9d05a8b5cbc659d56f"
 }

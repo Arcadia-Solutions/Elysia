@@ -19,6 +19,7 @@ fn test_config_with_secret(secret: &str) -> Config {
         },
         auth: AuthConfig {
             jwt_secret: secret.into(),
+            sso: None,
         },
     }
 }

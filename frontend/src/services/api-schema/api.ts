@@ -152,9 +152,7 @@ export interface LoginRequest {
     'password': string;
 }
 /**
- * A signed session token plus the caller's profile, so login seeds client
- * state without a second request. New `ProfileResponse` fields show up here
- * automatically.
+ * A signed session token plus the caller\'s profile, so login seeds client state without a second request. New `ProfileResponse` fields show up here automatically.
  */
 export interface LoginResponse {
     'token': string;
@@ -252,6 +250,21 @@ export interface ResizeAction {
     'to': Array<number>;
 }
 /**
+ * The provider\'s code, plus the verifier the frontend kept since the login started. The frontend already checked the state.
+ */
+export interface SsoCallbackRequest {
+    'code': string;
+    'code_verifier': string;
+}
+/**
+ * The provider authorize URL plus what the frontend keeps for the callback: the state, so a callback started by someone else is rejected, and the PKCE verifier, sent back with the code.
+ */
+export interface SsoLoginResponse {
+    'authorization_url': string;
+    'code_verifier': string;
+    'state': string;
+}
+/**
  * Output format; `jxl` is accepted as an alias for `jpegxl` on input. Stored in the DB as the `target_format` Postgres enum, mapped by the `sqlx::Type` derive.
  */
 
@@ -267,13 +280,17 @@ export type TargetFormat = typeof TargetFormat[keyof typeof TargetFormat];
 
 
 /**
- * The subset of [`ElysiaSettings`] exposed without authentication, so the login and register pages can offer signup.
+ * The subset of settings exposed without authentication, so the login and register pages can offer signup and single sign-on.
  */
 export interface UnauthElysiaSettings {
     /**
      * Whether open registration is allowed; lets the login page offer signup.
      */
     'allow_registration': boolean;
+    /**
+     * Name of the single sign-on provider, when enabled; lets the login page offer \"Login with <name>\".
+     */
+    'sso_provider_name'?: string | null;
 }
 /**
  * Per-upload processing options (query string, shared by both upload routes).
@@ -388,7 +405,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Whether registrations are open, so the login and register pages can offer signup without a session.
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -406,7 +423,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarQueryParameter = {} as any;
 
 
-
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -714,6 +731,70 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
+         * @param {SsoCallbackRequest} ssoCallbackRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoCallback: async (ssoCallbackRequest: SsoCallbackRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'ssoCallbackRequest' is not null or undefined
+            assertParamExists('ssoCallback', 'ssoCallbackRequest', ssoCallbackRequest)
+            const localVarPath = `/api/auth/sso/callback`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(ssoCallbackRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoLogin: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/auth/sso/login`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
@@ -850,7 +931,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Whether registrations are open, so the login and register pages can offer signup without a session.
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -968,6 +1049,29 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {SsoCallbackRequest} ssoCallbackRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoCallback(ssoCallbackRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.ssoCallback']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async ssoLogin(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SsoLoginResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoLogin(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.ssoLogin']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
@@ -1023,7 +1127,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
         },
         /**
-         * Whether registrations are open, so the login and register pages can offer signup without a session.
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -1111,6 +1215,23 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         },
         /**
          * 
+         * @param {SsoCallbackRequest} ssoCallbackRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
+            return localVarFp.ssoCallback(ssoCallbackRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoLogin(options?: RawAxiosRequestConfig): AxiosPromise<SsoLoginResponse> {
+            return localVarFp.ssoLogin(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
@@ -1160,7 +1281,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * Whether registrations are open, so the login and register pages can offer signup without a session.
+     * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1254,6 +1375,25 @@ export class ElysiaApi extends BaseAPI {
      */
     public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {SsoCallbackRequest} ssoCallbackRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).ssoCallback(ssoCallbackRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public ssoLogin(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).ssoLogin(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

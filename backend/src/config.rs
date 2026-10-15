@@ -52,6 +52,42 @@ fn default_upload_stream_bytes() -> u64 {
 pub struct AuthConfig {
     /// HS256 secret used to sign user session tokens.
     pub jwt_secret: String,
+    /// OpenID Connect sign-on, disabled when absent so standalone deploys
+    /// keep working.
+    pub sso: Option<SsoConfig>,
+}
+
+/// OpenID Connect client settings. `redirect_uri` must be registered
+/// verbatim as a redirect URI at the provider.
+#[derive(Debug, Deserialize)]
+pub struct SsoConfig {
+    /// Provider name shown on the login button, e.g. `Arcadia`.
+    pub name: String,
+    /// Provider issuer, e.g. `https://arcadia.example.com/api/oauth`. The
+    /// endpoints are read from `{issuer}/.well-known/openid-configuration`.
+    pub issuer: String,
+    /// This client's id as registered at the provider.
+    pub client_id: String,
+    pub client_secret: String,
+    /// Where the provider sends the browser after sign-in: the frontend
+    /// callback page (e.g. `https://elysia.example.com/auth/sso/callback`),
+    /// which exchanges `?code&state` at `/api/auth/sso/callback`.
+    pub redirect_uri: String,
+    /// Optional live ban check, not part of OpenID Connect: a URL with a
+    /// `{sub}` placeholder answering `{"active": bool}` to the client's Basic
+    /// credentials, e.g. Arcadia's
+    /// `https://arcadia.example.com/api/oauth/users/{sub}/status`. When set,
+    /// SSO sessions are refused as soon as it stops answering `active`.
+    #[serde(default)]
+    pub status_endpoint: Option<String>,
+}
+
+impl SsoConfig {
+    /// Issuer base without a trailing slash, so endpoint paths and the stored
+    /// external issuer stay identical however the value was written in config.
+    pub fn normalized_issuer(&self) -> &str {
+        self.issuer.trim_end_matches('/')
+    }
 }
 
 /// Secrets that must never sign session tokens.

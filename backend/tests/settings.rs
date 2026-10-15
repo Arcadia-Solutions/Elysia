@@ -99,7 +99,7 @@ async fn unauth_settings_are_open_and_registration_only(pool: PgPool) {
     let body: serde_json::Value = actix_test::call_and_read_body_json(&app, request).await;
     assert_eq!(
         body.as_object().unwrap().keys().collect::<Vec<_>>(),
-        vec!["allow_registration"]
+        vec!["allow_registration", "sso_provider_name"]
     );
 }
 

@@ -6,6 +6,14 @@
       <Password v-model="password" size="small" :placeholder="$t('login.password_placeholder')" :feedback="false" toggleMask fluid @keyup.enter="handleLogin" />
       <Message v-if="error" severity="error" size="small">{{ error }}</Message>
       <Button :label="$t('login.submit')" size="small" :loading @click="handleLogin" />
+      <Button
+        v-if="ssoProviderName"
+        :label="$t('login.sso_submit', [ssoProviderName])"
+        size="small"
+        severity="secondary"
+        :loading="ssoLoading"
+        @click="handleSsoLogin"
+      />
       <router-link v-if="allowRegistration" to="/register" class="register-link">{{ $t('login.create_account') }}</router-link>
     </div>
   </div>
@@ -29,9 +37,12 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 const allowRegistration = ref(false)
+const ssoProviderName = ref<string | null>(null)
+const ssoLoading = ref(false)
 
 api.getElysiaUnauthSettings().then((response) => {
   allowRegistration.value = response.data.allow_registration
+  ssoProviderName.value = response.data.sso_provider_name ?? null
 })
 
 const handleLogin = () => {
@@ -48,6 +59,27 @@ const handleLogin = () => {
     })
     .finally(() => {
       loading.value = false
+    })
+}
+
+const handleSsoLogin = () => {
+  ssoLoading.value = true
+  error.value = ''
+  api
+    .ssoLogin()
+    .then((response) => {
+      // the callback page only accepts the state this browser started, so a
+      // callback link crafted by someone else cannot log us into their account.
+      // The PKCE verifier is sent back with the code.
+      sessionStorage.setItem('ssoState', response.data.state)
+      sessionStorage.setItem('ssoCodeVerifier', response.data.code_verifier)
+      window.location.href = response.data.authorization_url
+    })
+    .catch(() => {
+      error.value = t('login.sso_failed')
+    })
+    .finally(() => {
+      ssoLoading.value = false
     })
 }
 </script>

@@ -14,10 +14,11 @@ use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
 use elysia::handlers::{
     change_password, get_elysia_settings, get_elysia_unauth_settings, get_public_elysia_settings,
-    images, login, me, metadata, put_elysia_settings, register, serve, serve_thumbnail, upload,
-    upload_url,
+    images, login, me, metadata, put_elysia_settings, register, serve, serve_thumbnail,
+    sso_callback, sso_login, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
+use elysia::services::sso::SsoState;
 use elysia::storage::Storage;
 
 #[actix_web::main]
@@ -58,6 +59,7 @@ async fn main() -> std::io::Result<()> {
     let pool = Data::new(pool);
     let storage = Data::new(storage);
     let elysia_settings = Data::new(RwLock::new(elysia_settings));
+    let sso_state = Data::new(SsoState::default());
 
     println!("Server running at http://{host}:{port}");
 
@@ -68,12 +70,15 @@ async fn main() -> std::io::Result<()> {
             .app_data(pool.clone())
             .app_data(storage.clone())
             .app_data(elysia_settings.clone())
+            .app_data(sso_state.clone())
             .app_data(MultipartFormConfig::default().total_limit(upload_limit))
             .app_data(TempFileConfig::default().directory(&upload_dir))
             .route("/api/auth/register", web::post().to(register))
             .route("/api/auth/login", web::post().to(login))
             .route("/api/auth/me", web::get().to(me))
             .route("/api/auth/password", web::put().to(change_password))
+            .route("/api/auth/sso/login", web::get().to(sso_login))
+            .route("/api/auth/sso/callback", web::post().to(sso_callback))
             .route("/api/upload", web::post().to(upload))
             .route("/api/upload-url", web::post().to(upload_url))
             .route(
