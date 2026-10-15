@@ -1,4 +1,6 @@
-use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, StorageConfig};
+use elysia::config::{
+    AuthConfig, Config, DatabaseConfig, ServerConfig, StorageConfig, TelemetryConfig,
+};
 
 fn test_config_with_secret(secret: &str) -> Config {
     Config {
@@ -21,6 +23,7 @@ fn test_config_with_secret(secret: &str) -> Config {
             jwt_secret: secret.into(),
             sso: None,
         },
+        telemetry: TelemetryConfig::default(),
     }
 }
 

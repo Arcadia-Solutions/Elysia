@@ -10,7 +10,9 @@ use actix_web::web::Data;
 use actix_web::{App, web};
 use sqlx::PgPool;
 
-use elysia::config::{AuthConfig, Config, DatabaseConfig, ServerConfig, SsoConfig, StorageConfig};
+use elysia::config::{
+    AuthConfig, Config, DatabaseConfig, ServerConfig, SsoConfig, StorageConfig, TelemetryConfig,
+};
 use elysia::handlers::upload;
 use elysia::repository::users::{self, AuthUserRow};
 use elysia::services::auth as auth_service;
@@ -40,6 +42,7 @@ pub fn test_config() -> Config {
             jwt_secret: "test-jwt-secret-with-enough-bytes".into(),
             sso: None,
         },
+        telemetry: TelemetryConfig::default(),
     }
 }
 

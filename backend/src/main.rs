@@ -7,6 +7,7 @@ use actix_web::{
     web::{self, Data},
 };
 use sqlx::postgres::PgPoolOptions;
+use tracing_actix_web::TracingLogger;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -20,11 +21,13 @@ use elysia::handlers::{
 use elysia::repository::settings as settings_repo;
 use elysia::services::sso::SsoState;
 use elysia::storage::Storage;
+use elysia::telemetry;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let cfg = Config::load();
     cfg.validate();
+    telemetry::init(&cfg.telemetry);
     let (host, port) = (cfg.server.host.clone(), cfg.server.port);
 
     let pool = PgPoolOptions::new()
@@ -61,10 +64,11 @@ async fn main() -> std::io::Result<()> {
     let elysia_settings = Data::new(RwLock::new(elysia_settings));
     let sso_state = Data::new(SsoState::default());
 
-    println!("Server running at http://{host}:{port}");
+    tracing::info!("Server running at http://{host}:{port}");
 
-    HttpServer::new(move || {
+    let result = HttpServer::new(move || {
         App::new()
+            .wrap(TracingLogger::default())
             .wrap(Cors::permissive())
             .app_data(cfg.clone())
             .app_data(pool.clone())
@@ -102,5 +106,8 @@ async fn main() -> std::io::Result<()> {
     })
     .bind((host, port))?
     .run()
-    .await
+    .await;
+
+    telemetry::shutdown();
+    result
 }

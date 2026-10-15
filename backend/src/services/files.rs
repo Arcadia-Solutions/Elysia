@@ -474,6 +474,7 @@ async fn store(
         }
     }
     let id = id.ok_or(Error::Internal)?;
+    crate::telemetry::record_upload(output.ext, size, output.size as u64);
 
     Ok(StoredFile {
         id,

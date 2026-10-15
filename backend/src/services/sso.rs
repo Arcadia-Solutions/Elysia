@@ -93,7 +93,7 @@ impl SsoState {
 /// useful to whoever configures SSO, never to the caller.
 fn log_as<E: std::fmt::Display, T>(context: &'static str, answer: T) -> impl FnOnce(E) -> T {
     move |error| {
-        eprintln!("sso {context} failed: {error}");
+        tracing::warn!("sso {context} failed: {error}");
         answer
     }
 }

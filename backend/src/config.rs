@@ -6,6 +6,8 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub storage: StorageConfig,
     pub auth: AuthConfig,
+    #[serde(default)]
+    pub telemetry: TelemetryConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +48,13 @@ pub struct StorageConfig {
 
 fn default_upload_stream_bytes() -> u64 {
     10 * 1024 * 1024 * 1024
+}
+
+/// OpenTelemetry export, disabled (stdout logs only) while `otlp_endpoint` is unset.
+#[derive(Debug, Default, Deserialize)]
+pub struct TelemetryConfig {
+    /// OTLP gRPC collector, e.g. `http://localhost:4317`.
+    pub otlp_endpoint: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
