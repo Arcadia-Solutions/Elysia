@@ -21,6 +21,6 @@ pub async fn get_elysia_settings(
     settings: SharedElysiaSettings,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
-    let current = *settings.read().expect("settings lock poisoned");
+    let current = settings.read().expect("settings lock poisoned").clone();
     Ok(HttpResponse::Ok().json(current))
 }

@@ -18,7 +18,7 @@ pub async fn get_elysia_unauth_settings(
     settings: SharedElysiaSettings,
     config: Data<Config>,
 ) -> Result<HttpResponse> {
-    let current = *settings.read().expect("settings lock poisoned");
+    let current = settings.read().expect("settings lock poisoned").clone();
     Ok(HttpResponse::Ok().json(UnauthElysiaSettings {
         allow_registration: current.allow_registration,
         sso_provider_name: config.auth.sso.as_ref().map(|sso| sso.name.clone()),

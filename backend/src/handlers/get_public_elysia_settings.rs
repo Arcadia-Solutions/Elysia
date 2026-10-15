@@ -20,6 +20,6 @@ pub async fn get_public_elysia_settings(
     _authenticated: AuthUser,
     settings: SharedElysiaSettings,
 ) -> Result<HttpResponse> {
-    let current = *settings.read().expect("settings lock poisoned");
+    let current = settings.read().expect("settings lock poisoned").clone();
     Ok(HttpResponse::Ok().json(PublicElysiaSettings::from(current)))
 }

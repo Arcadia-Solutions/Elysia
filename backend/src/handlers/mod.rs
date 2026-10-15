@@ -1,6 +1,9 @@
 use actix_files::NamedFile;
 use actix_web::{HttpRequest, HttpResponse};
 
+use crate::error::{Error, Result};
+use crate::settings::SharedElysiaSettings;
+
 pub mod change_password;
 pub mod get_elysia_settings;
 pub mod get_elysia_unauth_settings;
@@ -41,15 +44,43 @@ pub(crate) fn id_from_filename(filename: &str) -> &str {
     filename.rsplit_once('.').map_or(filename, |(id, _)| id)
 }
 
-/// Turn a NamedFile into a long-lived, immutable response, overriding the
-/// content type with the given MIME (trusted over NamedFile's extension guess).
-pub(crate) fn file_response(req: &HttpRequest, file: NamedFile, mime: &str) -> HttpResponse {
+/// Refuse an image request whose `Referer` is not in the allowed referrers.
+/// Returns the `Cache-Control` to serve it with: `private` while an allowlist
+/// is set, so shared caches (CDN, proxy) can't hand it to other referrers.
+pub(crate) fn check_referrer(
+    req: &HttpRequest,
+    settings: &SharedElysiaSettings,
+) -> Result<&'static str> {
+    let referer = req
+        .headers()
+        .get(actix_web::http::header::REFERER)
+        .and_then(|value| value.to_str().ok());
+    let settings = settings.read().expect("settings lock poisoned");
+    if !settings.referrer_allowed(referer, req.connection_info().host()) {
+        return Err(Error::Forbidden);
+    }
+    Ok(if settings.allowed_referrers.is_empty() {
+        "public, max-age=31536000, immutable"
+    } else {
+        "private, max-age=31536000, immutable"
+    })
+}
+
+/// Turn a NamedFile into a long-lived, immutable response with the given
+/// `Cache-Control`, overriding the content type with the given MIME (trusted
+/// over NamedFile's extension guess).
+pub(crate) fn file_response(
+    req: &HttpRequest,
+    file: NamedFile,
+    mime: &str,
+    cache_control: &'static str,
+) -> HttpResponse {
     // NamedFile streams the bytes (no full read into RAM) and handles range
     // requests + conditional GET (ETag/Last-Modified) for free.
     let mut res = file.into_response(req);
     res.headers_mut().insert(
         actix_web::http::header::CACHE_CONTROL,
-        actix_web::http::header::HeaderValue::from_static("public, max-age=31536000, immutable"),
+        actix_web::http::header::HeaderValue::from_static(cache_control),
     );
     if let Ok(mime) = mime.parse() {
         res.headers_mut()

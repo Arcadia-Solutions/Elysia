@@ -152,6 +152,14 @@
 
     <hr />
 
+    <div class="field">
+      <label>{{ $t('settings.allowed_referrers.label') }}</label>
+      <small>{{ $t('settings.allowed_referrers.help') }}</small>
+      <AutoComplete v-model="form.allowed_referrers" size="small" multiple :typeahead="false" fluid placeholder="example.com" />
+    </div>
+
+    <hr />
+
     <p class="intro">{{ $t('settings.thumbnails_intro') }}</p>
 
     <div class="field">
@@ -187,6 +195,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import AutoComplete from 'primevue/autocomplete'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
@@ -221,6 +230,7 @@ const form = reactive<Required<ElysiaSettings>>({
   thumbnail_height_pixels: 0,
   thumbnail_quality: 80,
   allow_registration: true,
+  allowed_referrers: [],
 })
 
 // Thumbnails are on when a box is set on either axis.

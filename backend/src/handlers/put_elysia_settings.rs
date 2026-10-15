@@ -30,9 +30,11 @@ pub async fn put_elysia_settings(
     body: Json<ElysiaSettings>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
-    let new = body.into_inner();
+    let mut new = body.into_inner();
+    new.normalize();
     new.validate().map_err(Error::BadRequest)?;
     settings_repo::save(pool.get_ref(), &new).await?;
+    let response = HttpResponse::Ok().json(&new);
     *settings.write().expect("settings lock poisoned") = new;
-    Ok(HttpResponse::Ok().json(new))
+    Ok(response)
 }

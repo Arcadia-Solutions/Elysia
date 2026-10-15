@@ -12,7 +12,7 @@ pub type SharedElysiaSettings = actix_web::web::Data<std::sync::RwLock<ElysiaSet
 ///
 /// Kept separate from [`crate::config::Config`], which holds only the boot-time
 /// infrastructure values (bind address, database, upload dir, stream ceiling).
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ElysiaSettings {
     /// Reject uploads larger than this; 0 disables the check.
     #[serde(default)]
@@ -68,6 +68,11 @@ pub struct ElysiaSettings {
     /// When false, only an external sign-on backend can provision users.
     #[serde(default = "default_allow_registration")]
     pub allow_registration: bool,
+    /// Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/t/`.
+    /// Empty allows any request, including ones without a `Referer`. Elysia's
+    /// own host is always allowed so the web UI keeps showing images.
+    #[serde(default)]
+    pub allowed_referrers: Vec<String>,
 }
 
 fn default_allow_registration() -> bool {
@@ -131,6 +136,38 @@ pub struct UnauthElysiaSettings {
 }
 
 impl ElysiaSettings {
+    /// Trim and lowercase the referrer hostnames, dropping blank ones, so the
+    /// stored list matches what [`Self::referrer_allowed`] compares against.
+    pub fn normalize(&mut self) {
+        self.allowed_referrers = self
+            .allowed_referrers
+            .iter()
+            .map(|host| host.trim().to_ascii_lowercase())
+            .filter(|host| !host.is_empty())
+            .collect();
+        self.allowed_referrers.sort();
+        self.allowed_referrers.dedup();
+    }
+
+    /// Whether an image request may be served: the list is empty, or the
+    /// `Referer` host is listed or is `own_host` (the `Host` the request was
+    /// sent to, port ignored).
+    pub fn referrer_allowed(&self, referer: Option<&str>, own_host: &str) -> bool {
+        if self.allowed_referrers.is_empty() {
+            return true;
+        }
+        let Some(host) = referer
+            .and_then(|referer| url::Url::parse(referer).ok())
+            .and_then(|url| url.host_str().map(str::to_ascii_lowercase))
+        else {
+            return false;
+        };
+        let own_host = url::Url::parse(&format!("http://{own_host}"))
+            .ok()
+            .and_then(|url| url.host_str().map(str::to_ascii_lowercase));
+        own_host.as_deref() == Some(host.as_str()) || self.allowed_referrers.contains(&host)
+    }
+
     /// Whether thumbnail generation is on (a box is set on at least one axis).
     pub fn thumbnails_enabled(&self) -> bool {
         self.thumbnail_width_pixels > 0 || self.thumbnail_height_pixels > 0
@@ -212,6 +249,15 @@ impl ElysiaSettings {
             if self.thumbnail_quality < 1 || self.thumbnail_quality > 100 {
                 return Err("thumbnail_quality must be between 1 and 100".into());
             }
+        }
+        if let Some(host) = self
+            .allowed_referrers
+            .iter()
+            .find(|host| host.contains(['/', ':']) || host.contains(char::is_whitespace))
+        {
+            return Err(format!(
+                "allowed_referrers entry `{host}` must be a bare hostname, e.g. example.com"
+            ));
         }
         Ok(())
     }

@@ -166,6 +166,10 @@
     "allow_registration": {
       "label": "Allow open registration",
       "help": "When on, anyone may create a local account. When off, only a future single sign-on provider can provision users."
+    },
+    "allowed_referrers": {
+      "label": "Allowed referrers",
+      "help": "Hostnames allowed to embed images (/i/ and /t/), checked against the Referer header. Press Enter after each one. Empty allows any site and direct links. Elysia's own host is always allowed."
     }
   }
 }

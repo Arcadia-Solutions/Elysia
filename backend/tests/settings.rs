@@ -161,3 +161,41 @@ async fn put_rejects_contradictory_settings(pool: PgPool) {
     let reloaded = settings_repo::load(&pool).await.unwrap();
     assert!(reloaded.default_target_file_format.is_none());
 }
+
+#[test]
+fn referrer_allowlist() {
+    let mut settings = common::test_settings();
+    // Empty list: anything goes, even no Referer.
+    assert!(settings.referrer_allowed(None, "elysia.test"));
+
+    settings.allowed_referrers = vec![" Forum.Example ".into(), "".into(), "forum.example".into()];
+    settings.normalize();
+    assert_eq!(settings.allowed_referrers, vec!["forum.example"]);
+
+    let allowed = |referer| settings.referrer_allowed(referer, "elysia.test:8090");
+    assert!(allowed(Some("https://forum.example/thread/1")));
+    assert!(allowed(Some("http://FORUM.example:8080/")));
+    assert!(
+        allowed(Some("http://elysia.test:5173/browse")),
+        "own host, any port"
+    );
+    assert!(!allowed(None));
+    assert!(!allowed(Some("not a url")));
+    assert!(!allowed(Some("https://evil.example/")));
+    assert!(!allowed(Some("https://forum.example.evil.test/")));
+}
+
+#[test]
+fn referrer_entries_must_be_hostnames() {
+    let mut settings = common::test_settings();
+    settings.max_file_size_bytes = 1;
+    settings.allowed_referrers = vec!["https://forum.example/".into()];
+    assert!(
+        settings
+            .validate()
+            .unwrap_err()
+            .contains("allowed_referrers")
+    );
+    settings.allowed_referrers = vec!["forum.example".into()];
+    assert!(settings.validate().is_ok());
+}

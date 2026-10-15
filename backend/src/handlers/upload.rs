@@ -122,7 +122,7 @@ pub async fn upload(
     query: Query<UploadOptionsQuery>,
     MultipartForm(form): MultipartForm<UploadForm>,
 ) -> Result<HttpResponse> {
-    let settings = *settings.read().expect("settings lock poisoned");
+    let settings = settings.read().expect("settings lock poisoned").clone();
     let options = query.into_inner().into_options(&settings)?;
     let stored = files::store_upload(
         pool.get_ref(),

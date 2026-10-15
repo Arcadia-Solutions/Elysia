@@ -75,6 +75,10 @@ export interface ElysiaSettings {
      */
     'allow_registration'?: boolean;
     /**
+     * Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/t/`. Empty allows any request, including ones without a `Referer`. Elysia\'s own host is always allowed so the web UI keeps showing images.
+     */
+    'allowed_referrers'?: Array<string>;
+    /**
      * Lossy quality (1-100) applied when an upload requests none; 0 = none.
      */
     'default_compression'?: number;

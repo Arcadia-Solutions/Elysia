@@ -97,7 +97,8 @@ create table elysia_settings (
    thumbnail_width_pixels int not null default 0,
    thumbnail_height_pixels int not null default 0,
    thumbnail_quality int not null default 80,
-   allow_registration boolean not null default true
+   allow_registration boolean not null default true,
+   allowed_referrers text[] not null default '{}'
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -117,6 +118,7 @@ comment on column elysia_settings.thumbnail_width_pixels is 'Thumbnail box width
 comment on column elysia_settings.thumbnail_height_pixels is 'Thumbnail box height; 0 on both axes disables thumbnails';
 comment on column elysia_settings.thumbnail_quality is 'Lossy WebP quality (1-100) for generated thumbnails';
 comment on column elysia_settings.allow_registration is 'When true, anyone may create a local account via the register endpoint';
+comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/ and /t/; empty allows any (including no Referer)';
 
 -- Default row: processing off, 10 MiB upload ceiling (valid against the same
 -- rules the API enforces on every save).

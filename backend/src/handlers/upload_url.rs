@@ -41,7 +41,7 @@ pub async fn upload_url(
     query: Query<UploadOptionsQuery>,
     body: Json<UploadUrlRequest>,
 ) -> Result<HttpResponse> {
-    let settings = *settings.read().expect("settings lock poisoned");
+    let settings = settings.read().expect("settings lock poisoned").clone();
     let options = query.into_inner().into_options(&settings)?;
     let stored = files::store_from_url(
         pool.get_ref(),
