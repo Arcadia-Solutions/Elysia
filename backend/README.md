@@ -5,7 +5,7 @@ docker compose up -d db                               # start postgres
 cargo run --manifest-path backend/Cargo.toml          # run from repo root (reads ./config.yml)
 ```
 
-Swagger UI at http://localhost:8080/swagger-ui/, OpenAPI JSON at /api-docs/openapi.json.
+Swagger UI at http://localhost:8090/swagger-ui/, OpenAPI JSON at /api-docs/openapi.json.
 
 Tests need the database running (the `#[sqlx::test]` tests create a throwaway
 database each):

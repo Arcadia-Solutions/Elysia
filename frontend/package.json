@@ -13,7 +13,7 @@
     "lint": "npm run lint:oxlint && npm run lint:eslint",
     "format": "prettier --write src/",
     "check-format": "prettier --check src",
-    "gen:api": "openapi-generator-cli generate -g typescript-axios -i http://localhost:8080/api-docs/openapi.json -o ./src/services/api-schema --config openapi-generator.config.json --skip-validate-spec"
+    "gen:api": "openapi-generator-cli generate -g typescript-axios -i http://localhost:8090/api-docs/openapi.json -o ./src/services/api-schema --config openapi-generator.config.json --skip-validate-spec"
   },
   "dependencies": {
     "@primeuix/themes": "^1.0.0",

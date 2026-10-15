@@ -7,17 +7,21 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
+    // pinned to 5174 so it does not collide with Arcadia's frontend on 5173, and URLs
+    // pointing here (e.g. redirect URIs registered elsewhere) stay valid
+    port: 5174,
+    strictPort: true,
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/api': { target: 'http://localhost:8090', changeOrigin: true },
       '/i': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8090',
         changeOrigin: true,
         // `/i/<id>.<ext>` is the raw image (proxy it); `/i/<id>` with no
         // extension is the SPA viewer page, so serve index.html instead.
         bypass: (req) => (/\.[^/]+$/.test(req.url ?? '') ? undefined : '/index.html'),
       },
-      '/t': { target: 'http://localhost:8080', changeOrigin: true },
-      '/api-docs': { target: 'http://localhost:8080', changeOrigin: true },
+      '/t': { target: 'http://localhost:8090', changeOrigin: true },
+      '/api-docs': { target: 'http://localhost:8090', changeOrigin: true },
     },
   },
   resolve: {
