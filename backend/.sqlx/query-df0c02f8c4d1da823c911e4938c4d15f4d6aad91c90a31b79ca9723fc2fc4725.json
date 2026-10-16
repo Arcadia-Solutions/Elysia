@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select u.username, count(*) as \"files!\", sum(f.size)::bigint as \"bytes!\", to_char(max(f.created_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"last_upload!\" from files f join users u on u.id = f.uploaded_by_user_id where $1::text is null or f.created_at >= now() - $1::text::interval group by u.id, u.username order by 3 desc, u.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "files!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_upload!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "df0c02f8c4d1da823c911e4938c4d15f4d6aad91c90a31b79ca9723fc2fc4725"
+}

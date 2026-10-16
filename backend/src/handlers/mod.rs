@@ -18,6 +18,7 @@ pub mod serve;
 pub mod serve_thumbnail;
 pub mod sso_callback;
 pub mod sso_login;
+pub mod stats;
 pub mod upload;
 pub mod upload_url;
 
@@ -35,6 +36,7 @@ pub use serve::serve;
 pub use serve_thumbnail::serve_thumbnail;
 pub use sso_callback::sso_callback;
 pub use sso_login::sso_login;
+pub use stats::stats_overview;
 pub use upload::upload;
 pub use upload_url::upload_url;
 

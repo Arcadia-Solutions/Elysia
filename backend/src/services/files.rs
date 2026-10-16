@@ -10,10 +10,20 @@ use uuid::Uuid;
 use crate::error::{Error, Result};
 use crate::repository::files::{self, FileRow, NewFile};
 use crate::services::image::{self, TargetFormat};
+use crate::services::paginate;
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
+
+/// Public file id: 8 base62 characters. nanoid's default alphabet also has
+/// `_` and `-`, which look odd in links.
 pub fn generate_id() -> String {
-    nanoid::nanoid!(8)
+    const BASE62: [char; 62] = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+        'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    ];
+    nanoid::nanoid!(8, &BASE62)
 }
 
 /// Outcome of a stored upload; the handler shapes the HTTP response from this.
@@ -62,14 +72,14 @@ pub fn thumbnail_url(id: &str, ext: &str, has_thumbnail: bool) -> String {
 /// count and the clamped page actually used. An out-of-range page returns no
 /// rows but still reports the real total, so callers can show the pager.
 pub async fn list_images(pool: &PgPool, page: i64) -> Result<(Vec<files::ImageListRow>, i64, i64)> {
-    let page = page.max(1);
-    let offset = (page - 1) * IMAGES_PER_PAGE;
-    let rows = files::list_page(pool, offset, IMAGES_PER_PAGE).await?;
-    let total = match rows.first() {
-        Some(row) => row.total,
-        None => files::count(pool).await?,
-    };
-    Ok((rows, total, page))
+    paginate(
+        page,
+        IMAGES_PER_PAGE,
+        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE),
+        files::count(pool),
+        |row| row.total,
+    )
+    .await
 }
 
 /// Per-upload processing options.

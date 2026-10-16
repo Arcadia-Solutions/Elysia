@@ -16,7 +16,7 @@ use elysia::config::Config;
 use elysia::handlers::{
     change_password, get_elysia_settings, get_elysia_unauth_settings, get_public_elysia_settings,
     images, login, me, metadata, put_elysia_settings, register, serve, serve_thumbnail,
-    sso_callback, sso_login, upload, upload_url,
+    sso_callback, sso_login, stats_overview, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
 use elysia::services::sso::SsoState;
@@ -96,6 +96,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/elysia-settings", web::get().to(get_elysia_settings))
             .route("/api/elysia-settings", web::put().to(put_elysia_settings))
             .route("/api/images", web::get().to(images))
+            .route("/api/stats/overview", web::get().to(stats_overview))
             .route("/api/i/{id}", web::get().to(metadata))
             .route("/i/{filename}", web::get().to(serve))
             .route("/t/{filename}", web::get().to(serve_thumbnail))

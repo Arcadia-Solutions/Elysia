@@ -2,6 +2,8 @@
 name = "elysia"
 version = "0.1.0"
 edition = "2024"
+# src/bin/seed.rs is a second binary; plain `cargo run` stays the server.
+default-run = "elysia"
 
 [dependencies]
 actix-web = "4"

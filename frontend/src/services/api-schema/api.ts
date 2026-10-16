@@ -130,6 +130,14 @@ export interface ElysiaSettings {
 
 
 /**
+ * File count and bytes for one stored MIME type.
+ */
+export interface FormatTotal {
+    'bytes': number;
+    'files': number;
+    'mime': string;
+}
+/**
  * One image in a browse page.
  */
 export interface ImageSummary {
@@ -184,6 +192,31 @@ export interface MetadataResponse {
      */
     'url': string;
     'width': number;
+}
+/**
+ * Totals for one step of the stats series.
+ */
+export interface PeriodTotal {
+    /**
+     * Bytes stored by the end of the step (main files, thumbnails excluded).
+     */
+    'bytes': number;
+    /**
+     * Files stored by the end of the step.
+     */
+    'files': number;
+    /**
+     * UTC start of the step as an ISO-8601 string.
+     */
+    'period': string;
+    /**
+     * Bytes uploaded during the step.
+     */
+    'uploaded_bytes': number;
+    /**
+     * Files uploaded during the step.
+     */
+    'uploads': number;
 }
 /**
  * The caller\'s own account.
@@ -269,6 +302,53 @@ export interface SsoLoginResponse {
     'state': string;
 }
 /**
+ * Width of one step of the stats series.
+ */
+
+export const StatsInterval = {
+    Hour: 'hour',
+    Day: 'day',
+    Week: 'week',
+    Month: 'month',
+    Year: 'year'
+} as const;
+
+export type StatsInterval = typeof StatsInterval[keyof typeof StatsInterval];
+
+
+/**
+ * How far back the stats series starts.
+ */
+
+export const StatsPeriod = {
+    LastWeek: 'last_week',
+    LastMonth: 'last_month',
+    LastYear: 'last_year',
+    AllTime: 'all_time'
+} as const;
+
+export type StatsPeriod = typeof StatsPeriod[keyof typeof StatsPeriod];
+
+
+/**
+ * Storage overview for the admin dashboard.
+ */
+export interface StatsResponse {
+    /**
+     * Stored files per MIME type, largest first.
+     */
+    'formats': Array<FormatTotal>;
+    /**
+     * Totals per `interval` step, from the step holding the start of `period` to now.
+     */
+    'periods': Array<PeriodTotal>;
+    /**
+     * Users who uploaded within `period`, by uploaded bytes descending.
+     */
+    'uploaders': Array<Uploader>;
+    'window': WindowTotals;
+}
+/**
  * Output format; `jxl` is accepted as an alias for `jpegxl` on input. Stored in the DB as the `target_format` Postgres enum, mapped by the `sqlx::Type` derive.
  */
 
@@ -337,6 +417,39 @@ export interface UploadResponse {
  */
 export interface UploadUrlRequest {
     'url': string;
+}
+/**
+ * One user\'s uploads within the window.
+ */
+export interface Uploader {
+    'bytes': number;
+    'files': number;
+    /**
+     * Latest upload time as a UTC ISO-8601 string.
+     */
+    'last_upload': string;
+    'username': string;
+}
+/**
+ * Uploads and sign-ups within `period` back from now, unrounded, unlike the series which starts on an `interval` boundary.
+ */
+export interface WindowTotals {
+    /**
+     * Users who uploaded in the window.
+     */
+    'active_uploaders': number;
+    /**
+     * Users who signed up in the window; every user for `all_time`.
+     */
+    'new_users': number;
+    /**
+     * Bytes uploaded in the window.
+     */
+    'uploaded_bytes': number;
+    /**
+     * Files uploaded in the window.
+     */
+    'uploads': number;
 }
 
 /**
@@ -799,6 +912,49 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
+         * @param {StatsPeriod} period 
+         * @param {StatsInterval} interval 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        statsOverview: async (period: StatsPeriod, interval: StatsInterval, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'period' is not null or undefined
+            assertParamExists('statsOverview', 'period', period)
+            // verify required parameter 'interval' is not null or undefined
+            assertParamExists('statsOverview', 'interval', interval)
+            const localVarPath = `/api/stats/overview`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (period !== undefined) {
+                localVarQueryParameter['period'] = period;
+            }
+
+            if (interval !== undefined) {
+                localVarQueryParameter['interval'] = interval;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
@@ -1076,6 +1232,19 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {StatsPeriod} period 
+         * @param {StatsInterval} interval 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<StatsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.statsOverview(period, interval, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.statsOverview']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
@@ -1233,6 +1402,16 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         ssoLogin(options?: RawAxiosRequestConfig): AxiosPromise<SsoLoginResponse> {
             return localVarFp.ssoLogin(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {StatsPeriod} period 
+         * @param {StatsInterval} interval 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): AxiosPromise<StatsResponse> {
+            return localVarFp.statsOverview(period, interval, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1398,6 +1577,17 @@ export class ElysiaApi extends BaseAPI {
      */
     public ssoLogin(options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).ssoLogin(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {StatsPeriod} period 
+     * @param {StatsInterval} interval 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).statsOverview(period, interval, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

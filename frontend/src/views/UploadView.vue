@@ -91,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatBytes } from '@/services/format'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
@@ -152,16 +153,6 @@ onMounted(() => {
     stripExif.value = r.data.strip_exif_by_default
   })
 })
-
-const formatBytes = (n: number): string => {
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024
-    i++
-  }
-  return `${Math.round(n * 10) / 10} ${units[i]}`
-}
 
 const readDimensions = (file: File): Promise<{ width: number; height: number }> =>
   new Promise((resolve, reject) => {

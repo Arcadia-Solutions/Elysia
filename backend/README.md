@@ -16,6 +16,18 @@ DATABASE_URL=postgres://elysia:password@localhost:5432/elysia \
   cargo test --manifest-path backend/Cargo.toml
 ```
 
+## Test data
+
+```sh
+cargo run --release --manifest-path backend/Cargo.toml --bin seed -- 300   # image count, default 300
+```
+
+Creates 12 users (`alice`, `bob`, ..., password `password123`) and uploads generated
+images through the real upload pipeline, spread over the last 3 years. Runs on top
+of what is there, so run it again to add more. Reset with
+`cargo sqlx database reset --force` and `rm -r data/uploads`. Use `--release`: the
+AVIF and JPEG XL encoders take seconds per image in a debug build.
+
 ## System dependencies
 
 The JPEG XL encoder (libjxl) is built from vendored source, so no system libjxl is needed.

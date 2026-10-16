@@ -25,6 +25,13 @@ const router = createRouter({
     { path: '/upload', name: 'Upload', component: UploadView },
     { path: '/uploaded', name: 'Uploaded', component: UploadedView },
     { path: '/browse', name: 'Browse', component: BrowseView, meta: { requiresAdmin: true } },
+    {
+      path: '/dashboard',
+      name: 'Dashboard',
+      // Lazy: keeps Highcharts out of the main bundle.
+      component: () => import('@/views/DashboardView.vue'),
+      meta: { requiresAdmin: true },
+    },
     { path: '/settings', name: 'Settings', component: SettingsView, meta: { requiresAdmin: true } },
     { path: '/account', name: 'Account', component: AccountView },
     { path: '/i/:id', name: 'Image', component: ImageView, meta: { public: true } },
@@ -35,7 +42,7 @@ router.beforeEach((to) => {
   // Image viewer pages are public, like the raw images they show.
   if (to.meta.public) return
   if (!getToken()) return '/login'
-  // Browse and settings are admin-only, like their APIs.
+  // Browse, dashboard and settings are admin-only, like their APIs.
   if (to.meta.requiresAdmin && !isAdmin()) return '/upload'
 })
 

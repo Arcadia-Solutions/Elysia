@@ -1,18 +1,7 @@
 use utoipa::OpenApi;
 
-use crate::handlers::change_password::ChangePasswordRequest;
-use crate::handlers::images::{ImageSummary, ImagesPage};
-use crate::handlers::login::{LoginRequest, LoginResponse};
-use crate::handlers::me::ProfileResponse;
-use crate::handlers::metadata::MetadataResponse;
-use crate::handlers::register::{RegisterRequest, RegisterResponse};
-use crate::handlers::sso_callback::SsoCallbackRequest;
-use crate::handlers::sso_login::SsoLoginResponse;
-use crate::handlers::upload::{UploadForm, UploadOptionsQuery, UploadResponse};
-use crate::handlers::upload_url::UploadUrlRequest;
-use crate::services::files::{Actions, CompressionAction, ConvertAction, ResizeAction};
-use crate::services::image::TargetFormat;
-use crate::settings::{ElysiaSettings, PublicElysiaSettings, UnauthElysiaSettings};
+use crate::handlers::upload::UploadOptionsQuery;
+use crate::repository::stats::{StatsInterval, StatsPeriod};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -30,35 +19,15 @@ use crate::settings::{ElysiaSettings, PublicElysiaSettings, UnauthElysiaSettings
         crate::handlers::serve_thumbnail::serve_thumbnail,
         crate::handlers::metadata::metadata,
         crate::handlers::images::images,
+        crate::handlers::stats::overview::stats_overview,
         crate::handlers::get_elysia_settings::get_elysia_settings,
         crate::handlers::get_public_elysia_settings::get_public_elysia_settings,
         crate::handlers::get_elysia_unauth_settings::get_elysia_unauth_settings,
         crate::handlers::put_elysia_settings::put_elysia_settings,
     ),
-    components(schemas(
-        RegisterRequest,
-        RegisterResponse,
-        LoginRequest,
-        LoginResponse,
-        ProfileResponse,
-        ChangePasswordRequest,
-        SsoLoginResponse,
-        SsoCallbackRequest,
-        MetadataResponse,
-        ImageSummary,
-        ImagesPage,
-        UploadForm,
-        UploadResponse,
-        UploadUrlRequest,
-        UploadOptionsQuery,
-        Actions,
-        ResizeAction,
-        ConvertAction,
-        CompressionAction,
-        ElysiaSettings,
-        PublicElysiaSettings,
-        UnauthElysiaSettings,
-        TargetFormat
-    ))
+    // Query parameter types are inlined into each path; list them so the
+    // generated client still gets them as named types. The rest is collected
+    // from the paths.
+    components(schemas(UploadOptionsQuery, StatsInterval, StatsPeriod))
 )]
 pub struct ApiDoc;

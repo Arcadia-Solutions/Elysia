@@ -122,12 +122,21 @@ impl Config {
     /// up from the cwd until it finds one.
     pub fn load() -> Self {
         let path = Self::find_config();
-        let config: Config = config::Config::builder()
+        let mut config: Config = config::Config::builder()
             .add_source(config::File::from(path.as_path()))
             .build()
             .expect("failed to read config.yml")
             .try_deserialize()
             .expect("invalid config.yml");
+        // The config is found by walking up from the cwd, so a relative
+        // upload_dir must follow the config file, not the cwd: otherwise
+        // running from a subdirectory reads and writes a different folder.
+        // An absolute upload_dir is kept as is by `join`.
+        let config_dir = path.parent().expect("config path has a parent");
+        config.storage.upload_dir = config_dir
+            .join(&config.storage.upload_dir)
+            .to_string_lossy()
+            .into_owned();
         config
     }
 

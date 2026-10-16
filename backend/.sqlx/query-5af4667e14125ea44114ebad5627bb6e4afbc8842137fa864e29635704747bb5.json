@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update files set created_at = now() - make_interval(secs => $2) where id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5af4667e14125ea44114ebad5627bb6e4afbc8842137fa864e29635704747bb5"
+}

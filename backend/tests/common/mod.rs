@@ -9,11 +9,13 @@ use actix_web::test as actix_test;
 use actix_web::web::Data;
 use actix_web::{App, web};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use elysia::config::{
     AuthConfig, Config, DatabaseConfig, ServerConfig, SsoConfig, StorageConfig, TelemetryConfig,
 };
 use elysia::handlers::upload;
+use elysia::repository::files::{self, NewFile};
 use elysia::repository::users::{self, AuthUserRow};
 use elysia::services::auth as auth_service;
 use elysia::services::files::generate_id;
@@ -282,5 +284,36 @@ pub fn pipeline_options(format: TargetFormat) -> ProcessOptions {
         format,
         target_file_size: 0,
         requested_quality: None,
+    }
+}
+
+/// Insert `count` bare PNG rows of `size` bytes uploaded by `uploader`, with
+/// ids and hashes unique per `prefix`.
+pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usize, size: i64) {
+    for index in 0..count {
+        let id = format!("{prefix}{index:06}");
+        files::insert(
+            pool,
+            &NewFile {
+                id: &id,
+                ext: "png",
+                mime: "image/png",
+                original_name: None,
+                size,
+                width: 1,
+                height: 1,
+                hash: &id,
+                original_hash: &id,
+                original_ext: "png",
+                original_width: 1,
+                original_height: 1,
+                requested_quality: None,
+                applied_quality: None,
+                has_thumbnail: false,
+                uploaded_by_user_id: uploader,
+            },
+        )
+        .await
+        .unwrap();
     }
 }

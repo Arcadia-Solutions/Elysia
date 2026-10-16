@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select (select count(*) from users where $1::text is null or created_at >= now() - $1::text::interval) as \"new_users!\", count(distinct uploaded_by_user_id) as \"active_uploaders!\", count(*) as \"uploads!\", coalesce(sum(size), 0)::bigint as \"uploaded_bytes!\" from files where $1::text is null or created_at >= now() - $1::text::interval",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "new_users!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "active_uploaders!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "uploads!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "uploaded_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0a3e846dc331ca7f0c4e121261db6251fa1845b78e26980a7cdc2d1ce63a182b"
+}

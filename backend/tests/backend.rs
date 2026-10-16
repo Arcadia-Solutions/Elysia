@@ -259,9 +259,13 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
 
 #[test]
 fn generate_id_is_8_base62_chars() {
-    let id = generate_id();
-    assert_eq!(id.chars().count(), 8);
-    assert!(id.chars().all(|c| c.is_ascii_alphanumeric()));
+    // Many draws: with nanoid's default alphabet (adds `_` and `-`) about 1 in
+    // 5 ids has a stray character, so a single draw would usually pass.
+    for _ in 0..1000 {
+        let id = generate_id();
+        assert_eq!(id.chars().count(), 8);
+        assert!(id.chars().all(|c| c.is_ascii_alphanumeric()), "{id}");
+    }
 }
 
 #[test]

@@ -4,45 +4,13 @@ mod common;
 
 use sqlx::PgPool;
 
-use elysia::repository::files::{self, NewFile};
 use elysia::services::files::{IMAGES_PER_PAGE, list_images};
-
-/// Insert `count` bare file rows with unique ids and hashes.
-async fn seed(pool: &PgPool, count: usize) {
-    let uploader = common::test_user(pool, "browser").await.0.id;
-    for index in 0..count {
-        let id = format!("id{index:06}");
-        let hash = format!("hash{index:06}");
-        files::insert(
-            pool,
-            &NewFile {
-                id: &id,
-                ext: "png",
-                mime: "image/png",
-                original_name: None,
-                size: 1,
-                width: 1,
-                height: 1,
-                hash: &hash,
-                original_hash: &hash,
-                original_ext: "png",
-                original_width: 1,
-                original_height: 1,
-                requested_quality: None,
-                applied_quality: None,
-                has_thumbnail: false,
-                uploaded_by_user_id: uploader,
-            },
-        )
-        .await
-        .unwrap();
-    }
-}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn paginates_with_total(pool: PgPool) {
     let per_page = IMAGES_PER_PAGE as usize;
-    seed(&pool, per_page + 1).await;
+    let uploader = common::test_user(&pool, "browser").await.0.id;
+    common::seed_files(&pool, uploader, "id", per_page + 1, 1).await;
 
     let (first, total, first_page) = list_images(&pool, 1).await.unwrap();
     assert_eq!(first.len(), per_page);

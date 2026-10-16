@@ -11,7 +11,7 @@
       <dt>{{ $t('image.dimensions') }}</dt>
       <dd>{{ meta.width }} × {{ meta.height }}</dd>
       <dt>{{ $t('image.size') }}</dt>
-      <dd>{{ humanSize(meta.size) }}</dd>
+      <dd>{{ formatBytes(meta.size) }}</dd>
       <dt>{{ $t('image.format') }}</dt>
       <dd>{{ meta.mime }}</dd>
     </dl>
@@ -19,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatBytes } from '@/services/format'
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/services/api/http'
@@ -30,17 +31,6 @@ const meta = ref<MetadataResponse | null>(null)
 api.metadata(String(route.params.id)).then((response) => {
   meta.value = response.data
 })
-
-const humanSize = (bytes: number) => {
-  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
-  let value = bytes
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit += 1
-  }
-  return unit === 0 ? `${bytes} B` : `${value.toFixed(1)} ${units[unit]}`
-}
 </script>
 
 <style scoped>

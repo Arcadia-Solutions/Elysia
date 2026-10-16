@@ -43,3 +43,20 @@ fn rejects_the_example_placeholder() {
 fn rejects_a_short_secret() {
     test_config_with_secret("too-short").validate();
 }
+
+#[test]
+fn resolves_a_relative_upload_dir_next_to_the_config_file() {
+    let dir = std::env::temp_dir().join(format!("elysia-config-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("config.yml");
+    std::fs::write(&path, include_str!("../../config.example.yml")).unwrap();
+    // SAFETY: the only test in this binary that touches the environment.
+    unsafe { std::env::set_var("ELYSIA_CONFIG", &path) };
+
+    let config = Config::load();
+    assert_eq!(
+        std::path::Path::new(&config.storage.upload_dir),
+        dir.join("./data/uploads")
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

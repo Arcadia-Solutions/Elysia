@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with start as ( select date_trunc($1, coalesce(now() - $2::text::interval, (select min(created_at) from files)) at time zone 'UTC') as at), per_step as ( select date_trunc($1, created_at at time zone 'UTC') as step, count(*) as files, sum(size) as bytes from files, start where created_at at time zone 'UTC' >= start.at group by 1), earlier as ( select count(*) as files, coalesce(sum(size), 0) as bytes from files, start where created_at at time zone 'UTC' < start.at) select to_char(step, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"period!\", (earlier.files + sum(coalesce(per_step.files, 0)) over (order by step))::bigint as \"files!\", (earlier.bytes + sum(coalesce(per_step.bytes, 0)) over (order by step))::bigint as \"bytes!\", coalesce(per_step.files, 0) as \"uploads!\", coalesce(per_step.bytes, 0)::bigint as \"uploaded_bytes!\" from earlier, start, generate_series(start.at, now() at time zone 'UTC', ('1 ' || $1)::interval) as step left join per_step using (step) order by step",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "period!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "files!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "uploads!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "uploaded_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "de76d2e8b0fe1326429b5a803c3b13cd9c587d2683182caece1c24d0f6634c5a"
+}
