@@ -190,6 +190,10 @@ export interface LoginResponse {
  */
 export interface MetadataResponse {
     /**
+     * Lossy quality applied while processing; null means lossless.
+     */
+    'applied_quality'?: number | null;
+    /**
      * Upload time as a UTC ISO-8601 string.
      */
     'created_at': string;
@@ -198,10 +202,24 @@ export interface MetadataResponse {
     'id': string;
     'mime': string;
     /**
+     * Source extension before processing; differs from `ext` when converted.
+     */
+    'original_ext': string;
+    'original_height': number;
+    /**
      * Original filename from the upload, if the client sent one.
      */
     'original_name'?: string | null;
+    /**
+     * Source dimensions before processing; differ from the stored ones when resized.
+     */
+    'original_width': number;
     'size': number;
+    /**
+     * Public URL for the thumbnail.
+     */
+    'thumbnail_url': string;
+    'uploader_username': string;
     /**
      * Public URL for the raw image.
      */

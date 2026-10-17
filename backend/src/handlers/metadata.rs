@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::error::Result;
-use crate::services::files::{self, image_url};
+use crate::services::files::{self, image_url, thumbnail_url};
 
 /// Display metadata for the `/i/<id>` viewer page.
 #[derive(Serialize, ToSchema)]
@@ -20,10 +20,20 @@ pub struct MetadataResponse {
     pub size: i64,
     pub width: i32,
     pub height: i32,
+    /// Source extension before processing; differs from `ext` when converted.
+    pub original_ext: String,
+    /// Source dimensions before processing; differ from the stored ones when resized.
+    pub original_width: i32,
+    pub original_height: i32,
+    /// Lossy quality applied while processing; null means lossless.
+    pub applied_quality: Option<i32>,
+    pub uploader_username: String,
     /// Upload time as a UTC ISO-8601 string.
     pub created_at: String,
     /// Public URL for the raw image.
     pub url: String,
+    /// Public URL for the thumbnail.
+    pub thumbnail_url: String,
 }
 
 #[utoipa::path(
@@ -40,6 +50,7 @@ pub async fn metadata(pool: Data<PgPool>, id: Path<String>) -> Result<HttpRespon
     let row = files::get_metadata(pool.get_ref(), &id.into_inner()).await?;
     Ok(HttpResponse::Ok().json(MetadataResponse {
         url: image_url(&row.id, &row.ext),
+        thumbnail_url: thumbnail_url(&row.id, &row.ext, row.has_thumbnail),
         id: row.id,
         ext: row.ext,
         mime: row.mime,
@@ -47,6 +58,11 @@ pub async fn metadata(pool: Data<PgPool>, id: Path<String>) -> Result<HttpRespon
         size: row.size,
         width: row.width,
         height: row.height,
+        original_ext: row.original_ext,
+        original_width: row.original_width,
+        original_height: row.original_height,
+        applied_quality: row.applied_quality,
+        uploader_username: row.uploader_username,
         created_at: row.created_at,
     }))
 }

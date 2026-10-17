@@ -81,7 +81,15 @@
     "uploaded_at": "Uploaded at",
     "dimensions": "Dimensions",
     "size": "Size",
-    "format": "Format"
+    "format": "Format",
+    "uploaded_by": "Uploaded by",
+    "processing": {
+      "title": "Processing",
+      "none": "None, stored as uploaded",
+      "converted": "Converted from {from} to {to}",
+      "resized": "Resized from {width} × {height}",
+      "compressed": "Compressed at quality {quality}"
+    }
   },
   "browse": {
     "title": "Browse images",

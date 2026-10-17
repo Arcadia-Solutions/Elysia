@@ -325,6 +325,7 @@ async fn find_metadata_roundtrips_and_formats_created_at(pool: PgPool) {
     assert_eq!(meta.ext, "png");
     assert_eq!(meta.size, 33);
     assert_eq!((meta.width, meta.height), (2, 2));
+    assert_eq!(meta.uploader_username, "metareader");
     // created_at is rendered as a UTC ISO-8601 string (…T…Z), parseable by JS Date.
     assert!(meta.created_at.contains('T') && meta.created_at.ends_with('Z'));
 

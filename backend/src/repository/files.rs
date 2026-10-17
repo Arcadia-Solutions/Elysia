@@ -121,17 +121,26 @@ pub struct FileMetadata {
     pub size: i64,
     pub width: i32,
     pub height: i32,
+    pub original_ext: String,
+    pub original_width: i32,
+    pub original_height: i32,
+    pub applied_quality: Option<i32>,
+    pub has_thumbnail: bool,
+    pub uploader_username: String,
     pub created_at: String,
 }
 
-/// Fetch a file's display metadata by id.
+/// Fetch a file's display metadata and its uploader's username by id.
 pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadata>> {
     Ok(sqlx::query_as!(
         FileMetadata,
-        "select id, ext, mime, original_name, size, width, height, \
-                to_char(created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+        "select files.id, ext, mime, original_name, size, width, height, \
+                original_ext, original_width, original_height, applied_quality, \
+                has_thumbnail, users.username as uploader_username, \
+                to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
                   as \"created_at!\" \
-         from files where id = $1",
+         from files join users on users.id = files.uploaded_by_user_id \
+         where files.id = $1",
         id
     )
     .fetch_optional(pool)

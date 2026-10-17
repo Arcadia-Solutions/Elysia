@@ -6,27 +6,62 @@
         <dt>{{ $t('image.name') }}</dt>
         <dd>{{ meta.original_name }}</dd>
       </template>
+      <dt>{{ $t('image.uploaded_by') }}</dt>
+      <dd>{{ meta.uploader_username }}</dd>
       <dt>{{ $t('image.uploaded_at') }}</dt>
-      <dd>{{ new Date(meta.created_at).toLocaleString('sv-SE') }}</dd>
+      <dd>
+        {{ new Date(meta.created_at).toLocaleString('sv-SE') }}
+        <br />
+        ({{ timeAgo(new Date(meta.created_at)) }})
+      </dd>
       <dt>{{ $t('image.dimensions') }}</dt>
       <dd>{{ meta.width }} × {{ meta.height }}</dd>
       <dt>{{ $t('image.size') }}</dt>
       <dd>{{ formatBytes(meta.size) }}</dd>
       <dt>{{ $t('image.format') }}</dt>
       <dd>{{ meta.mime }}</dd>
+      <dt>{{ $t('image.processing.title') }}</dt>
+      <dd>
+        <ul v-if="processing.length" class="processing">
+          <li v-for="step in processing" :key="step">{{ step }}</li>
+        </ul>
+        <template v-else>{{ $t('image.processing.none') }}</template>
+      </dd>
+      <CopyLink :label="$t('upload.image_link')" :link="meta.url" />
+      <CopyLink :label="$t('upload.thumbnail_link')" :link="meta.thumbnail_url" class="thumbnail-link" />
     </dl>
   </div>
 </template>
 
 <script setup lang="ts">
-import { formatBytes } from '@/services/format'
-import { ref } from 'vue'
+import { formatBytes, timeAgo } from '@/services/format'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import CopyLink from '@/components/CopyLink.vue'
 import { api } from '@/services/api/http'
 import type { MetadataResponse } from '@/services/api-schema'
 
+const { t } = useI18n()
 const route = useRoute()
 const meta = ref<MetadataResponse | null>(null)
+
+// What the upload pipeline changed compared to the source file.
+const processing = computed(() => {
+  const image = meta.value
+  if (!image) return []
+  const steps: string[] = []
+  if (image.ext !== image.original_ext) {
+    steps.push(t('image.processing.converted', { from: image.original_ext.toUpperCase(), to: image.ext.toUpperCase() }))
+  }
+  if (image.width !== image.original_width || image.height !== image.original_height) {
+    steps.push(t('image.processing.resized', { width: image.original_width, height: image.original_height }))
+  }
+  if (image.applied_quality != null) {
+    steps.push(t('image.processing.compressed', { quality: image.applied_quality }))
+  }
+  return steps
+})
 
 api.metadata(String(route.params.id)).then((response) => {
   meta.value = response.data
@@ -59,6 +94,13 @@ api.metadata(String(route.params.id)).then((response) => {
 .meta dt {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
+}
+.processing {
+  margin: 0;
+  padding-left: 18px;
+}
+.thumbnail-link {
+  margin-top: 12px;
 }
 .meta dd {
   margin: 0 0 12px;
