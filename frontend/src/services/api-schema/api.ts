@@ -426,7 +426,7 @@ export interface UnauthElysiaSettings {
  */
 export interface UploadOptionsQuery {
     /**
-     * Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+     * Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
      */
     'lossy_compression_value'?: number | null;
     /**
@@ -1011,7 +1011,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * 
          * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
@@ -1066,7 +1066,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * 
          * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
@@ -1303,7 +1303,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
@@ -1318,7 +1318,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
@@ -1475,7 +1475,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         /**
          * 
          * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
@@ -1487,7 +1487,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         /**
          * 
          * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
          * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {*} [options] Override http request option.
@@ -1654,7 +1654,7 @@ export class ElysiaApi extends BaseAPI {
     /**
      * 
      * @param {File} file 
-     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
      * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
      * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      * @param {*} [options] Override http request option.
@@ -1667,7 +1667,7 @@ export class ElysiaApi extends BaseAPI {
     /**
      * 
      * @param {UploadUrlRequest} uploadUrlRequest 
-     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100; absent means lossless. Requires a configured target format.
+     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
      * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
      * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      * @param {*} [options] Override http request option.

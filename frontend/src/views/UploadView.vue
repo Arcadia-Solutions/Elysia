@@ -65,12 +65,17 @@
         />
       </div>
 
-      <div v-if="showCompression" class="quality-row">
+      <div v-if="showLosslessToggle" class="toggle-row">
+        <label>{{ $t('upload.lossless.label') }}</label>
+        <ToggleSwitch v-model="lossless" :disabled="uploading" />
+      </div>
+
+      <div v-if="showCompression && !losslessSelected" class="quality-row">
         <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
         <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
       </div>
 
-      <div v-if="settings?.allow_overriding_strip_exif" class="strip-exif-row">
+      <div v-if="settings?.allow_overriding_strip_exif" class="toggle-row">
         <label>{{ $t('upload.strip_exif.label') }}</label>
         <ToggleSwitch v-model="stripExif" :disabled="uploading" />
       </div>
@@ -131,6 +136,8 @@ const formatLabels: Record<TargetFormat, string> = {
 }
 // Per-upload lossy quality, sent only while the slider is shown.
 const quality = ref(80)
+// Per-upload lossless choice, offered only for formats with a lossless mode.
+const lossless = ref(false)
 // Per-upload EXIF-stripping choice, initialized from the server default once
 // settings load. Only honored when the settings allow overriding.
 const stripExif = ref(false)
@@ -142,7 +149,11 @@ const effectiveFormat = computed(() => (formatOverride.value === 'default' ? set
 const showCompression = computed(() => !!settings.value?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
 // The options section is empty (and hidden) unless the server exposes at least one knob.
 const hasOptions = computed(() => !!settings.value?.allow_overriding_file_format || showCompression.value || !!settings.value?.allow_overriding_strip_exif)
-const qualityValue = () => (showCompression.value ? quality.value : undefined)
+// PNG is always lossless and AVIF/JPEG never are, so only WebP and JPEG XL get the toggle.
+const showLosslessToggle = computed(() => showCompression.value && ['webp', 'jpegxl'].includes(effectiveFormat.value ?? ''))
+const losslessSelected = computed(() => showLosslessToggle.value && lossless.value)
+// 0 asks the backend for lossless, overriding its default quality.
+const qualityValue = () => (losslessSelected.value ? 0 : showCompression.value ? quality.value : undefined)
 const stripExifValue = () => (settings.value?.allow_overriding_strip_exif ? stripExif.value : undefined)
 
 // Public upload limits, so files are rejected client-side before a wasted
@@ -343,13 +354,13 @@ const rehost = () => {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }
-.strip-exif-row {
+.toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-.strip-exif-row label {
+.toggle-row label {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }

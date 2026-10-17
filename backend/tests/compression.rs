@@ -107,6 +107,20 @@ fn default_compression_applies_when_none_requested() {
 }
 
 #[test]
+fn zero_requests_lossless_over_default() {
+    let mut settings = webp_settings();
+    settings.default_compression = 50;
+    let options = UploadOptionsQuery {
+        lossy_compression_value: Some(0),
+        target_file_format: None,
+        strip_exif: None,
+    }
+    .into_options(&settings)
+    .unwrap();
+    assert_eq!(options.lossy_compression_value, None);
+}
+
+#[test]
 fn request_overrides_default_when_allowed() {
     let mut settings = webp_settings();
     settings.default_compression = 50;
@@ -446,8 +460,7 @@ async fn upload_rejects_quality_above_100(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn upload_rejects_quality_zero(pool: PgPool) {
-    // 0 is a degenerate lossy value; the valid range is 1 to 100.
+async fn upload_accepts_quality_zero_as_lossless(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
         webp_settings(),
@@ -455,7 +468,7 @@ async fn upload_rejects_quality_zero(pool: PgPool) {
         "lossy_compression_value=0",
     )
     .await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(status, StatusCode::OK);
 }
 
 #[sqlx::test(migrations = "./migrations")]

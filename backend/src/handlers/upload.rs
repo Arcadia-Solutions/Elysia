@@ -44,9 +44,9 @@ pub struct UploadResponse {
 #[derive(Debug, Default, Deserialize, ToSchema, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct UploadOptionsQuery {
-    /// Requested lossy quality, 1 to 100; absent means lossless. Requires a
-    /// configured target format.
-    #[param(minimum = 1, maximum = 100)]
+    /// Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the
+    /// configured default. Requires a configured target format.
+    #[param(minimum = 0, maximum = 100)]
     pub lossy_compression_value: Option<u8>,
     /// Requested output format; absent uses the configured default. Rejected
     /// unless overriding the file format is allowed in settings.
@@ -81,15 +81,19 @@ impl UploadOptionsQuery {
             .target_file_format
             .or(settings.default_target_file_format);
         let default = (settings.default_compression > 0).then_some(settings.default_compression);
-        let lossy_compression_value = self.lossy_compression_value.or(default);
+        if self.lossy_compression_value.is_some_and(|q| q > 100) {
+            return Err(Error::BadRequest(
+                "lossy_compression_value must be between 0 and 100".into(),
+            ));
+        }
+        // 0 explicitly requests lossless, overriding the default quality.
+        let lossy_compression_value = match self.lossy_compression_value {
+            Some(0) => None,
+            requested => requested.or(default),
+        };
         if lossy_compression_value.is_some() && target_file_format.is_none() {
             return Err(Error::BadRequest(
                 "compression is disabled: no target file format configured".into(),
-            ));
-        }
-        if lossy_compression_value.is_some_and(|q| !(1..=100).contains(&q)) {
-            return Err(Error::BadRequest(
-                "lossy_compression_value must be between 1 and 100".into(),
             ));
         }
         Ok(UploadOptions {
