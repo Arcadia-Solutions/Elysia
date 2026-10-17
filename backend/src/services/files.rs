@@ -192,21 +192,32 @@ pub async fn store_upload(
     .await
 }
 
+/// Client for URL uploads, shared so connections are reused.
+pub fn http_client() -> &'static reqwest::Client {
+    static CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("failed to build http client")
+    });
+    &CLIENT
+}
+
 /// Fetch an image from `url` and store it, sharing the multipart upload's
-/// validation. Returns a `BadRequest` when the URL cannot be fetched, and the
-/// usual `UnsupportedMediaType` when the fetched bytes are not a supported image.
+/// validation. `original_name` defaults to the URL's last path segment. Returns
+/// a `BadRequest` when the URL cannot be fetched, and the usual
+/// `UnsupportedMediaType` when the fetched bytes are not a supported image.
+#[allow(clippy::too_many_arguments)]
 pub async fn store_from_url(
     pool: &PgPool,
     storage: &Storage,
     settings: &ElysiaSettings,
+    client: &reqwest::Client,
     url: &str,
+    original_name: Option<String>,
     options: &UploadOptions,
     uploaded_by_user_id: Uuid,
 ) -> Result<StoredFile> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|_| Error::Internal)?;
     let mut response = client
         .get(url)
         .send()
@@ -233,12 +244,12 @@ pub async fn store_from_url(
     }
     check_size(settings, bytes.len() as u64)?;
 
-    let original_name = url
-        .rsplit('/')
-        .next()
-        .filter(|s| !s.is_empty())
-        .map(|s| s.split(['?', '#']).next().unwrap_or(s).to_string())
-        .filter(|s| !s.is_empty());
+    let original_name = original_name.or_else(|| {
+        url.rsplit('/')
+            .next()
+            .map(|s| s.split(['?', '#']).next().unwrap_or(s).to_string())
+            .filter(|s| !s.is_empty())
+    });
 
     let mut temp = storage.new_temp()?;
     temp.write_all(&bytes)?;

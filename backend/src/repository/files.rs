@@ -136,6 +136,19 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
     .await?)
 }
 
+/// Move a file's upload date back to `uploaded_at` (unix seconds) when that is
+/// earlier, so a deduplicated import keeps its oldest date.
+pub async fn backdate_created_at(pool: &PgPool, id: &str, uploaded_at: i64) -> Result<()> {
+    sqlx::query!(
+        "update files set created_at = least(created_at, to_timestamp($2)) where id = $1",
+        id,
+        uploaded_at as f64
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// One image in a browse page, plus the total row count (same on every row,
 /// from a window function, so one query returns the page and its total).
 pub struct ImageListRow {

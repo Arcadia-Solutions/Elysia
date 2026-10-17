@@ -216,7 +216,9 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
         &pool,
         &storage,
         &webp_settings(),
+        elysia::services::files::http_client(),
         &url,
+        None,
         &Default::default(),
         uploader,
     )
@@ -241,7 +243,9 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
         &pool,
         &storage,
         &webp_settings(),
+        elysia::services::files::http_client(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+        None,
         &Default::default(),
         uploader,
     )
@@ -252,7 +256,9 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
         &pool,
         &storage,
         &webp_settings(),
+        elysia::services::files::http_client(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+        None,
         &Default::default(),
         uploader,
     )
@@ -279,7 +285,9 @@ async fn different_quality_reprocesses(pool: PgPool) {
             &pool,
             &storage,
             &webp_settings(),
+            elysia::services::files::http_client(),
             &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+            None,
             &options,
             uploader,
         )
@@ -301,7 +309,9 @@ async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
         &pool,
         &storage,
         &test_settings(),
+        elysia::services::files::http_client(),
         &url,
+        None,
         &Default::default(),
         uploader,
     )
@@ -377,7 +387,9 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
         &pool,
         &storage,
         &settings,
+        elysia::services::files::http_client(),
         &serve_once("HTTP/1.1 200 OK", "image/jpeg", source),
+        None,
         &UploadOptions {
             lossy_compression_value: None,
             target_file_format: None,
@@ -400,7 +412,9 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
         &pool,
         &storage,
         &settings,
+        elysia::services::files::http_client(),
         &serve_once("HTTP/1.1 200 OK", "image/jpeg", kept_source),
+        None,
         &UploadOptions {
             lossy_compression_value: None,
             target_file_format: None,

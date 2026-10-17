@@ -54,6 +54,7 @@ pub async fn sso_callback(
     if row.banned || !sso_service::user_active(&sso_state, sso, row.id, &identity.sub).await {
         return Err(Error::Unauthorized);
     }
+    let _ = users::update_last_seen(pool.get_ref(), row.id).await;
     let token = auth_service::mint_jwt(&row.id, &config.auth.jwt_secret)?;
     Ok(HttpResponse::Ok().json(LoginResponse {
         token,

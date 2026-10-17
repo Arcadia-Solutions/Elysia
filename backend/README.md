@@ -28,6 +28,50 @@ of what is there, so run it again to add more. Reset with
 `cargo sqlx database reset --force` and `rm -r data/uploads`. Use `--release`: the
 AVIF and JPEG XL encoders take seconds per image in a debug build.
 
+## Importing from Chevereto
+
+```sh
+cp backend/src/bin/import_chevereto/import.example.yml import.yml   # then fill it in
+cargo run --release --manifest-path ../../Cargo.toml --bin import_chevereto -- import.yml
+```
+
+Copies every image of a Chevereto v4 instance (read from its MySQL database,
+downloaded over HTTP) into Elysia through the real upload pipeline, with the size and
+pixel limits bypassed but processing (thumbnails, EXIF stripping, dedup) kept. Each
+image keeps its upload date and its uploader: when `backend.users` is set, Chevereto
+users whose username exists in the backend's users table become their SSO account
+there (`auth.sso` must be configured), everyone else and guest uploads go to
+`fallback_username`.
+
+When `backend` is set, after each chunk Chevereto links (image, medium, thumbnail and
+viewer page URLs) are rewritten to Elysia URLs in every text-like column of the
+backend's Postgres database (text, varchar,
+char, citext, domains over them, their arrays, json and jsonb), in one transaction.
+Medium links point to the Elysia thumbnail. Only rows whose content changes are updated, once per table, so the backend's update triggers
+fire once per rewritten row. A column too short for the new link aborts the chunk:
+widen it and rerun.
+
+The last finished image id is saved in `state_file`, so the import can be stopped and
+rerun at any time (it resumes after the last finished chunk). Images that could not be
+imported are listed in `failed_file` and do not stop the run. To retry them, set the
+state file to the lowest failed `image_id` minus 1 and rerun (dedup makes the replay
+safe): at startup, entries after the state file's id are dropped from `failed_file`,
+since those images are imported again.
+
+At startup the importer checks Chevereto's `chv_settings` and refuses to run unless
+`upload_image_path` is `images`, `route_image` is `image` and `root_route` is not
+`image`: the link patterns and download URLs assume these defaults. Chevereto served
+under a URL subpath is not supported for link rewriting (patterns are built from
+`link_hosts` + `/images/` and `/image/`).
+
+Each chunk scans the backend's text columns with one regex matching any Chevereto link,
+so time one chunk against a production-size copy of the backend before the real run. A bigger
+`batch_size` means fewer full scans.
+
+Chevereto users are matched to backend users by exact username when their first image
+is imported. A user without a backend account is logged once and their images go to
+`fallback_username`.
+
 ## System dependencies
 
 The JPEG XL encoder (libjxl) is built from vendored source, so no system libjxl is needed.

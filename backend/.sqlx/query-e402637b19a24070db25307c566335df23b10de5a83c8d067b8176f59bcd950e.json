@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update files set created_at = least(created_at, to_timestamp($2)) where id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e402637b19a24070db25307c566335df23b10de5a83c8d067b8176f59bcd950e"
+}

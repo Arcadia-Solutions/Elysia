@@ -47,7 +47,9 @@ pub async fn upload_url(
         pool.get_ref(),
         storage.get_ref(),
         &settings,
+        files::http_client(),
         &body.url,
+        None,
         &options,
         authenticated.user_id,
     )

@@ -162,7 +162,9 @@ async fn rehost_stores_a_fetched_image(pool: PgPool) {
         &pool,
         &storage,
         &test_settings(),
+        elysia::services::files::http_client(),
         &url,
+        None,
         &Default::default(),
         uploader,
     )
@@ -186,7 +188,9 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         &pool,
         &storage,
         &settings,
+        elysia::services::files::http_client(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+        None,
         &Default::default(),
         uploader,
     )
@@ -198,7 +202,9 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         &pool,
         &storage,
         &settings,
+        elysia::services::files::http_client(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
+        None,
         &Default::default(),
         uploader,
     )
@@ -227,7 +233,9 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
             &pool,
             &storage,
             &test_settings(),
+            elysia::services::files::http_client(),
             &url,
+            None,
             &Default::default(),
             uploader
         )
@@ -247,7 +255,9 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
             &pool,
             &storage,
             &test_settings(),
+            elysia::services::files::http_client(),
             &url,
+            None,
             &Default::default(),
             uploader
         )

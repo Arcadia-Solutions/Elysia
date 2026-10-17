@@ -222,15 +222,14 @@ pub async fn upsert_sso_user(
     // or a concurrent signup taking the username or email: start over once.
     for _ in 0..2 {
         if let Some(row) = find_by_issuer_sub(pool, issuer, sub).await? {
-            let _ = update_last_seen(pool, row.id).await;
             return Ok(row);
         }
         let username = free_username(pool, &sanitize_username(username, sub)).await?;
         let email = usable_email(pool, email).await?;
         match sqlx::query_as!(
             UserRow,
-            r#"insert into users (provider, username, email, password_hash, external_issuer, external_sub, last_seen)
-               values ('sso', $1, $2, null, $3, $4, now())
+            r#"insert into users (provider, username, email, password_hash, external_issuer, external_sub)
+               values ('sso', $1, $2, null, $3, $4)
                returning id, username, email, password_hash, is_admin, banned,
                          provider::text as "provider!", external_sub"#,
             username,

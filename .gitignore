@@ -1,6 +1,7 @@
 target/
 data/
 config.yml
+import.yml
 node_modules
 .env
 CLAUDE.md

@@ -1,0 +1,40 @@
+chevereto:
+  # MySQL connection to the Chevereto database (tables use the default chv_ prefix)
+  database_url: mysql://chevereto:password@localhost:3306/chevereto
+  # Public base URL of the Chevereto site; images are downloaded over HTTP from here
+  public_url: https://img.example.com
+  # Hosts (with port if not default) whose Chevereto links get rewritten in the backend (aliases included).
+  # Optional, defaults to the host and port of public_url
+  link_hosts: [img.example.com]
+# Optional: the application whose Postgres database holds the Chevereto links.
+# Without it, images are imported but no link is rewritten and every image goes
+# to fallback_username
+backend:
+  # Chevereto links are rewritten in every text column of this database
+  database_url: postgres://arcadia:password@localhost:5432/arcadia
+  # Optional: match Chevereto uploaders to backend users by exact username, they
+  # become that backend's SSO users (auth.sso must be configured in config.yml).
+  # Without it every image goes to fallback_username
+  users:
+    # Table name, optionally schema qualified (e.g. public.users)
+    table: users
+    username_column: username
+    # Column holding the user's SSO subject (the OIDC `sub` claim)
+    subject_column: id
+    # Optional
+    email_column: email
+elysia:
+  # Base of the rewritten links
+  public_url: https://elysia.example.com
+# Elysia user (created if missing) owning guest uploads and images of Chevereto
+# users without a backend account
+fallback_username: chevereto-import
+# Images read from Chevereto per chunk; progress is saved and links are
+# rewritten once per chunk
+batch_size: 100
+# Images downloaded and processed in parallel
+concurrency: 4
+# Holds the last fully imported Chevereto image id, used to resume a stopped run
+state_file: ./chevereto-import.state
+# CSV of images that failed (image_id, fetch_url, error), see README for retrying
+failed_file: ./chevereto-import.failed.csv

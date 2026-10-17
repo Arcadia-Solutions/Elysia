@@ -4,6 +4,7 @@ mod common;
 
 use sqlx::PgPool;
 
+use elysia::repository::files;
 use elysia::services::files::{IMAGES_PER_PAGE, list_images};
 
 #[sqlx::test(migrations = "./migrations")]
@@ -30,4 +31,25 @@ async fn paginates_with_total(pool: PgPool) {
     let (empty, empty_total, _) = list_images(&pool, 3).await.unwrap();
     assert!(empty.is_empty());
     assert_eq!(empty_total, per_page as i64 + 1);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn backdate_only_moves_created_at_earlier(pool: PgPool) {
+    let uploader = common::test_user(&pool, "importer").await.0.id;
+    common::seed_files(&pool, uploader, "id", 1, 1).await;
+    let id = "id000000";
+
+    // 2020-01-01T00:00:00Z is before now, so the date moves.
+    files::backdate_created_at(&pool, id, 1_577_836_800)
+        .await
+        .unwrap();
+    let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
+    assert_eq!(metadata.created_at, "2020-01-01T00:00:00Z");
+
+    // A later date is ignored.
+    files::backdate_created_at(&pool, id, 1_609_459_200)
+        .await
+        .unwrap();
+    let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
+    assert_eq!(metadata.created_at, "2020-01-01T00:00:00Z");
 }

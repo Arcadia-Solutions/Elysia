@@ -2,7 +2,7 @@
 name = "elysia"
 version = "0.1.0"
 edition = "2024"
-# src/bin/seed.rs is a second binary; plain `cargo run` stays the server.
+# src/bin/ holds extra binaries (seed, import_chevereto); plain `cargo run` stays the server.
 default-run = "elysia"
 
 [dependencies]
@@ -10,7 +10,7 @@ actix-web = "4"
 actix-multipart = "0.7"
 actix-cors = "0.7"
 actix-files = "0.6"
-sqlx = { version = "0.9", features = ["runtime-tokio", "postgres", "uuid"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "postgres", "mysql", "uuid"] }
 utoipa = { version = "5.5", features = ["actix_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
 serde = { version = "1", features = ["derive"] }
