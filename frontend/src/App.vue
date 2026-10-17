@@ -1,7 +1,7 @@
 <template>
   <header class="topbar">
     <span>{{ $t('app.name') }}</span>
-    <span v-if="!route.meta.public" class="actions">
+    <span v-if="!route.meta.public || getToken()" class="actions">
       <Button
         v-for="item in navItems"
         :key="item.to"
