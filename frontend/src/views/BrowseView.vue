@@ -13,14 +13,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import Paginator, { type PageState } from 'primevue/paginator'
 import { api } from '@/services/api/http'
 import { showToast } from '@/services/toast'
 import type { ImageSummary } from '@/services/api-schema'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 
 const images = ref<ImageSummary[]>([])
 const page = ref(1)
@@ -41,9 +44,13 @@ const load = (target: number) => {
     })
 }
 
-const onPage = (event: PageState) => load(event.page + 1)
+const onPage = (event: PageState) => router.push({ query: { ...route.query, page: event.page + 1 } })
 
-load(1)
+watch(
+  () => route.query,
+  (query) => load(Number(query.page) || 1),
+  { immediate: true },
+)
 </script>
 
 <style scoped>
