@@ -8,6 +8,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::error::Result;
 use crate::middlewares::AuthUser;
+use crate::repository::files::{ImagesSortBy, SortOrder};
 use crate::services::files::{self, IMAGES_PER_PAGE};
 
 /// One image in a browse page.
@@ -18,7 +19,7 @@ pub struct ImageSummary {
     pub thumbnail_url: String,
 }
 
-/// A page of stored images, newest first.
+/// A page of stored images in the requested order.
 #[derive(Serialize, ToSchema)]
 pub struct ImagesPage {
     pub images: Vec<ImageSummary>,
@@ -33,6 +34,10 @@ pub struct ImagesQuery {
     /// 1-based page number; absent or below 1 means the first page.
     #[param(minimum = 1)]
     pub page: Option<i64>,
+    /// Sort column; defaults to the upload date.
+    pub sort_by: Option<ImagesSortBy>,
+    /// Sort direction; defaults to descending.
+    pub order: Option<SortOrder>,
 }
 
 #[utoipa::path(
@@ -53,7 +58,13 @@ pub async fn images(
     query: Query<ImagesQuery>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
-    let (rows, total, page) = files::list_images(pool.get_ref(), query.page.unwrap_or(1)).await?;
+    let (rows, total, page) = files::list_images(
+        pool.get_ref(),
+        query.page.unwrap_or(1),
+        query.sort_by.unwrap_or_default(),
+        query.order.unwrap_or_default(),
+    )
+    .await?;
     let images = rows
         .into_iter()
         .map(|row| ImageSummary {

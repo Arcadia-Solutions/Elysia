@@ -68,14 +68,19 @@ pub fn thumbnail_url(id: &str, ext: &str, has_thumbnail: bool) -> String {
     format!("/t/{id}.{extension}")
 }
 
-/// Fetch one page (1-based) of stored images, newest first, with the total
+/// Fetch one page (1-based) of stored images in the given order, with the total
 /// count and the clamped page actually used. An out-of-range page returns no
 /// rows but still reports the real total, so callers can show the pager.
-pub async fn list_images(pool: &PgPool, page: i64) -> Result<(Vec<files::ImageListRow>, i64, i64)> {
+pub async fn list_images(
+    pool: &PgPool,
+    page: i64,
+    sort_by: files::ImagesSortBy,
+    order: files::SortOrder,
+) -> Result<(Vec<files::ImageListRow>, i64, i64)> {
     paginate(
         page,
         IMAGES_PER_PAGE,
-        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE),
+        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE, sort_by, order),
         files::count(pool),
         |row| row.total,
     )

@@ -1,4 +1,6 @@
+use serde::Deserialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::Result;
@@ -158,15 +160,70 @@ pub struct ImageListRow {
     pub total: i64,
 }
 
-/// Fetch one page of images, newest first, with the total count. `id` breaks
-/// created_at ties so rows never shift across pages.
-pub async fn list_page(pool: &PgPool, offset: i64, limit: i64) -> Result<Vec<ImageListRow>> {
+/// Column the browse page is sorted by.
+#[derive(Clone, Copy, Debug, Default, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ImagesSortBy {
+    #[default]
+    CreatedAt,
+    Size,
+    Width,
+    Height,
+    OriginalHash,
+}
+
+impl ImagesSortBy {
+    fn as_sql(self) -> &'static str {
+        match self {
+            ImagesSortBy::CreatedAt => "created_at",
+            ImagesSortBy::Size => "size",
+            ImagesSortBy::Width => "width",
+            ImagesSortBy::Height => "height",
+            ImagesSortBy::OriginalHash => "original_hash",
+        }
+    }
+}
+
+/// Sort direction.
+#[derive(Clone, Copy, Debug, Default, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum SortOrder {
+    Asc,
+    #[default]
+    Desc,
+}
+
+/// Fetch one page of images in the given order, with the total count. `id`
+/// breaks ties so rows never shift across pages.
+// ponytail: CASE ordering can't use an index (full sort per page, as the window
+// count scans every row anyway); add per-column queries + indexes if it gets slow.
+pub async fn list_page(
+    pool: &PgPool,
+    offset: i64,
+    limit: i64,
+    sort_by: ImagesSortBy,
+    order: SortOrder,
+) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
         "select id, ext, has_thumbnail, count(*) over() as \"total!\" \
-         from files order by created_at desc, id desc offset $1 limit $2",
+         from files order by \
+           case when $3 = 'created_at' and $4 then created_at end asc, \
+           case when $3 = 'created_at' and not $4 then created_at end desc, \
+           case when $3 = 'size' and $4 then size end asc, \
+           case when $3 = 'size' and not $4 then size end desc, \
+           case when $3 = 'width' and $4 then width end asc, \
+           case when $3 = 'width' and not $4 then width end desc, \
+           case when $3 = 'height' and $4 then height end asc, \
+           case when $3 = 'height' and not $4 then height end desc, \
+           case when $3 = 'original_hash' and $4 then original_hash end asc, \
+           case when $3 = 'original_hash' and not $4 then original_hash end desc, \
+           id desc \
+         offset $1 limit $2",
         offset,
         limit,
+        sort_by.as_sql(),
+        matches!(order, SortOrder::Asc),
     )
     .fetch_all(pool)
     .await?)

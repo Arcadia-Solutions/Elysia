@@ -86,7 +86,18 @@
   "browse": {
     "title": "Browse images",
     "empty": "No images uploaded yet",
-    "load_error": "Could not load images"
+    "load_error": "Could not load images",
+    "sort": {
+      "created_at": "Date added",
+      "size": "Size",
+      "width": "Width",
+      "height": "Height",
+      "original_hash": "Original hash"
+    },
+    "order": {
+      "asc": "Ascending",
+      "desc": "Descending"
+    }
   },
   "dashboard": {
     "title": "Dashboard",

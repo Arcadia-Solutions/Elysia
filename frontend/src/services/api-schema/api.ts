@@ -148,7 +148,7 @@ export interface ImageSummary {
     'thumbnail_url': string;
 }
 /**
- * A page of stored images, newest first.
+ * A page of stored images in the requested order.
  */
 export interface ImagesPage {
     'images': Array<ImageSummary>;
@@ -156,6 +156,21 @@ export interface ImagesPage {
     'per_page': number;
     'total': number;
 }
+/**
+ * Column the browse page is sorted by.
+ */
+
+export const ImagesSortBy = {
+    CreatedAt: 'created_at',
+    Size: 'size',
+    Width: 'width',
+    Height: 'height',
+    OriginalHash: 'original_hash'
+} as const;
+
+export type ImagesSortBy = typeof ImagesSortBy[keyof typeof ImagesSortBy];
+
+
 /**
  * Username-or-email plus password sign-in.
  */
@@ -286,6 +301,18 @@ export interface ResizeAction {
     'from': Array<number>;
     'to': Array<number>;
 }
+/**
+ * Sort direction.
+ */
+
+export const SortOrder = {
+    Asc: 'asc',
+    Desc: 'desc'
+} as const;
+
+export type SortOrder = typeof SortOrder[keyof typeof SortOrder];
+
+
 /**
  * The provider\'s code, plus the verifier the frontend kept since the login started. The frontend already checked the state.
  */
@@ -582,10 +609,12 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * 
          * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+         * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
+         * @param {SortOrder} [order] Sort direction; defaults to descending.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images: async (page?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        images: async (page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/api/images`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -600,6 +629,14 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (page !== undefined) {
                 localVarQueryParameter['page'] = page;
+            }
+
+            if (sortBy !== undefined) {
+                localVarQueryParameter['sort_by'] = sortBy;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
             }
 
 
@@ -1115,11 +1152,13 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+         * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
+         * @param {SortOrder} [order] Sort direction; defaults to descending.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async images(page?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, options);
+        async images(page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -1318,11 +1357,13 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         /**
          * 
          * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+         * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
+         * @param {SortOrder} [order] Sort direction; defaults to descending.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images(page?: number, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
-            return localVarFp.images(page, options).then((request) => request(axios, basePath));
+        images(page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
+            return localVarFp.images(page, sortBy, order, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1484,11 +1525,13 @@ export class ElysiaApi extends BaseAPI {
     /**
      * 
      * @param {number} [page] 1-based page number; absent or below 1 means the first page.
+     * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
+     * @param {SortOrder} [order] Sort direction; defaults to descending.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public images(page?: number, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).images(page, options).then((request) => request(this.axios, this.basePath));
+    public images(page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).images(page, sortBy, order, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

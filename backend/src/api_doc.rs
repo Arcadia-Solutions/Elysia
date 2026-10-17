@@ -1,6 +1,7 @@
 use utoipa::OpenApi;
 
 use crate::handlers::upload::UploadOptionsQuery;
+use crate::repository::files::{ImagesSortBy, SortOrder};
 use crate::repository::stats::{StatsInterval, StatsPeriod};
 
 #[derive(OpenApi)]
@@ -28,6 +29,6 @@ use crate::repository::stats::{StatsInterval, StatsPeriod};
     // Query parameter types are inlined into each path; list them so the
     // generated client still gets them as named types. The rest is collected
     // from the paths.
-    components(schemas(UploadOptionsQuery, StatsInterval, StatsPeriod))
+    components(schemas(UploadOptionsQuery, StatsInterval, StatsPeriod, ImagesSortBy, SortOrder))
 )]
 pub struct ApiDoc;
