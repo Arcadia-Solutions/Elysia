@@ -270,6 +270,31 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn rehost_rejects_a_body_over_size_limit(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    // Large enough to arrive in several chunks, so the limit trips mid-stream.
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", vec![0; 4 * 1024 * 1024]);
+    let uploader = test_user(&pool, "sizechecker").await.0.id;
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 1024;
+    let result = store_from_url(
+        &pool,
+        &storage,
+        &settings,
+        elysia::services::files::http_client(),
+        &url,
+        None,
+        &Default::default(),
+        uploader,
+    )
+    .await;
+    assert!(
+        matches!(result, Err(Error::BadRequest(message)) if message.starts_with("file too large"))
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn generate_id_is_8_base62_chars() {
     // Many draws: with nanoid's default alphabet (adds `_` and `-`) about 1 in

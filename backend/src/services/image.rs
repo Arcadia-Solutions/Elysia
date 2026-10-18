@@ -90,11 +90,13 @@ pub fn decode(input: &[u8]) -> Result<Option<Decoded>, ProcessError> {
     Ok(Some((image, icc_profile)))
 }
 
-/// EXIF orientation of the input, read from the header only (no pixel decode).
+/// EXIF orientation of the file at `path`, read without a pixel decode.
 /// `NoTransforms` when absent or unreadable.
-pub fn orientation(input: &[u8]) -> Orientation {
-    reader(input)
-        .into_decoder()
+pub fn orientation(path: &std::path::Path) -> Orientation {
+    image::ImageReader::open(path)
+        .and_then(|reader| reader.with_guessed_format())
+        .map_err(image::ImageError::from)
+        .and_then(|reader| reader.into_decoder())
         .and_then(|mut decoder| decoder.orientation())
         .unwrap_or(Orientation::NoTransforms)
 }

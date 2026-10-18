@@ -237,19 +237,18 @@ pub async fn store_from_url(
         )));
     }
 
-    let limit = settings.max_file_size_bytes;
-    let mut bytes = Vec::new();
+    // Stream the body to disk, rejecting it as soon as it exceeds the limit.
+    let mut temp = storage.new_temp()?;
+    let mut size = 0u64;
     while let Some(chunk) = response
         .chunk()
         .await
         .map_err(|e| Error::BadRequest(format!("could not read url body: {e}")))?
     {
-        bytes.extend_from_slice(&chunk);
-        if limit > 0 && bytes.len() as u64 > limit {
-            check_size(settings, bytes.len() as u64)?;
-        }
+        size += chunk.len() as u64;
+        check_size(settings, size)?;
+        temp.write_all(&chunk)?;
     }
-    check_size(settings, bytes.len() as u64)?;
 
     let original_name = original_name.or_else(|| {
         url.rsplit('/')
@@ -258,15 +257,12 @@ pub async fn store_from_url(
             .filter(|s| !s.is_empty())
     });
 
-    let mut temp = storage.new_temp()?;
-    temp.write_all(&bytes)?;
-
     store(
         pool,
         storage,
         settings,
         temp,
-        bytes.len() as u64,
+        size,
         original_name,
         options,
         uploaded_by_user_id,
@@ -311,10 +307,8 @@ async fn store(
     let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
     check_dimensions(settings, dimensions.width as u32, dimensions.height as u32)?;
     let source_ext = ext;
-    // Single read reused for the pipeline, EXIF strip and thumbnails below.
-    let source_bytes = tokio::fs::read(path).await?;
     // Browsers and the pipeline apply the EXIF orientation, so record the upright size.
-    let orientation = image::orientation(&source_bytes);
+    let orientation = image::orientation(path);
     let (source_width, source_height) = match orientation {
         Orientation::Rotate90
         | Orientation::Rotate270
@@ -322,7 +316,7 @@ async fn store(
         | Orientation::Rotate270FlipH => (dimensions.height as i32, dimensions.width as i32),
         _ => (dimensions.width as i32, dimensions.height as i32),
     };
-    let original_hash = hash_bytes(&source_bytes);
+    let original_hash = hash_file(path).await?;
     let requested_quality = options.lossy_compression_value.map(|q| q as i32);
 
     // Same source under the same requested quality was already processed.
@@ -345,6 +339,18 @@ async fn store(
         settings.thumbnail_width_pixels,
         settings.thumbnail_height_pixels,
     );
+    // Passthrough stores the source, so the output matches the source dimensions.
+    let passthrough_thumbnail = thumbnails_enabled
+        && target_file_format.is_none()
+        && over_thumbnail_box(thumbnail_box, source_width as u32, source_height as u32);
+    // Single read shared (refcounted, not copied) by the pipeline, EXIF strip and
+    // thumbnail below; a plain passthrough needs none of them and skips it.
+    let source_bytes: img_parts::Bytes =
+        if target_file_format.is_some() || options.strip_exif || passthrough_thumbnail {
+            tokio::fs::read(path).await?.into()
+        } else {
+            img_parts::Bytes::new()
+        };
 
     // The processed main output (`None` = passthrough or animated GIF) and, when
     // the target-format pipeline runs, its thumbnail decoded from the same pixels.
@@ -385,17 +391,6 @@ async fn store(
             .map_err(process_error)?
         }
         None => (None, None),
-    };
-
-    // Passthrough stores the source, so the output matches the source dimensions.
-    // Reuse the single read above when a thumbnail is actually needed.
-    let passthrough_thumbnail_source = if thumbnails_enabled
-        && target_file_format.is_none()
-        && over_thumbnail_box(thumbnail_box, source_width as u32, source_height as u32)
-    {
-        Some(source_bytes.clone())
-    } else {
-        None
     };
 
     let output = match processed {
@@ -441,8 +436,8 @@ async fn store(
     };
     // Passthrough: the source was not decoded above, so make the thumbnail from
     // its own decode. The pipeline path already produced it from the shared decode.
-    if let Some(source) = passthrough_thumbnail_source {
-        thumbnail = generate_thumbnail(source, settings).await?;
+    if passthrough_thumbnail {
+        thumbnail = generate_thumbnail(source_bytes, settings).await?;
     }
 
     let hash = hash_file(output.temp.path()).await?;
@@ -534,10 +529,9 @@ async fn store(
 /// Strip EXIF (and other sidecar metadata) from an image container without
 /// re-encoding the pixels. JPEG, PNG and WebP carry EXIF; anything else
 /// (e.g. GIF) is returned unchanged.
-fn strip_exif(input: Vec<u8>, orientation: Orientation) -> Result<Vec<u8>> {
+fn strip_exif(bytes: img_parts::Bytes, orientation: Orientation) -> Result<Vec<u8>> {
     use img_parts::{DynImage, ImageEXIF};
 
-    let bytes = img_parts::Bytes::from(input);
     match DynImage::from_bytes(bytes.clone())
         .map_err(|e| Error::BadRequest(format!("could not parse image to strip EXIF: {e}")))?
     {
@@ -582,15 +576,6 @@ fn existing_stored(record: files::FileRecord) -> StoredFile {
         ext: record.ext,
         has_thumbnail: record.has_thumbnail,
     }
-}
-
-/// SHA-256 of bytes in memory, as a hex string.
-fn hash_bytes(bytes: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
 }
 
 /// SHA-256 of a file's bytes, as a hex string. Streamed so large files never
@@ -684,7 +669,10 @@ fn process_error(error: image::ProcessError) -> Error {
 
 /// Resize the source into the thumbnail box and encode it as lossy WebP.
 /// `Ok(None)` when the pipeline passes the source through (animated GIF).
-async fn generate_thumbnail(source: Vec<u8>, settings: &ElysiaSettings) -> Result<Option<Vec<u8>>> {
+async fn generate_thumbnail(
+    source: img_parts::Bytes,
+    settings: &ElysiaSettings,
+) -> Result<Option<Vec<u8>>> {
     let options = thumbnail_process_options(settings);
     // Encoding is CPU-heavy; keep it off the async worker threads.
     let processed = tokio::task::spawn_blocking(move || image::process(&source, &options))
