@@ -362,16 +362,19 @@ async fn store(
             // Encoding is CPU-heavy; keep it off the async worker threads. Decode
             // once and reuse the pixels for the thumbnail when one is needed.
             tokio::task::spawn_blocking(move || {
-                let Some(image) = image::decode(&input)? else {
+                let Some((image, icc_profile)) = image::decode(&input)? else {
                     return Ok::<_, image::ProcessError>((None, None));
                 };
                 let source = thumbnail_options.is_some().then(|| image.clone());
-                let processed = image::process_decoded(image, &process_options)?;
+                let processed =
+                    image::process_decoded(image, icc_profile.as_deref(), &process_options)?;
                 let thumbnail = match (thumbnail_options, source) {
                     (Some(options), Some(source))
                         if over_thumbnail_box(thumbnail_box, processed.width, processed.height) =>
                     {
-                        Some(image::process_decoded(source, &options)?.bytes)
+                        Some(
+                            image::process_decoded(source, icc_profile.as_deref(), &options)?.bytes,
+                        )
                     }
                     _ => None,
                 };
@@ -410,7 +413,7 @@ async fn store(
             }
         }
         // Passthrough: store the source bytes. The conversion branch above already
-        // drops metadata (re-encode starts from a bare pixel buffer), so EXIF is
+        // drops EXIF (re-encode starts from a bare pixel buffer), so EXIF is
         // only stripped here, when requested, by rewriting the container.
         None if options.strip_exif => {
             let stripped = strip_exif(source_bytes.clone(), orientation)?;

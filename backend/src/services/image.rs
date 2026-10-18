@@ -62,17 +62,20 @@ pub enum ProcessError {
     Encode(String),
 }
 
+/// A decoded image and its ICC profile, if any.
+pub type Decoded = (DynamicImage, Option<Vec<u8>>);
+
 /// `Ok(None)` means pass the source through untouched (animated GIF).
 pub fn process(input: &[u8], options: &ProcessOptions) -> Result<Option<Processed>, ProcessError> {
     decode(input)?
-        .map(|image| process_decoded(image, options))
+        .map(|(image, icc_profile)| process_decoded(image, icc_profile.as_deref(), options))
         .transpose()
 }
 
-/// Decode input bytes to an image. `Ok(None)` for an animated GIF, which the
-/// caller passes through untouched. GIFs are decoded only once: up to two
-/// frames are read and a still GIF reuses its single frame.
-pub fn decode(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
+/// Decode input bytes to an image and its ICC profile. `Ok(None)` for
+/// an animated GIF, which the caller passes through untouched. GIFs are decoded
+/// only once: up to two frames are read and a still GIF reuses its single frame.
+pub fn decode(input: &[u8]) -> Result<Option<Decoded>, ProcessError> {
     if input.starts_with(b"GIF") {
         return decode_gif(input);
     }
@@ -80,10 +83,11 @@ pub fn decode(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
         .into_decoder()
         .map_err(|_| ProcessError::Undecodable)?;
     let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+    let icc_profile = decoder.icc_profile().ok().flatten();
     let mut image = DynamicImage::from_decoder(decoder).map_err(|_| ProcessError::Undecodable)?;
     // Re-encoding drops EXIF, so bake the orientation into the pixels.
     image.apply_orientation(orientation);
-    Ok(Some(image))
+    Ok(Some((image, icc_profile)))
 }
 
 /// EXIF orientation of the input, read from the header only (no pixel decode).
@@ -101,10 +105,12 @@ fn reader(input: &[u8]) -> image::ImageReader<std::io::Cursor<&[u8]>> {
         .expect("reading from memory cannot fail")
 }
 
-/// Resize and encode an already-decoded image. Lets callers decode once and
-/// reuse the pixels (e.g. a main output plus a thumbnail from one source).
+/// Resize and encode an already-decoded image, embedding `icc_profile` where the
+/// format allows. Lets callers decode once and reuse the pixels (e.g. a main
+/// output plus a thumbnail from one source).
 pub fn process_decoded(
     image: DynamicImage,
+    icc_profile: Option<&[u8]>,
     options: &ProcessOptions,
 ) -> Result<Processed, ProcessError> {
     let image = resize(image, options.target_width, options.target_height);
@@ -122,7 +128,14 @@ pub fn process_decoded(
                 ));
             }
             (
-                encode(&rgba, width, height, &options.format, Some(quality))?,
+                encode(
+                    &rgba,
+                    width,
+                    height,
+                    &options.format,
+                    icc_profile,
+                    Some(quality),
+                )?,
                 Some(quality),
             )
         }
@@ -135,10 +148,19 @@ pub fn process_decoded(
                         .into(),
                 ));
             }
-            let lossless = encode(&rgba, width, height, &options.format, None)?;
+            let lossless = encode(&rgba, width, height, &options.format, icc_profile, None)?;
             if options.target_file_size > 0 && lossless.len() as u64 > options.target_file_size {
                 let (bytes, quality) = search_quality(
-                    |quality| encode(&rgba, width, height, &options.format, Some(quality)),
+                    |quality| {
+                        encode(
+                            &rgba,
+                            width,
+                            height,
+                            &options.format,
+                            icc_profile,
+                            Some(quality),
+                        )
+                    },
                     options.target_file_size,
                 )?;
                 (bytes, Some(quality))
@@ -180,7 +202,7 @@ fn resize(image: DynamicImage, target_width: u32, target_height: u32) -> Dynamic
 
 /// Decode a GIF once: animated files pass through (`Ok(None)`), a still GIF
 /// reuses its single frame instead of decoding a second time.
-fn decode_gif(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
+fn decode_gif(input: &[u8]) -> Result<Option<Decoded>, ProcessError> {
     use image::AnimationDecoder;
     use image::codecs::gif::GifDecoder;
     let decoder =
@@ -200,7 +222,7 @@ fn decode_gif(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
     if second.is_some() {
         return Ok(None);
     }
-    Ok(Some(DynamicImage::ImageRgba8(first.into_buffer())))
+    Ok(Some((DynamicImage::ImageRgba8(first.into_buffer()), None)))
 }
 
 /// Encode RGBA pixels to the target format. `quality` None = lossless.
@@ -209,15 +231,40 @@ fn encode(
     width: u32,
     height: u32,
     format: &TargetFormat,
+    icc_profile: Option<&[u8]>,
     quality: Option<u8>,
 ) -> Result<Vec<u8>, ProcessError> {
-    match format {
+    let bytes = match format {
         TargetFormat::Webp => Ok(encode_webp(rgba, width, height, quality)),
         TargetFormat::Avif => encode_avif(rgba, width, height, quality),
         TargetFormat::Jpegxl => encode_jxl(rgba, width, height, quality),
         TargetFormat::Png => encode_png(rgba, width, height),
         TargetFormat::Jpg => encode_jpeg(rgba, width, height, quality.unwrap_or(85)),
+    }?;
+    match icc_profile {
+        // ponytail: ravif and jpegxl-rs expose no ICC setter, so AVIF and JPEG XL
+        // are tagged sRGB and wide-gamut sources shift colour there. Convert the
+        // pixels to sRGB (e.g. with qcms) if that matters.
+        Some(icc_profile) if !matches!(format, TargetFormat::Avif | TargetFormat::Jpegxl) => {
+            embed_icc_profile(bytes, icc_profile)
+        }
+        _ => Ok(bytes),
     }
+}
+
+/// Embed an ICC profile into encoded WebP, PNG or JPEG bytes (container rewrite).
+fn embed_icc_profile(bytes: Vec<u8>, icc_profile: &[u8]) -> Result<Vec<u8>, ProcessError> {
+    use img_parts::{DynImage, ImageICC};
+    let mut image = DynImage::from_bytes(bytes.into())
+        .map_err(|e| ProcessError::Encode(e.to_string()))?
+        .ok_or_else(|| ProcessError::Encode("unknown container for ICC profile".into()))?;
+    image.set_icc_profile(Some(icc_profile.to_vec().into()));
+    let mut output = Vec::new();
+    image
+        .encoder()
+        .write_to(&mut output)
+        .map_err(|e| ProcessError::Encode(e.to_string()))?;
+    Ok(output)
 }
 
 /// PNG encoder; always lossless, `quality` is ignored (PNG has no lossy mode).

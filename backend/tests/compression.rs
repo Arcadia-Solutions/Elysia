@@ -8,7 +8,7 @@ use sqlx::PgPool;
 
 use elysia::handlers::upload::UploadOptionsQuery;
 use elysia::services::files::{UploadOptions, store_from_url};
-use elysia::services::image::{ProcessError, TargetFormat, process};
+use elysia::services::image::{ProcessError, ProcessOptions, TargetFormat, process};
 use elysia::settings::ElysiaSettings;
 
 use common::*;
@@ -565,6 +565,36 @@ fn pipeline_converts_png_to_webp() {
     assert_eq!(out.ext, "webp");
     assert_eq!((out.width, out.height), (8, 8));
     assert_eq!(&out.bytes[0..4], b"RIFF");
+}
+
+#[test]
+fn pipeline_keeps_icc_profile() {
+    use image::{ImageDecoder, ImageEncoder};
+    let icc_profile = b"stand-in for a Display P3 profile".to_vec();
+    let mut source = Vec::new();
+    let mut encoder = image::codecs::png::PngEncoder::new(&mut source);
+    encoder.set_icc_profile(icc_profile.clone()).unwrap();
+    encoder
+        .write_image(&[0; 4 * 8 * 8], 8, 8, image::ExtendedColorType::Rgba8)
+        .unwrap();
+
+    for (format, quality) in [
+        (TargetFormat::Webp, None),
+        (TargetFormat::Png, None),
+        (TargetFormat::Jpg, Some(80)),
+    ] {
+        let options = ProcessOptions {
+            requested_quality: quality,
+            ..pipeline_options(format)
+        };
+        let out = process(&source, &options).unwrap().unwrap();
+        let mut decoder = image::ImageReader::new(std::io::Cursor::new(out.bytes))
+            .with_guessed_format()
+            .unwrap()
+            .into_decoder()
+            .unwrap();
+        assert_eq!(decoder.icc_profile().unwrap(), Some(icc_profile.clone()));
+    }
 }
 
 #[test]
