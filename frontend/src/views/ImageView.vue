@@ -21,6 +21,8 @@
         <dd>{{ formatBytes(meta.size) }}</dd>
         <dt>{{ $t('image.format') }}</dt>
         <dd>{{ meta.mime }}</dd>
+        <dt>{{ $t('image.views') }}</dt>
+        <dd>{{ $t('image.views_value', { views: meta.views, thumbnail_views: meta.thumbnail_views }) }}</dd>
         <dt>{{ $t('image.processing.title') }}</dt>
         <dd>
           <ul v-if="processing.length" class="processing">

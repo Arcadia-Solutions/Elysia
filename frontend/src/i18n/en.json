@@ -86,6 +86,8 @@
     "size": "Size",
     "format": "Format",
     "uploaded_by": "Uploaded by",
+    "views": "Views",
+    "views_value": "{views} image, {thumbnail_views} thumbnail",
     "links": {
       "full": "Full image",
       "thumbnail": "Thumbnail",
@@ -111,7 +113,9 @@
       "size": "Size",
       "width": "Width",
       "height": "Height",
-      "original_hash": "Original hash"
+      "original_hash": "Original hash",
+      "views": "Image views",
+      "thumbnail_views": "Thumbnail views"
     },
     "order": {
       "asc": "Ascending",

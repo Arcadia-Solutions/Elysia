@@ -28,13 +28,19 @@ pub async fn serve(
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
-    let cache_control = check_referrer(&req, &settings)?;
+    let decision = check_referrer(&req, &settings)?;
     let filename = filename.into_inner();
-    let row = files::get(pool.get_ref(), id_from_filename(&filename)).await?;
+    let row = files::get(
+        pool.get_ref(),
+        id_from_filename(&filename),
+        false,
+        decision.count_view,
+    )
+    .await?;
 
     let file = storage
         .open(&row.id, &row.ext)
         .await
         .map_err(|_| Error::NotFound)?;
-    Ok(file_response(&req, file, &row.mime, cache_control))
+    Ok(file_response(&req, file, &row.mime, decision.cache_control))
 }

@@ -135,6 +135,28 @@ pub struct UnauthElysiaSettings {
     pub sso_provider_name: Option<String>,
 }
 
+/// Lowercased host of a `Referer`, sorted into Elysia's own pages and the rest.
+pub enum RefererHost {
+    Own,
+    Other(String),
+}
+
+/// Classify the `Referer` host against `own_host` (the `Host` the request was
+/// sent to, port ignored). None when there is no parseable `Referer`.
+pub fn referer_host(referer: Option<&str>, own_host: &str) -> Option<RefererHost> {
+    let host = referer
+        .and_then(|referer| url::Url::parse(referer).ok())
+        .and_then(|url| url.host_str().map(str::to_ascii_lowercase))?;
+    let own_host = url::Url::parse(&format!("http://{own_host}"))
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_ascii_lowercase));
+    Some(if own_host.as_deref() == Some(host.as_str()) {
+        RefererHost::Own
+    } else {
+        RefererHost::Other(host)
+    })
+}
+
 impl ElysiaSettings {
     /// Trim and lowercase the referrer hostnames, dropping blank ones, so the
     /// stored list matches what [`Self::referrer_allowed`] compares against.
@@ -150,22 +172,16 @@ impl ElysiaSettings {
     }
 
     /// Whether an image request may be served: the list is empty, or the
-    /// `Referer` host is listed or is `own_host` (the `Host` the request was
-    /// sent to, port ignored).
+    /// `Referer` host is listed or is `own_host` (see [`referer_host`]).
     pub fn referrer_allowed(&self, referer: Option<&str>, own_host: &str) -> bool {
         if self.allowed_referrers.is_empty() {
             return true;
         }
-        let Some(host) = referer
-            .and_then(|referer| url::Url::parse(referer).ok())
-            .and_then(|url| url.host_str().map(str::to_ascii_lowercase))
-        else {
-            return false;
-        };
-        let own_host = url::Url::parse(&format!("http://{own_host}"))
-            .ok()
-            .and_then(|url| url.host_str().map(str::to_ascii_lowercase));
-        own_host.as_deref() == Some(host.as_str()) || self.allowed_referrers.contains(&host)
+        match referer_host(referer, own_host) {
+            Some(RefererHost::Own) => true,
+            Some(RefererHost::Other(host)) => self.allowed_referrers.contains(&host),
+            None => false,
+        }
     }
 
     /// Whether thumbnail generation is on (a box is set on at least one axis).

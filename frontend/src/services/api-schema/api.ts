@@ -165,7 +165,9 @@ export const ImagesSortBy = {
     Size: 'size',
     Width: 'width',
     Height: 'height',
-    OriginalHash: 'original_hash'
+    OriginalHash: 'original_hash',
+    Views: 'views',
+    ThumbnailViews: 'thumbnail_views'
 } as const;
 
 export type ImagesSortBy = typeof ImagesSortBy[keyof typeof ImagesSortBy];
@@ -219,11 +221,19 @@ export interface MetadataResponse {
      * Public URL for the thumbnail.
      */
     'thumbnail_url': string;
+    /**
+     * Times the thumbnail was served from `/t/`.
+     */
+    'thumbnail_views': number;
     'uploader_username': string;
     /**
      * Public URL for the raw image.
      */
     'url': string;
+    /**
+     * Times the image was served from `/i/`.
+     */
+    'views': number;
     'width': number;
 }
 /**

@@ -2,7 +2,7 @@ use actix_files::NamedFile;
 use actix_web::{HttpRequest, HttpResponse};
 
 use crate::error::{Error, Result};
-use crate::settings::SharedElysiaSettings;
+use crate::settings::{RefererHost, SharedElysiaSettings, referer_host};
 
 pub mod change_password;
 pub mod get_elysia_settings;
@@ -46,25 +46,37 @@ pub(crate) fn id_from_filename(filename: &str) -> &str {
     filename.rsplit_once('.').map_or(filename, |(id, _)| id)
 }
 
+/// How an allowed image request is served.
+pub(crate) struct ServeDecision {
+    /// `private` while an allowlist is set, so shared caches (CDN, proxy) can't
+    /// hand the image to other referrers.
+    pub cache_control: &'static str,
+    /// False when the `Referer` is one of Elysia's own pages (browse, viewer),
+    /// so browsing the app does not inflate the view counters.
+    pub count_view: bool,
+}
+
 /// Refuse an image request whose `Referer` is not in the allowed referrers.
-/// Returns the `Cache-Control` to serve it with: `private` while an allowlist
-/// is set, so shared caches (CDN, proxy) can't hand it to other referrers.
 pub(crate) fn check_referrer(
     req: &HttpRequest,
     settings: &SharedElysiaSettings,
-) -> Result<&'static str> {
+) -> Result<ServeDecision> {
     let referer = req
         .headers()
         .get(actix_web::http::header::REFERER)
         .and_then(|value| value.to_str().ok());
+    let own_host = req.connection_info().host().to_owned();
     let settings = settings.read().expect("settings lock poisoned");
-    if !settings.referrer_allowed(referer, req.connection_info().host()) {
+    if !settings.referrer_allowed(referer, &own_host) {
         return Err(Error::Forbidden);
     }
-    Ok(if settings.allowed_referrers.is_empty() {
-        "public, max-age=31536000, immutable"
-    } else {
-        "private, max-age=31536000, immutable"
+    Ok(ServeDecision {
+        cache_control: if settings.allowed_referrers.is_empty() {
+            "public, max-age=31536000, immutable"
+        } else {
+            "private, max-age=31536000, immutable"
+        },
+        count_view: !matches!(referer_host(referer, &own_host), Some(RefererHost::Own)),
     })
 }
 

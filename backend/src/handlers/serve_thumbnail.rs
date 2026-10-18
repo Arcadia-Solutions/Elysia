@@ -28,9 +28,15 @@ pub async fn serve_thumbnail(
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
-    let cache_control = check_referrer(&req, &settings)?;
+    let decision = check_referrer(&req, &settings)?;
     let filename = filename.into_inner();
-    let row = files::get(pool.get_ref(), id_from_filename(&filename)).await?;
+    let row = files::get(
+        pool.get_ref(),
+        id_from_filename(&filename),
+        true,
+        decision.count_view,
+    )
+    .await?;
 
     // Serve the thumbnail when one is on disk. Fall back to the main file
     // otherwise: the image was within the box, thumbnails were off at store time,
@@ -38,12 +44,17 @@ pub async fn serve_thumbnail(
     if row.has_thumbnail
         && let Ok(file) = storage.open_thumbnail(&row.id).await
     {
-        return Ok(file_response(&req, file, "image/webp", cache_control));
+        return Ok(file_response(
+            &req,
+            file,
+            "image/webp",
+            decision.cache_control,
+        ));
     }
 
     let file = storage
         .open(&row.id, &row.ext)
         .await
         .map_err(|_| Error::NotFound)?;
-    Ok(file_response(&req, file, &row.mime, cache_control))
+    Ok(file_response(&req, file, &row.mime, decision.cache_control))
 }

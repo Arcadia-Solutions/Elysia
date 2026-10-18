@@ -28,6 +28,10 @@ pub struct MetadataResponse {
     pub original_height: i32,
     /// Lossy quality applied while processing; null means lossless.
     pub applied_quality: Option<i32>,
+    /// Times the image was served from `/i/`.
+    pub views: i64,
+    /// Times the thumbnail was served from `/t/`.
+    pub thumbnail_views: i64,
     pub uploader_username: String,
     /// Upload time as a UTC ISO-8601 string.
     pub created_at: String,
@@ -72,6 +76,8 @@ pub async fn metadata(
         original_width: row.original_width,
         original_height: row.original_height,
         applied_quality: row.applied_quality,
+        views: row.views,
+        thumbnail_views: row.thumbnail_views,
         uploader_username: row.uploader_username,
         created_at: row.created_at,
     }))

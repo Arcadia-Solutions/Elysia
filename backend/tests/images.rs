@@ -97,3 +97,35 @@ async fn backdate_only_moves_created_at_earlier(pool: PgPool) {
     let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
     assert_eq!(metadata.created_at, "2020-01-01T00:00:00Z");
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn counts_image_and_thumbnail_views(pool: PgPool) {
+    let uploader = common::test_user(&pool, "viewer").await.0.id;
+    common::seed_files(&pool, uploader, "seen", 1, 1).await;
+    common::seed_files(&pool, uploader, "unseen", 1, 1).await;
+    let id = "seen000000";
+
+    for thumbnail in [false, false, true] {
+        files::find_and_count_view(&pool, id, thumbnail)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+    assert!(
+        files::find_and_count_view(&pool, "missing0", false)
+            .await
+            .unwrap()
+            .is_none()
+    );
+
+    let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
+    assert_eq!((metadata.views, metadata.thumbnail_views), (2, 1));
+
+    for sort_by in [ImagesSortBy::Views, ImagesSortBy::ThumbnailViews] {
+        let rows = list_images(&pool, 1, sort_by, SortOrder::Desc)
+            .await
+            .unwrap()
+            .0;
+        assert_eq!(rows[0].id, id);
+    }
+}

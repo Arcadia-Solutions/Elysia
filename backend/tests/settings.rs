@@ -18,7 +18,7 @@ use elysia::handlers::put_elysia_settings::put_elysia_settings;
 use elysia::repository::{settings as settings_repo, users};
 use elysia::services::auth as auth_service;
 use elysia::services::image::TargetFormat;
-use elysia::settings::ElysiaSettings;
+use elysia::settings::{ElysiaSettings, RefererHost, referer_host};
 
 use common::test_config;
 
@@ -183,6 +183,23 @@ fn referrer_allowlist() {
     assert!(!allowed(Some("not a url")));
     assert!(!allowed(Some("https://evil.example/")));
     assert!(!allowed(Some("https://forum.example.evil.test/")));
+}
+
+#[test]
+fn own_pages_are_told_apart_from_other_referrers() {
+    let is_own = |referer| {
+        matches!(
+            referer_host(referer, "Elysia.test:8090"),
+            Some(RefererHost::Own)
+        )
+    };
+    assert!(
+        is_own(Some("http://elysia.test:5174/browse")),
+        "port ignored"
+    );
+    assert!(!is_own(Some("https://forum.example/thread/1")));
+    assert!(!is_own(Some("https://elysia.test.evil.example/")));
+    assert!(!is_own(None));
 }
 
 #[test]

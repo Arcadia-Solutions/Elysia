@@ -78,6 +78,25 @@ pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     .await?)
 }
 
+/// Bump the image (or thumbnail) view counter and return the row in one query.
+pub async fn find_and_count_view(
+    pool: &PgPool,
+    id: &str,
+    thumbnail: bool,
+) -> Result<Option<FileRow>> {
+    Ok(sqlx::query_as!(
+        FileRow,
+        "update files set \
+           views = views + (not $2)::int, \
+           thumbnail_views = thumbnail_views + $2::int \
+         where id = $1 returning id, ext, mime, has_thumbnail, uploaded_by_user_id",
+        id,
+        thumbnail,
+    )
+    .fetch_optional(pool)
+    .await?)
+}
+
 /// A stored file with its source and processing metadata.
 pub struct FileRecord {
     pub id: String,
@@ -126,6 +145,8 @@ pub struct FileMetadata {
     pub original_height: i32,
     pub applied_quality: Option<i32>,
     pub has_thumbnail: bool,
+    pub views: i64,
+    pub thumbnail_views: i64,
     pub uploader_username: String,
     pub created_at: String,
 }
@@ -136,7 +157,7 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
         FileMetadata,
         "select files.id, ext, mime, original_name, size, width, height, \
                 original_ext, original_width, original_height, applied_quality, \
-                has_thumbnail, users.username as uploader_username, \
+                has_thumbnail, views, thumbnail_views, users.username as uploader_username, \
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
                   as \"created_at!\" \
          from files join users on users.id = files.uploaded_by_user_id \
@@ -179,6 +200,8 @@ pub enum ImagesSortBy {
     Width,
     Height,
     OriginalHash,
+    Views,
+    ThumbnailViews,
 }
 
 impl ImagesSortBy {
@@ -189,6 +212,8 @@ impl ImagesSortBy {
             ImagesSortBy::Width => "width",
             ImagesSortBy::Height => "height",
             ImagesSortBy::OriginalHash => "original_hash",
+            ImagesSortBy::Views => "views",
+            ImagesSortBy::ThumbnailViews => "thumbnail_views",
         }
     }
 }
@@ -227,6 +252,10 @@ pub async fn list_page(
            case when $3 = 'height' and not $4 then height end desc, \
            case when $3 = 'original_hash' and $4 then original_hash end asc, \
            case when $3 = 'original_hash' and not $4 then original_hash end desc, \
+           case when $3 = 'views' and $4 then views end asc, \
+           case when $3 = 'views' and not $4 then views end desc, \
+           case when $3 = 'thumbnail_views' and $4 then thumbnail_views end asc, \
+           case when $3 = 'thumbnail_views' and not $4 then thumbnail_views end desc, \
            id desc \
          offset $1 limit $2",
         offset,

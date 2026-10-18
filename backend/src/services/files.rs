@@ -772,10 +772,16 @@ async fn generate_thumbnail(
     Ok(processed.map(|processed| processed.bytes))
 }
 
-/// Look up a file's metadata by id, or `NotFound`. The row doubles as a
-/// path-traversal guard: only ids that exist are ever served.
-pub async fn get(pool: &PgPool, id: &str) -> Result<FileRow> {
-    files::find(pool, id).await?.ok_or(Error::NotFound)
+/// Look up a file by id, counting a view of it (or of its thumbnail) when
+/// `count_view` is set, or `NotFound`. The row doubles as a path-traversal
+/// guard: only ids that exist are ever served.
+pub async fn get(pool: &PgPool, id: &str, thumbnail: bool, count_view: bool) -> Result<FileRow> {
+    let row = if count_view {
+        files::find_and_count_view(pool, id, thumbnail).await?
+    } else {
+        files::find(pool, id).await?
+    };
+    row.ok_or(Error::NotFound)
 }
 
 /// Look up a file's display metadata by id, or `NotFound`.
