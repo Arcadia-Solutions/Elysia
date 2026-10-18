@@ -45,3 +45,7 @@ opentelemetry = "0.32"
 opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.32", features = ["grpc-tonic", "trace", "logs", "metrics"] }
 opentelemetry-appender-tracing = "0.32"
+
+# Argon2 and the image codecs crawl unoptimized; optimize dependencies even in dev and tests.
+[profile.dev.package."*"]
+opt-level = 3
