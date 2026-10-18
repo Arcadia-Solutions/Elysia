@@ -1,7 +1,6 @@
 use std::sync::RwLock;
 
 use actix_cors::Cors;
-use actix_multipart::form::{MultipartFormConfig, tempfile::TempFileConfig};
 use actix_web::{
     App, HttpServer,
     web::{self, Data},
@@ -52,12 +51,6 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("failed to load elysia settings");
 
-    // Hard multipart stream ceiling, baked in at startup. The per-request size
-    // cap (max_file_size_bytes) is enforced in the store path, so it can change
-    // in the UI without a restart.
-    let upload_limit = cfg.storage.max_upload_stream_bytes as usize;
-    let upload_dir = cfg.storage.upload_dir.clone();
-
     let cfg = Data::new(cfg);
     let pool = Data::new(pool);
     let storage = Data::new(storage);
@@ -75,8 +68,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(storage.clone())
             .app_data(elysia_settings.clone())
             .app_data(sso_state.clone())
-            .app_data(MultipartFormConfig::default().total_limit(upload_limit))
-            .app_data(TempFileConfig::default().directory(&upload_dir))
             .route("/api/auth/register", web::post().to(register))
             .route("/api/auth/login", web::post().to(login))
             .route("/api/auth/me", web::get().to(me))

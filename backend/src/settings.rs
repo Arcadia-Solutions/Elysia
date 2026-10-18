@@ -11,7 +11,7 @@ pub type SharedElysiaSettings = actix_web::web::Data<std::sync::RwLock<ElysiaSet
 /// edited from the web UI and persisted as the single `elysia_settings` row.
 ///
 /// Kept separate from [`crate::config::Config`], which holds only the boot-time
-/// infrastructure values (bind address, database, upload dir, stream ceiling).
+/// infrastructure values (bind address, database, upload dir).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ElysiaSettings {
     /// Reject uploads larger than this; 0 disables the check.

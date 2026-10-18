@@ -1137,6 +1137,7 @@ dependencies = [
  "argon2",
  "base64 0.22.1",
  "config",
+ "futures-util",
  "image",
  "imagesize",
  "img-parts",

@@ -1,8 +1,12 @@
-use actix_multipart::form::{MultipartForm, tempfile::TempFile};
+use std::io::Write;
+
+use actix_multipart::Multipart;
 use actix_web::{
-    HttpResponse,
+    HttpRequest, HttpResponse,
+    http::header::CONTENT_LENGTH,
     web::{Data, Query},
 };
+use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
@@ -16,15 +20,16 @@ use crate::settings::ElysiaSettings;
 use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
-#[derive(Debug, MultipartForm, ToSchema)]
+/// OpenAPI shape of the upload body. The handler streams the multipart body by
+/// hand instead of extracting this, so the size cap applies while it streams.
+#[derive(ToSchema)]
 pub struct UploadForm {
-    // No per-field limit: the overall cap is MultipartFormConfig::total_limit,
-    // set from config.storage.max_upload_stream_bytes in main.rs. TempFile streams to
-    // disk, so large uploads never buffer in RAM; the per-request size ceiling is the
-    // UI-editable elysia setting max_file_size_bytes, checked in the store path.
     #[schema(value_type = String, format = Binary, content_media_type = "application/octet-stream")]
-    pub file: TempFile,
+    pub file: Vec<u8>,
 }
+
+/// Room for the multipart boundaries and part headers on top of the file.
+const MULTIPART_OVERHEAD: u64 = 16 * 1024;
 
 #[derive(Serialize, ToSchema)]
 pub struct UploadResponse {
@@ -119,6 +124,7 @@ impl UploadOptionsQuery {
         (status = 415, description = "Not a supported image"),
     )
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn upload(
     authenticated: UploadUser,
     config: Data<Config>,
@@ -126,15 +132,55 @@ pub async fn upload(
     pool: Data<PgPool>,
     storage: Data<Storage>,
     query: Query<UploadOptionsQuery>,
-    MultipartForm(form): MultipartForm<UploadForm>,
+    request: HttpRequest,
+    mut multipart: Multipart,
 ) -> Result<HttpResponse> {
     let settings = settings.read().expect("settings lock poisoned").clone();
     let options = query.into_inner().into_options(&settings)?;
+
+    // The body is only read here, after the extractors (auth included) passed.
+    // Refuse a declared oversized body up front, then cap what actually streams
+    // to disk with the live max_file_size_bytes, counting every part.
+    let declared = request
+        .headers()
+        .get(CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok()?.parse::<u64>().ok())
+        .unwrap_or(0);
+    files::check_size(&settings, declared.saturating_sub(MULTIPART_OVERHEAD))?;
+    let multipart_error = |e: actix_multipart::MultipartError| Error::BadRequest(e.to_string());
+    let mut size = 0u64;
+    let mut upload = None;
+    while let Some(mut field) = multipart.try_next().await.map_err(multipart_error)? {
+        let is_file = field.name() == Some("file");
+        let file_name = field
+            .content_disposition()
+            .and_then(|disposition| disposition.get_filename())
+            .map(str::to_string);
+        let mut temp = is_file.then(|| storage.new_temp()).transpose()?;
+        let mut file_size = 0u64;
+        while let Some(chunk) = field.try_next().await.map_err(multipart_error)? {
+            size += chunk.len() as u64;
+            file_size += chunk.len() as u64;
+            files::check_size(&settings, size)?;
+            if let Some(temp) = &mut temp {
+                temp.write_all(&chunk)?;
+            }
+        }
+        if let Some(temp) = temp {
+            upload = Some((temp, file_size, file_name));
+            break;
+        }
+    }
+    let (temp, file_size, file_name) =
+        upload.ok_or_else(|| Error::BadRequest("missing file field".into()))?;
+
     let stored = files::store_upload(
         pool.get_ref(),
         storage.get_ref(),
         &settings,
-        form.file,
+        temp,
+        file_size,
+        file_name,
         &options,
         authenticated.user_id,
     )

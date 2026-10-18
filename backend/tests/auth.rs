@@ -5,7 +5,6 @@ mod common;
 
 use std::sync::RwLock;
 
-use actix_multipart::form::{MultipartFormConfig, tempfile::TempFileConfig};
 use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
@@ -42,8 +41,6 @@ macro_rules! auth_app_with_settings {
                 .app_data(Data::new($pool))
                 .app_data(Data::new(storage))
                 .app_data(Data::new(RwLock::new($settings)))
-                .app_data(MultipartFormConfig::default().total_limit(10 * 1024 * 1024))
-                .app_data(TempFileConfig::default().directory(&upload_dir))
                 .route("/api/auth/register", web::post().to(register::register))
                 .route("/api/auth/login", web::post().to(login::login))
                 .route("/api/auth/me", web::get().to(me::me))

@@ -18,7 +18,6 @@ fn test_config_with_secret(secret: &str) -> Config {
         },
         storage: StorageConfig {
             upload_dir: "/tmp/elysia".into(),
-            max_upload_stream_bytes: 10 * 1024 * 1024,
         },
         auth: AuthConfig {
             jwt_secret: secret.into(),

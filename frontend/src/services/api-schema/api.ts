@@ -55,7 +55,7 @@ export interface ConvertAction {
     'to': string;
 }
 /**
- * Runtime-editable elysia settings: the upload limits and processing options edited from the web UI and persisted as the single `elysia_settings` row.  Kept separate from [`crate::config::Config`], which holds only the boot-time infrastructure values (bind address, database, upload dir, stream ceiling).
+ * Runtime-editable elysia settings: the upload limits and processing options edited from the web UI and persisted as the single `elysia_settings` row.  Kept separate from [`crate::config::Config`], which holds only the boot-time infrastructure values (bind address, database, upload dir).
  */
 export interface ElysiaSettings {
     /**

@@ -17,10 +17,8 @@ database:
 
 storage:
   upload_dir: ./data/uploads
-  # Hard multipart stream ceiling baked in at startup; bounds the bytes streamed
-  # to the temp file. The user-facing upload size cap and all processing options
-  # are edited in the web UI (Settings), not here. Default ~10 GiB.
-  max_upload_stream_bytes: 10737418240
+  # The upload size cap and all processing options are edited in the web UI
+  # (Settings), not here.
 
 auth:
   # HS256 secret signing user session tokens (required). Use a long random value.

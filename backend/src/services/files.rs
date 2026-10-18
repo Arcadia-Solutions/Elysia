@@ -1,7 +1,6 @@
 use std::io::Write;
 
 use ::image::metadata::Orientation;
-use actix_multipart::form::tempfile::TempFile;
 use serde::Serialize;
 use sqlx::PgPool;
 use tempfile::NamedTempFile;
@@ -172,33 +171,6 @@ fn describe_actions(
     })
 }
 
-/// Validate, inspect and store an uploaded file: size check, type sniff,
-/// dimensions, a collision-safe row insert, then persist to disk.
-///
-/// This is the seam where future processing (compression, conversion,
-/// thumbnails, EXIF stripping, deduplication) will hang off, keeping the
-/// handler a thin HTTP shell.
-pub async fn store_upload(
-    pool: &PgPool,
-    storage: &Storage,
-    settings: &ElysiaSettings,
-    file: TempFile,
-    options: &UploadOptions,
-    uploaded_by_user_id: Uuid,
-) -> Result<StoredFile> {
-    store(
-        pool,
-        storage,
-        settings,
-        file.file,
-        file.size as u64,
-        file.file_name,
-        options,
-        uploaded_by_user_id,
-    )
-    .await
-}
-
 /// Client for user-submitted URL uploads, shared so connections are reused.
 /// It only connects to public addresses: the resolver drops every non-public
 /// address a hostname resolves to (so DNS rebinding gets nothing to connect
@@ -354,7 +326,7 @@ pub async fn store_from_url(
             .filter(|s| !s.is_empty())
     });
 
-    store(
+    store_upload(
         pool,
         storage,
         settings,
@@ -367,10 +339,11 @@ pub async fn store_from_url(
     .await
 }
 
-/// Shared core: validate the temp file, sniff its type, check dimensions,
-/// insert a collision-safe row, then persist it to disk.
+/// Validate, inspect and store an uploaded temp file: size check, type sniff,
+/// dimensions, a collision-safe row insert, then persist to disk. Shared by the
+/// multipart upload and the URL rehost.
 #[allow(clippy::too_many_arguments)]
-async fn store(
+pub async fn store_upload(
     pool: &PgPool,
     storage: &Storage,
     settings: &ElysiaSettings,

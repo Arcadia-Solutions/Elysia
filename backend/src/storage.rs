@@ -46,8 +46,7 @@ impl Storage {
     }
 
     /// A temp file inside `root`, so a later `persist` stays on the same
-    /// filesystem. Used for URL rehosts, where the bytes arrive over HTTP rather
-    /// than through a multipart `TempFile`.
+    /// filesystem. Uploads and URL rehosts stream their bytes into one.
     pub fn new_temp(&self) -> Result<NamedTempFile> {
         Ok(NamedTempFile::new_in(&self.root)?)
     }

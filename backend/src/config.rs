@@ -45,15 +45,6 @@ impl DatabaseConfig {
 #[derive(Debug, Deserialize)]
 pub struct StorageConfig {
     pub upload_dir: String,
-    /// Hard multipart stream ceiling, baked into the server at startup. Bounds
-    /// the bytes streamed to the temp file; the UI-editable
-    /// `max_file_size_bytes` enforces the user-facing cap per request.
-    #[serde(default = "default_upload_stream_bytes")]
-    pub max_upload_stream_bytes: u64,
-}
-
-fn default_upload_stream_bytes() -> u64 {
-    10 * 1024 * 1024 * 1024
 }
 
 /// OpenTelemetry export, disabled (stdout logs only) while `otlp_endpoint` is unset.

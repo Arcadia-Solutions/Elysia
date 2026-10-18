@@ -3,7 +3,6 @@
 
 use std::sync::RwLock;
 
-use actix_multipart::form::{MultipartFormConfig, tempfile::TempFileConfig};
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
 use actix_web::web::Data;
@@ -39,7 +38,6 @@ pub fn test_config() -> Config {
         },
         storage: StorageConfig {
             upload_dir: "/tmp/elysia".into(),
-            max_upload_stream_bytes: 10 * 1024 * 1024,
         },
         auth: AuthConfig {
             jwt_secret: "test-jwt-secret-with-enough-bytes".into(),
@@ -202,8 +200,6 @@ pub async fn upload_with_headers(
             .app_data(Data::new(pool))
             .app_data(Data::new(storage))
             .app_data(Data::new(RwLock::new(settings)))
-            .app_data(MultipartFormConfig::default().total_limit(10 * 1024 * 1024))
-            .app_data(TempFileConfig::default().directory(&upload_dir))
             .route("/api/upload", web::post().to(upload)),
     )
     .await;
@@ -217,17 +213,18 @@ pub async fn upload_with_headers(
     body.extend_from_slice(&image);
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
 
-    let mut request = actix_test::TestRequest::post().uri(&format!("/api/upload?{query}"));
-    for (name, value) in headers {
-        request = request.insert_header((*name, value.as_str()));
-    }
-    let request = request
+    // Extra headers go last, so they may override the Content-Length set_payload sets.
+    let mut request = actix_test::TestRequest::post()
+        .uri(&format!("/api/upload?{query}"))
         .insert_header((
             "Content-Type",
             format!("multipart/form-data; boundary={boundary}"),
         ))
-        .set_payload(body)
-        .to_request();
+        .set_payload(body);
+    for (name, value) in headers {
+        request = request.insert_header((*name, value.as_str()));
+    }
+    let request = request.to_request();
 
     let response = actix_test::call_service(&app, request).await;
     let status = response.status();

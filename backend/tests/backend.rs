@@ -109,12 +109,61 @@ fn check_dimensions_enforces_each_axis() {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_rejects_file_over_size_limit(pool: PgPool) {
+    // The declared length is within the multipart overhead, so the cap trips
+    // while the body streams.
     let mut settings = test_settings();
     settings.max_file_size_bytes = 5; // the png is 33 bytes
-    assert_eq!(
-        upload_status(pool, settings, tiny_png(2, 2)).await,
-        StatusCode::BAD_REQUEST
+    let (_, token) = test_user(&pool, "streamer").await;
+    let (status, body) = upload_with_token(pool, settings, tiny_png(2, 2), "", &token).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(
+        body["error"]
+            .as_str()
+            .unwrap()
+            .starts_with("file too large")
     );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_rejects_declared_oversized_body_up_front(pool: PgPool) {
+    // A tiny body declaring a huge length: only the up-front check rejects it.
+    let mut settings = test_settings();
+    settings.max_file_size_bytes = 1024;
+    let (_, token) = test_user(&pool, "declarer").await;
+    let (status, body) = upload_with_headers(
+        pool,
+        test_config(),
+        settings,
+        tiny_png(2, 2),
+        "",
+        &[
+            ("Authorization", format!("Bearer {token}")),
+            ("Content-Length", (1024 * 1024).to_string()),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(
+        body["error"]
+            .as_str()
+            .unwrap()
+            .starts_with("file too large")
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_without_auth_is_rejected(pool: PgPool) {
+    // The handler, the only reader of the body, never runs.
+    let (status, _) = upload_with_headers(
+        pool,
+        test_config(),
+        test_settings(),
+        tiny_png(2, 2),
+        "",
+        &[],
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test(migrations = "./migrations")]

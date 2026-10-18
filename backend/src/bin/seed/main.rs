@@ -8,7 +8,6 @@
 
 use std::io::{Cursor, Write};
 
-use actix_multipart::form::tempfile::TempFile;
 use image::{DynamicImage, ImageFormat, Rgb, RgbImage};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -152,25 +151,28 @@ async fn main() {
 
         let mut temp = storage.new_temp().expect("failed to create temp file");
         temp.write_all(&bytes).expect("failed to write temp file");
-        let upload = TempFile {
-            file: temp,
-            content_type: None,
-            file_name: Some(format!("seed-{index}.{source_ext}")),
-            size: bytes.len(),
-        };
 
         // Squared draws favour the first users and recent days: a few heavy
         // uploaders and a growing upload rate, like a real instance.
         let uploader = user_ids[(random.unit().powi(2) * user_ids.len() as f64) as usize];
-        let stored =
-            match files::store_upload(&pool, &storage, &settings, upload, &options, uploader).await
-            {
-                Ok(stored) => stored,
-                Err(error) => {
-                    eprintln!("image {index} rejected: {error}");
-                    continue;
-                }
-            };
+        let stored = match files::store_upload(
+            &pool,
+            &storage,
+            &settings,
+            temp,
+            bytes.len() as u64,
+            Some(format!("seed-{index}.{source_ext}")),
+            &options,
+            uploader,
+        )
+        .await
+        {
+            Ok(stored) => stored,
+            Err(error) => {
+                eprintln!("image {index} rejected: {error}");
+                continue;
+            }
+        };
         let seconds_ago = random.unit().powi(2) * HISTORY_DAYS * 86400.0;
         sqlx::query!(
             "update files set created_at = now() - make_interval(secs => $2) where id = $1",
