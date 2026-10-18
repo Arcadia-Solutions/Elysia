@@ -1,40 +1,44 @@
 <template>
   <div v-if="meta" class="image-wrap">
     <img :src="meta.url" :alt="meta.original_name ?? meta.id" class="image" />
-    <dl class="meta">
-      <template v-if="meta.original_name">
-        <dt>{{ $t('image.name') }}</dt>
-        <dd>{{ meta.original_name }}</dd>
+    <aside class="side">
+      <dl class="meta">
+        <template v-if="meta.original_name">
+          <dt>{{ $t('image.name') }}</dt>
+          <dd>{{ meta.original_name }}</dd>
+        </template>
+        <dt>{{ $t('image.uploaded_by') }}</dt>
+        <dd>{{ meta.uploader_username }}</dd>
+        <dt>{{ $t('image.uploaded_at') }}</dt>
+        <dd>
+          {{ new Date(meta.created_at).toLocaleString('sv-SE') }}
+          <br />
+          ({{ timeAgo(new Date(meta.created_at)) }})
+        </dd>
+        <dt>{{ $t('image.dimensions') }}</dt>
+        <dd>{{ meta.width }} × {{ meta.height }}</dd>
+        <dt>{{ $t('image.size') }}</dt>
+        <dd>{{ formatBytes(meta.size) }}</dd>
+        <dt>{{ $t('image.format') }}</dt>
+        <dd>{{ meta.mime }}</dd>
+        <dt>{{ $t('image.processing.title') }}</dt>
+        <dd>
+          <ul v-if="processing.length" class="processing">
+            <li v-for="step in processing" :key="step">{{ step }}</li>
+          </ul>
+          <template v-else>{{ $t('image.processing.none') }}</template>
+        </dd>
+      </dl>
+      <template v-for="group in linkGroups" :key="group.title">
+        <h3>{{ group.title }}</h3>
+        <CopyLink v-for="row in group.rows" :key="row.label" :label="row.label" :value="row.value" />
       </template>
-      <dt>{{ $t('image.uploaded_by') }}</dt>
-      <dd>{{ meta.uploader_username }}</dd>
-      <dt>{{ $t('image.uploaded_at') }}</dt>
-      <dd>
-        {{ new Date(meta.created_at).toLocaleString('sv-SE') }}
-        <br />
-        ({{ timeAgo(new Date(meta.created_at)) }})
-      </dd>
-      <dt>{{ $t('image.dimensions') }}</dt>
-      <dd>{{ meta.width }} × {{ meta.height }}</dd>
-      <dt>{{ $t('image.size') }}</dt>
-      <dd>{{ formatBytes(meta.size) }}</dd>
-      <dt>{{ $t('image.format') }}</dt>
-      <dd>{{ meta.mime }}</dd>
-      <dt>{{ $t('image.processing.title') }}</dt>
-      <dd>
-        <ul v-if="processing.length" class="processing">
-          <li v-for="step in processing" :key="step">{{ step }}</li>
-        </ul>
-        <template v-else>{{ $t('image.processing.none') }}</template>
-      </dd>
-      <CopyLink :label="$t('upload.image_link')" :link="meta.url" />
-      <CopyLink :label="$t('upload.thumbnail_link')" :link="meta.thumbnail_url" class="thumbnail-link" />
-    </dl>
+    </aside>
   </div>
 </template>
 
 <script setup lang="ts">
-import { formatBytes, timeAgo } from '@/services/format'
+import { absoluteUrl, formatBytes, timeAgo } from '@/services/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -63,6 +67,33 @@ const processing = computed(() => {
   return steps
 })
 
+// Copyable direct links and embed snippets. The thumbnail embeds link to the full image.
+const linkGroups = computed(() => {
+  if (!meta.value) return []
+  const full = absoluteUrl(meta.value.url)
+  const thumb = absoluteUrl(meta.value.thumbnail_url)
+  return [
+    {
+      title: t('image.links.full'),
+      rows: [
+        { label: t('image.links.link'), value: full },
+        { label: t('image.links.markdown'), value: `![](${full})` },
+        { label: t('image.links.bbcode'), value: `[img]${full}[/img]` },
+        { label: t('image.links.html'), value: `<img src="${full}">` },
+      ],
+    },
+    {
+      title: t('image.links.thumbnail'),
+      rows: [
+        { label: t('image.links.link'), value: thumb },
+        { label: t('image.links.markdown'), value: `[![](${thumb})](${full})` },
+        { label: t('image.links.bbcode'), value: `[url=${full}][img]${thumb}[/img][/url]` },
+        { label: t('image.links.html'), value: `<a href="${full}"><img src="${thumb}"></a>` },
+      ],
+    },
+  ]
+})
+
 api.metadata(String(route.params.id)).then((response) => {
   meta.value = response.data
 })
@@ -79,17 +110,20 @@ api.metadata(String(route.params.id)).then((response) => {
   gap: 24px;
 }
 .image {
-  width: 70vw;
+  flex: 1 1 400px;
+  min-width: 0;
   max-height: 85vh;
   object-fit: contain;
   border-radius: 6px;
 }
+.side {
+  flex: 0 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .meta {
-  flex: 0 1 240px;
   margin: 0;
-  display: grid;
-  grid-template-columns: auto;
-  gap: 2px 0;
 }
 .meta dt {
   color: var(--p-text-muted-color);
@@ -99,8 +133,10 @@ api.metadata(String(route.params.id)).then((response) => {
   margin: 0;
   padding-left: 18px;
 }
-.thumbnail-link {
-  margin-top: 12px;
+.side h3 {
+  margin: 8px 0 2px;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 .meta dd {
   margin: 0 0 12px;

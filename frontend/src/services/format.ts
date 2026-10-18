@@ -28,3 +28,6 @@ export const timeAgo = (date: Date, now: Date = new Date()): string => {
   }
   return format.format(seconds, 'second')
 }
+
+// Resolves a possibly relative link against the current origin.
+export const absoluteUrl = (link: string): string => (link ? new URL(link, window.location.origin).href : '')

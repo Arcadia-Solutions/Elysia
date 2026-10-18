@@ -52,11 +52,11 @@
     "too_wide": "Image is too wide (max {max}px)",
     "too_tall": "Image is too tall (max {max}px)",
     "logout": "Logout",
-    "copy": "Copy link",
+    "copy": "Copy",
     "image_link": "Image link",
     "thumbnail_link": "Thumbnail link",
-    "copied": "Link copied",
-    "copy_failed": "Could not copy the link",
+    "copied": "Copied",
+    "copy_failed": "Could not copy",
     "another": "Upload another one",
     "preview_alt": "preview",
     "step": {
@@ -86,6 +86,14 @@
     "size": "Size",
     "format": "Format",
     "uploaded_by": "Uploaded by",
+    "links": {
+      "full": "Full image",
+      "thumbnail": "Thumbnail",
+      "link": "Link",
+      "markdown": "Markdown",
+      "bbcode": "BBCode",
+      "html": "HTML"
+    },
     "processing": {
       "title": "Processing",
       "none": "None, stored as uploaded",

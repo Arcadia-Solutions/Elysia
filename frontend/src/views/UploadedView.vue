@@ -1,8 +1,8 @@
 <template>
   <div class="uploaded-wrap">
     <img :src="link" :alt="$t('upload.preview_alt')" class="preview" />
-    <CopyLink :label="$t('upload.image_link')" :link="link" />
-    <CopyLink :label="$t('upload.thumbnail_link')" :link="String(route.query.thumbnailUrl ?? '')" />
+    <CopyLink :label="$t('upload.image_link')" :value="absoluteUrl(link)" />
+    <CopyLink :label="$t('upload.thumbnail_link')" :value="absoluteUrl(String(route.query.thumbnailUrl ?? ''))" />
     <Button :label="$t('upload.another')" size="small" severity="secondary" @click="router.push({ name: 'Upload' })" />
   </div>
 </template>
@@ -12,6 +12,7 @@ import { computed, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import CopyLink from '@/components/CopyLink.vue'
+import { absoluteUrl } from '@/services/format'
 
 const route = useRoute()
 const router = useRouter()
