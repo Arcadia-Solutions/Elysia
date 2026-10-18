@@ -8,7 +8,7 @@ use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
-use crate::repository::files::{self, FileRow, NewFile};
+use crate::repository::files::{self, NewFile};
 use crate::services::image::{self, TargetFormat};
 use crate::services::paginate;
 use crate::settings::ElysiaSettings;
@@ -773,18 +773,6 @@ async fn generate_thumbnail(
     .map_err(|_| Error::Io(std::io::Error::other("thumbnail task failed")))?
     .map_err(process_error)?;
     Ok(processed.map(|processed| processed.bytes))
-}
-
-/// Look up a file by id, counting a view of it (or of its thumbnail) when
-/// `count_view` is set, or `NotFound`. The row doubles as a path-traversal
-/// guard: only ids that exist are ever served.
-pub async fn get(pool: &PgPool, id: &str, thumbnail: bool, count_view: bool) -> Result<FileRow> {
-    let row = if count_view {
-        files::find_and_count_view(pool, id, thumbnail).await?
-    } else {
-        files::find(pool, id).await?
-    };
-    row.ok_or(Error::NotFound)
 }
 
 /// Look up a file's display metadata by id, or `NotFound`.

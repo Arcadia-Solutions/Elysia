@@ -78,23 +78,28 @@ pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     .await?)
 }
 
-/// Bump the image (or thumbnail) view counter and return the row in one query.
-pub async fn find_and_count_view(
+/// Add pending view counts, one entry per id across the three slices. Ids
+/// with no row (never inserted) are skipped.
+pub async fn add_views(
     pool: &PgPool,
-    id: &str,
-    thumbnail: bool,
-) -> Result<Option<FileRow>> {
-    Ok(sqlx::query_as!(
-        FileRow,
+    ids: &[String],
+    views: &[i64],
+    thumbnail_views: &[i64],
+) -> Result<()> {
+    sqlx::query!(
         "update files set \
-           views = views + (not $2)::int, \
-           thumbnail_views = thumbnail_views + $2::int \
-         where id = $1 returning id, ext, mime, has_thumbnail, uploaded_by_user_id",
-        id,
-        thumbnail,
+           views = files.views + pending.views, \
+           thumbnail_views = files.thumbnail_views + pending.thumbnail_views \
+         from unnest($1::text[], $2::bigint[], $3::bigint[]) \
+           as pending(id, views, thumbnail_views) \
+         where files.id = pending.id",
+        ids,
+        views,
+        thumbnail_views,
     )
-    .fetch_optional(pool)
-    .await?)
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 /// A stored file with its source and processing metadata.

@@ -40,10 +40,17 @@ pub use stats::stats_overview;
 pub use upload::upload;
 pub use upload_url::upload_url;
 
-/// Strip the optional `.<ext>` suffix from a `/i/` or `/t/` path segment,
-/// leaving the file id.
-pub(crate) fn id_from_filename(filename: &str) -> &str {
-    filename.rsplit_once('.').map_or(filename, |(id, _)| id)
+/// Split a `/i/` or `/t/` path segment `<id>.<ext>` into its id and extension.
+/// Both must be plain ASCII alphanumerics, so the pair can only name a stored
+/// file: no path traversal, no temp or thumbnail file names.
+pub fn parse_filename(filename: &str) -> Result<(&str, &str)> {
+    let alphanumeric =
+        |part: &str| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_alphanumeric());
+    match filename.split_once('.') {
+        // The id needs 2 chars for its shard dir.
+        Some((id, ext)) if id.len() >= 2 && alphanumeric(id) && alphanumeric(ext) => Ok((id, ext)),
+        _ => Err(Error::NotFound),
+    }
 }
 
 /// How an allowed image request is served.
@@ -81,12 +88,11 @@ pub(crate) fn check_referrer(
 }
 
 /// Turn a NamedFile into a long-lived, immutable response with the given
-/// `Cache-Control`, overriding the content type with the given MIME (trusted
-/// over NamedFile's extension guess).
+/// `Cache-Control`. The content type comes from the file extension, which
+/// Elysia picked itself when storing the file.
 pub(crate) fn file_response(
     req: &HttpRequest,
     file: NamedFile,
-    mime: &str,
     cache_control: &'static str,
 ) -> HttpResponse {
     // NamedFile streams the bytes (no full read into RAM) and handles range
@@ -96,9 +102,5 @@ pub(crate) fn file_response(
         actix_web::http::header::CACHE_CONTROL,
         actix_web::http::header::HeaderValue::from_static(cache_control),
     );
-    if let Ok(mime) = mime.parse() {
-        res.headers_mut()
-            .insert(actix_web::http::header::CONTENT_TYPE, mime);
-    }
     res
 }

@@ -18,7 +18,9 @@ use elysia::handlers::{
     sso_callback, sso_login, stats_overview, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
+use elysia::scheduler;
 use elysia::services::sso::SsoState;
+use elysia::services::views::ViewCounter;
 use elysia::storage::Storage;
 use elysia::telemetry;
 
@@ -56,6 +58,13 @@ async fn main() -> std::io::Result<()> {
     let storage = Data::new(storage);
     let elysia_settings = Data::new(RwLock::new(elysia_settings));
     let sso_state = Data::new(SsoState::default());
+    let views = Data::new(ViewCounter::default());
+
+    let scheduler_handle = tokio::spawn({
+        let (pool, views) = (pool.clone(), views.clone());
+        async move { scheduler::handle(&pool, &views).await }
+    });
+    let (shutdown_pool, shutdown_views) = (pool.clone(), views.clone());
 
     tracing::info!("Server running at http://{host}:{port}");
 
@@ -68,6 +77,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(storage.clone())
             .app_data(elysia_settings.clone())
             .app_data(sso_state.clone())
+            .app_data(views.clone())
             .route("/api/auth/register", web::post().to(register))
             .route("/api/auth/login", web::post().to(login))
             .route("/api/auth/me", web::get().to(me))
@@ -100,6 +110,9 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await;
 
+    // Stop the scheduler before the last flush, so the two never race.
+    scheduler_handle.abort();
+    scheduler::flush(&shutdown_pool, &shutdown_views).await;
     telemetry::shutdown();
     result
 }

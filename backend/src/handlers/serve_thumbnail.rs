@@ -2,11 +2,10 @@ use actix_web::{
     HttpRequest, HttpResponse,
     web::{Data, Path},
 };
-use sqlx::PgPool;
 
 use crate::error::{Error, Result};
-use crate::handlers::{check_referrer, file_response, id_from_filename};
-use crate::services::files;
+use crate::handlers::{check_referrer, file_response, parse_filename};
+use crate::services::views::ViewCounter;
 use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
@@ -14,6 +13,10 @@ use crate::storage::Storage;
     tag = "elysia",
     get,
     path = "/t/{filename}",
+    description = "Served straight from disk, without a database lookup. Falls back to \
+        the original file when no thumbnail was generated (the image was within the \
+        thumbnail box, or thumbnails were off at store time): its thumbnail URL then \
+        carries the original extension.",
     params(("filename" = String, Path, description = "<id>.<ext>")),
     responses(
         (status = 200, description = "The thumbnail bytes, or the original image when it is smaller than the thumbnail box"),
@@ -23,38 +26,19 @@ use crate::storage::Storage;
 )]
 pub async fn serve_thumbnail(
     req: HttpRequest,
-    pool: Data<PgPool>,
     storage: Data<Storage>,
+    views: Data<ViewCounter>,
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
     let decision = check_referrer(&req, &settings)?;
-    let filename = filename.into_inner();
-    let row = files::get(
-        pool.get_ref(),
-        id_from_filename(&filename),
-        true,
-        decision.count_view,
-    )
-    .await?;
-
-    // Serve the thumbnail when one is on disk. Fall back to the main file
-    // otherwise: the image was within the box, thumbnails were off at store time,
-    // or a thumbnail write failed after the row was inserted.
-    if row.has_thumbnail
-        && let Ok(file) = storage.open_thumbnail(&row.id).await
-    {
-        return Ok(file_response(
-            &req,
-            file,
-            "image/webp",
-            decision.cache_control,
-        ));
+    let (id, ext) = parse_filename(&filename)?;
+    let file = match storage.open_thumbnail(id).await {
+        Ok(file) => file,
+        Err(_) => storage.open(id, ext).await.map_err(|_| Error::NotFound)?,
+    };
+    if decision.count_view {
+        views.count(id, true);
     }
-
-    let file = storage
-        .open(&row.id, &row.ext)
-        .await
-        .map_err(|_| Error::NotFound)?;
-    Ok(file_response(&req, file, &row.mime, decision.cache_control))
+    Ok(file_response(&req, file, decision.cache_control))
 }

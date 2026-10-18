@@ -4,8 +4,10 @@ mod common;
 
 use sqlx::PgPool;
 
+use elysia::handlers::parse_filename;
 use elysia::repository::files::{self, ImagesSortBy, SortOrder};
 use elysia::services::files::{IMAGES_PER_PAGE, list_images};
+use elysia::services::views::ViewCounter;
 
 #[sqlx::test(migrations = "./migrations")]
 async fn paginates_with_total(pool: PgPool) {
@@ -105,18 +107,14 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
     common::seed_files(&pool, uploader, "unseen", 1, 1).await;
     let id = "seen000000";
 
+    let views = ViewCounter::default();
     for thumbnail in [false, false, true] {
-        files::find_and_count_view(&pool, id, thumbnail)
-            .await
-            .unwrap()
-            .unwrap();
+        views.count(id, thumbnail);
     }
-    assert!(
-        files::find_and_count_view(&pool, "missing0", false)
-            .await
-            .unwrap()
-            .is_none()
-    );
+    views.count("missing0", false);
+    views.flush(&pool).await;
+    // Flushed counts are cleared, so a second flush adds nothing.
+    views.flush(&pool).await;
 
     let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
     assert_eq!((metadata.views, metadata.thumbnail_views), (2, 1));
@@ -127,5 +125,25 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
             .unwrap()
             .0;
         assert_eq!(rows[0].id, id);
+    }
+}
+
+#[test]
+fn parses_only_plain_filenames() {
+    assert_eq!(
+        parse_filename("abc12345.png").ok(),
+        Some(("abc12345", "png"))
+    );
+    for filename in [
+        "abc12345",
+        "a.png",
+        ".png",
+        "abc12345.",
+        "abc12345.t.webp",
+        "../etc.png",
+        "ab/cd.png",
+        ".tmpAbC.png",
+    ] {
+        assert!(parse_filename(filename).is_err(), "{filename}");
     }
 }

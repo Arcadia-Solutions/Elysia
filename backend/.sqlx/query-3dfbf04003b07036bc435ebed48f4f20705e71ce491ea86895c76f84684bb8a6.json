@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update files set views = files.views + pending.views, thumbnail_views = files.thumbnail_views + pending.thumbnail_views from unnest($1::text[], $2::bigint[], $3::bigint[]) as pending(id, views, thumbnail_views) where files.id = pending.id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Int8Array",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3dfbf04003b07036bc435ebed48f4f20705e71ce491ea86895c76f84684bb8a6"
+}

@@ -2,6 +2,7 @@ pub mod auth;
 pub mod files;
 pub mod image;
 pub mod sso;
+pub mod views;
 
 use crate::error::Result;
 
