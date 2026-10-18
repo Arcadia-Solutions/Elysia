@@ -199,15 +199,106 @@ pub async fn store_upload(
     .await
 }
 
-/// Client for URL uploads, shared so connections are reused.
+/// Client for user-submitted URL uploads, shared so connections are reused.
+/// It only connects to public addresses: the resolver drops every non-public
+/// address a hostname resolves to (so DNS rebinding gets nothing to connect
+/// to) and each redirect hop goes through [`check_public_url`], since IP
+/// literal hosts skip the resolver. Callers check the first URL themselves.
+/// The admin-run Chevereto importer and the tests use a plain client instead,
+/// as they legitimately fetch from loopback or LAN hosts.
 pub fn http_client() -> &'static reqwest::Client {
     static CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
         reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
+            // A proxy would resolve and connect in our place, past the guard.
+            .no_proxy()
+            .dns_resolver(std::sync::Arc::new(PublicResolver))
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                if attempt.previous().len() >= 10 {
+                    attempt.error("too many redirects")
+                } else if let Err(e) = check_public_url(attempt.url()) {
+                    attempt.error(e)
+                } else {
+                    attempt.follow()
+                }
+            }))
             .build()
             .expect("failed to build http client")
     });
     &CLIENT
+}
+
+/// A URL the public rehost route refuses to fetch.
+#[derive(Debug, thiserror::Error)]
+#[error("url must be http(s) and point to a public address")]
+pub struct BlockedUrl;
+
+/// Reject a non-http(s) URL, or one whose host is a non-public IP literal.
+/// Hostnames pass here; [`http_client`]'s resolver filters what they resolve to.
+pub fn check_public_url(url: &url::Url) -> std::result::Result<(), BlockedUrl> {
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(BlockedUrl);
+    }
+    match url.host() {
+        Some(url::Host::Domain(_)) => Ok(()),
+        Some(url::Host::Ipv4(ip)) if is_public_ip(ip.into()) => Ok(()),
+        Some(url::Host::Ipv6(ip)) if is_public_ip(ip.into()) => Ok(()),
+        _ => Err(BlockedUrl),
+    }
+}
+
+/// Resolver that keeps only public addresses, see [`http_client`].
+struct PublicResolver;
+
+impl reqwest::dns::Resolve for PublicResolver {
+    fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+        Box::pin(async move {
+            let addrs: Vec<_> = tokio::net::lookup_host((name.as_str(), 0))
+                .await?
+                .filter(|addr| is_public_ip(addr.ip()))
+                .collect();
+            if addrs.is_empty() {
+                return Err(BlockedUrl.into());
+            }
+            Ok(Box::new(addrs.into_iter()) as reqwest::dns::Addrs)
+        })
+    }
+}
+
+/// Whether `ip` is a globally routable unicast address. Spelled out because
+/// `IpAddr::is_global` is still unstable.
+fn is_public_ip(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(ip) => {
+            let [a, b, c, _] = ip.octets();
+            !(ip.is_unspecified()
+                || ip.is_loopback()
+                || ip.is_private()
+                || ip.is_link_local()
+                || ip.is_multicast()
+                || ip.is_broadcast()
+                || ip.is_documentation()
+                || a == 0 // "this network"
+                || a >= 240 // reserved
+                || (a == 100 && b & 0xc0 == 64) // CGNAT 100.64/10
+                || (a == 192 && b == 0 && c == 0) // IETF protocol assignments
+                || (a == 198 && b & 0xfe == 18)) // benchmarking 198.18/15
+        }
+        std::net::IpAddr::V6(ip) => {
+            // IPv4-mapped and IPv4-compatible (this covers :: and ::1 too).
+            if let Some(v4) = ip.to_ipv4() {
+                return is_public_ip(v4.into());
+            }
+            let [a, b, ..] = ip.segments();
+            !(ip.is_multicast()
+                || ip.is_unique_local()
+                || ip.is_unicast_link_local()
+                || a & 0xffc0 == 0xfec0 // deprecated site-local
+                || (a == 0x2001 && b == 0xdb8) // documentation
+                || (a == 0x64 && b == 0xff9b) // NAT64, embeds an IPv4 address
+                || a == 0x2002) // 6to4, embeds an IPv4 address
+        }
+    }
 }
 
 /// Fetch an image from `url` and store it, sharing the multipart upload's
@@ -225,11 +316,17 @@ pub async fn store_from_url(
     options: &UploadOptions,
     uploaded_by_user_id: Uuid,
 ) -> Result<StoredFile> {
-    let mut response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| Error::BadRequest(format!("could not fetch url: {e}")))?;
+    let mut response = client.get(url).send().await.map_err(|e| {
+        // The guard's refusal is buried in reqwest's error chain.
+        let mut source: Option<&(dyn std::error::Error + 'static)> = Some(&e);
+        while let Some(error) = source {
+            if error.is::<BlockedUrl>() {
+                return Error::BadRequest(BlockedUrl.to_string());
+            }
+            source = error.source();
+        }
+        Error::BadRequest(format!("could not fetch url: {e}"))
+    })?;
     if !response.status().is_success() {
         return Err(Error::BadRequest(format!(
             "url returned status {}",
@@ -715,7 +812,71 @@ pub async fn get_metadata(pool: &PgPool, id: &str) -> Result<files::FileMetadata
 
 #[cfg(test)]
 mod tests {
-    use super::human_readable_size;
+    use super::{check_public_url, human_readable_size, is_public_ip};
+
+    #[test]
+    fn only_public_ips_pass() {
+        for ip in [
+            "0.0.0.0",
+            "127.0.0.1",
+            "10.1.2.3",
+            "172.16.0.1",
+            "192.168.1.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "100.127.255.255",
+            "224.0.0.1",
+            "255.255.255.255",
+            "192.0.2.1",
+            "198.18.0.1",
+            "240.0.0.1",
+            "192.0.0.8",
+            "::",
+            "::1",
+            "fc00::1",
+            "fd12::1",
+            "fe80::1",
+            "fec0::1",
+            "ff02::1",
+            "2001:db8::1",
+            "::ffff:127.0.0.1",
+            "::ffff:10.0.0.1",
+            "::ffff:169.254.169.254",
+            "::127.0.0.1",
+            "64:ff9b::a00:1",
+            "2002:a00:1::",
+        ] {
+            assert!(!is_public_ip(ip.parse().unwrap()), "{ip} should be blocked");
+        }
+        for ip in [
+            "1.1.1.1",
+            "8.8.8.8",
+            "100.128.0.1",
+            "2606:4700::1111",
+            "::ffff:1.1.1.1",
+        ] {
+            assert!(is_public_ip(ip.parse().unwrap()), "{ip} should pass");
+        }
+    }
+
+    #[test]
+    fn only_public_http_urls_pass() {
+        for url in [
+            "http://127.0.0.1/a.png",
+            "http://2130706433/a.png",
+            "http://0x7f.1/a.png",
+            "http://[::1]/a.png",
+            "http://[::ffff:7f00:1]/a.png",
+            "https://169.254.169.254/latest/meta-data",
+            "ftp://example.com/a.png",
+            "file:///etc/passwd",
+        ] {
+            assert!(check_public_url(&url.parse().unwrap()).is_err(), "{url}");
+        }
+        for url in ["https://example.com/a.png", "http://1.1.1.1:8080/a.png"] {
+            assert!(check_public_url(&url.parse().unwrap()).is_ok(), "{url}");
+        }
+    }
 
     #[test]
     fn formats_human_readable_size() {

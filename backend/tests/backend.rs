@@ -162,7 +162,7 @@ async fn rehost_stores_a_fetched_image(pool: PgPool) {
         &pool,
         &storage,
         &test_settings(),
-        elysia::services::files::http_client(),
+        &reqwest::Client::new(),
         &url,
         None,
         &Default::default(),
@@ -188,7 +188,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         &pool,
         &storage,
         &settings,
-        elysia::services::files::http_client(),
+        &reqwest::Client::new(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         None,
         &Default::default(),
@@ -202,7 +202,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         &pool,
         &storage,
         &settings,
-        elysia::services::files::http_client(),
+        &reqwest::Client::new(),
         &serve_once("HTTP/1.1 200 OK", "image/png", image.clone()),
         None,
         &Default::default(),
@@ -236,7 +236,7 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
             &pool,
             &storage,
             &test_settings(),
-            elysia::services::files::http_client(),
+            &reqwest::Client::new(),
             &url,
             None,
             &Default::default(),
@@ -258,7 +258,7 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
             &pool,
             &storage,
             &test_settings(),
-            elysia::services::files::http_client(),
+            &reqwest::Client::new(),
             &url,
             None,
             &Default::default(),
@@ -267,6 +267,32 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
         .await,
         Err(Error::BadRequest(_))
     ));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
+    let (storage, dir) = temp_storage();
+    // A hostname, so the guarded client's resolver is what refuses it.
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(1, 1))
+        .replace("127.0.0.1", "localhost");
+    let uploader = test_user(&pool, "ssrfchecker").await.0.id;
+    let result = store_from_url(
+        &pool,
+        &storage,
+        &test_settings(),
+        elysia::services::files::http_client(),
+        &url,
+        None,
+        &Default::default(),
+        uploader,
+    )
+    .await;
+    assert!(
+        matches!(&result, Err(Error::BadRequest(message)) if message.contains("public address")),
+        "{:?}",
+        result.err()
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -282,7 +308,7 @@ async fn rehost_rejects_a_body_over_size_limit(pool: PgPool) {
         &pool,
         &storage,
         &settings,
-        elysia::services::files::http_client(),
+        &reqwest::Client::new(),
         &url,
         None,
         &Default::default(),
