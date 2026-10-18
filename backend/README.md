@@ -7,6 +7,18 @@ cargo run --manifest-path backend/Cargo.toml          # run from repo root (read
 
 Swagger UI at http://localhost:8090/swagger-ui/, OpenAPI JSON at /api-docs/openapi.json.
 
+To run everything in docker instead (backend and web UI on http://localhost:5174):
+
+```sh
+docker compose --profile app up -d --build
+```
+
+The images are built from `backend/Dockerfile` and `frontend/Dockerfile`. The web UI proxies the
+API and the images to `elysia:8090`, override it with the `ELYSIA_BACKEND` environment variable.
+
+Any `config.yml` value can be overridden with an `ELYSIA_<SECTION>__<KEY>` environment variable,
+e.g. `ELYSIA_DATABASE__PASSWORD`.
+
 Tests need the database running (the `#[sqlx::test]` tests create a throwaway
 database each):
 

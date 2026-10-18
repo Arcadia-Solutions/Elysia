@@ -1,0 +1,14 @@
+# Serves the SPA and proxies the API and the images to the backend
+# (ELYSIA_BACKEND, default elysia:8090).
+# /i/<id>.<ext> is an image, /i/<id> the page showing it (served by the SPA).
+:80 {
+	@backend path_regexp ^/(api|api-docs|swagger-ui|t)/|^/i/[^/]+\.[^/]+$
+	handle @backend {
+		reverse_proxy {$ELYSIA_BACKEND:elysia:8090}
+	}
+	handle {
+		root * /srv/elysia
+		try_files {path} /index.html
+		file_server
+	}
+}

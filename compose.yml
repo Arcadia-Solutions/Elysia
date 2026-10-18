@@ -15,6 +15,30 @@ services:
       timeout: 5s
       retries: 5
 
+  # Elysia in docker, reading ./config.yml with the database host overridden.
+  elysia:
+    profiles: [app]
+    build: backend
+    restart: always
+    environment:
+      ELYSIA_DATABASE__HOST: db
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+      - elysia_uploads:/app/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Web UI on http://localhost:5174, also proxies the API and the images to elysia.
+  frontend:
+    profiles: [app]
+    build: frontend
+    restart: always
+    ports:
+      - "5174:80"
+    depends_on:
+      - elysia
+
   otel-lgtm:
     profiles: [telemetry]
     image: grafana/otel-lgtm:0.17.1
@@ -43,4 +67,5 @@ services:
 
 volumes:
   elysia_pgdata:
+  elysia_uploads:
   elysia_lgtm_data:
