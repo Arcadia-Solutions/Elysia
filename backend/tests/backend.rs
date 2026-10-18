@@ -58,11 +58,11 @@ fn error_response_is_json() {
 }
 
 #[test]
-fn storage_path_joins_root_id_ext() {
+fn storage_path_joins_root_shard_id_ext() {
     let storage = Storage::new("/var/uploads");
     assert_eq!(
         storage.path_for("abc12345", "png"),
-        std::path::PathBuf::from("/var/uploads/abc12345.png")
+        std::path::PathBuf::from("/var/uploads/ab/abc12345.png")
     );
 }
 
@@ -71,8 +71,8 @@ fn storage_new_trims_trailing_slashes() {
     // trailing slashes stripped so path_for never produces a doubled separator
     let storage = Storage::new("/var/uploads///");
     assert_eq!(
-        storage.path_for("x", "jpg"),
-        std::path::PathBuf::from("/var/uploads/x.jpg")
+        storage.path_for("xy345678", "jpg"),
+        std::path::PathBuf::from("/var/uploads/xy/xy345678.jpg")
     );
 }
 
@@ -215,6 +215,9 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
 
     let stored: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().is_dir())
+        .flat_map(|shard| std::fs::read_dir(shard.path()).unwrap())
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "png"))
         .collect();

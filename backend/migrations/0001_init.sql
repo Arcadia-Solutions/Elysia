@@ -52,7 +52,7 @@ create table files (
 );
 
 comment on table files is 'One row per uploaded image; the row id is also the on-disk filename stem';
-comment on column files.id is 'Public short id (8-char base62, case-sensitive); also the on-disk filename stem (<id>.<ext>)';
+comment on column files.id is 'Public short id (8-char base62, case-sensitive); also the on-disk filename stem (<first 2 id chars>/<id>.<ext>)';
 comment on column files.ext is 'Normalized file extension from the sniffed type: png, jpg, gif, webp, jxl or avif';
 comment on column files.mime is 'MIME type detected from the file magic bytes, e.g. image/png';
 comment on column files.original_name is 'Original filename from the upload form, if the client sent one';
@@ -66,7 +66,7 @@ comment on column files.original_width is 'Source image width in pixels before p
 comment on column files.original_height is 'Source image height in pixels before processing';
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
 comment on column files.applied_quality is 'Effective quality used; null means lossless';
-comment on column files.has_thumbnail is 'True when a separate <id>.thumbnail.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
+comment on column files.has_thumbnail is 'True when a separate <first 2 id chars>/<id>.thumbnail.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
 comment on column files.created_at is 'When the file was uploaded';
 

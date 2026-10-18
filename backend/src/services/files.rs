@@ -449,6 +449,7 @@ async fn store(
     let mut id = None;
     for _ in 0..ID_ALLOC_RETRIES {
         let candidate = generate_id();
+        storage.prepare_shard(&candidate).await?;
         let dest = storage.path_for(&candidate, output.ext);
         tokio::fs::copy(output.temp.path(), &dest).await?;
         if let Some(bytes) = &thumbnail

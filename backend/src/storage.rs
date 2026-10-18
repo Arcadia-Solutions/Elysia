@@ -27,13 +27,26 @@ impl Storage {
         Ok(())
     }
 
-    /// On-disk path for a file: `<root>/<id>.<ext>`.
-    pub fn path_for(&self, id: &str, ext: &str) -> PathBuf {
-        self.root.join(format!("{id}.{ext}"))
+    /// Shard dir for an id: `<root>/<first 2 id chars>`. Ids are always 8 chars.
+    // ponytail: one level of 3844 shards, ~190M images at 100k entries per dir;
+    // inodes or disk size run out first, revisit only past that.
+    fn shard_dir(&self, id: &str) -> PathBuf {
+        self.root.join(&id[..2])
     }
 
-    /// A temp file inside `root`, so a later `persist` is a same-filesystem
-    /// rename. Used for URL rehosts, where the bytes arrive over HTTP rather
+    /// Create the shard dir for an id if missing. Call before writing its files.
+    pub async fn prepare_shard(&self, id: &str) -> Result<()> {
+        tokio::fs::create_dir_all(self.shard_dir(id)).await?;
+        Ok(())
+    }
+
+    /// On-disk path for a file: `<root>/<shard>/<id>.<ext>`.
+    pub fn path_for(&self, id: &str, ext: &str) -> PathBuf {
+        self.shard_dir(id).join(format!("{id}.{ext}"))
+    }
+
+    /// A temp file inside `root`, so a later `persist` stays on the same
+    /// filesystem. Used for URL rehosts, where the bytes arrive over HTTP rather
     /// than through a multipart `TempFile`.
     pub fn new_temp(&self) -> Result<NamedTempFile> {
         Ok(NamedTempFile::new_in(&self.root)?)
@@ -45,10 +58,10 @@ impl Storage {
         NamedFile::open_async(self.path_for(id, ext)).await
     }
 
-    /// On-disk path for a file's thumbnail: `<root>/<id>.thumbnail.webp`.
+    /// On-disk path for a file's thumbnail: `<root>/<shard>/<id>.thumbnail.webp`.
     /// Thumbnails are always lossy WebP, so the extension is fixed.
     pub fn thumbnail_path_for(&self, id: &str) -> PathBuf {
-        self.root.join(format!("{id}.thumbnail.webp"))
+        self.shard_dir(id).join(format!("{id}.thumbnail.webp"))
     }
 
     /// Write a generated thumbnail to disk. Small (a few KiB), so the bytes are
