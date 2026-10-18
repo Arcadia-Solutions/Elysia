@@ -66,7 +66,7 @@ comment on column files.original_width is 'Source image width in pixels before p
 comment on column files.original_height is 'Source image height in pixels before processing';
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
 comment on column files.applied_quality is 'Effective quality used; null means lossless';
-comment on column files.has_thumbnail is 'True when a separate <first 2 id chars>/<id>.thumbnail.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
+comment on column files.has_thumbnail is 'True when a separate <first 2 id chars>/<id>.t.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
 comment on column files.created_at is 'When the file was uploaded';
 

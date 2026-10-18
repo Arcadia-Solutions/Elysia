@@ -58,10 +58,10 @@ impl Storage {
         NamedFile::open_async(self.path_for(id, ext)).await
     }
 
-    /// On-disk path for a file's thumbnail: `<root>/<shard>/<id>.thumbnail.webp`.
+    /// On-disk path for a file's thumbnail: `<root>/<shard>/<id>.t.webp`.
     /// Thumbnails are always lossy WebP, so the extension is fixed.
     pub fn thumbnail_path_for(&self, id: &str) -> PathBuf {
-        self.shard_dir(id).join(format!("{id}.thumbnail.webp"))
+        self.shard_dir(id).join(format!("{id}.t.webp"))
     }
 
     /// Write a generated thumbnail to disk. Small (a few KiB), so the bytes are
