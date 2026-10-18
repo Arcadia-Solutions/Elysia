@@ -367,7 +367,9 @@ async fn store(
             let thumbnail_options = thumbnails_enabled.then(|| thumbnail_process_options(settings));
             // Encoding is CPU-heavy; keep it off the async worker threads. Decode
             // once and reuse the pixels for the thumbnail when one is needed.
+            let permit = processing_permit().await;
             tokio::task::spawn_blocking(move || {
+                let _permit = permit;
                 let Some((image, icc_profile)) = image::decode(&input)? else {
                     return Ok::<_, image::ProcessError>((None, None));
                 };
@@ -667,6 +669,20 @@ fn process_error(error: image::ProcessError) -> Error {
     }
 }
 
+/// Wait for a slot to run an image decode/encode job. Uploads queue here rather
+/// than fail, so concurrent large encodes cannot exhaust CPU and memory.
+// ponytail: one global limit of one job per core, shared by uploads and imports
+// alike; add per-user fairness if a single uploader can starve the others.
+async fn processing_permit() -> tokio::sync::SemaphorePermit<'static> {
+    static PERMITS: std::sync::LazyLock<tokio::sync::Semaphore> = std::sync::LazyLock::new(|| {
+        tokio::sync::Semaphore::new(std::thread::available_parallelism().map_or(1, |n| n.get()))
+    });
+    PERMITS
+        .acquire()
+        .await
+        .expect("processing semaphore is never closed")
+}
+
 /// Resize the source into the thumbnail box and encode it as lossy WebP.
 /// `Ok(None)` when the pipeline passes the source through (animated GIF).
 async fn generate_thumbnail(
@@ -675,10 +691,14 @@ async fn generate_thumbnail(
 ) -> Result<Option<Vec<u8>>> {
     let options = thumbnail_process_options(settings);
     // Encoding is CPU-heavy; keep it off the async worker threads.
-    let processed = tokio::task::spawn_blocking(move || image::process(&source, &options))
-        .await
-        .map_err(|_| Error::Io(std::io::Error::other("thumbnail task failed")))?
-        .map_err(process_error)?;
+    let permit = processing_permit().await;
+    let processed = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        image::process(&source, &options)
+    })
+    .await
+    .map_err(|_| Error::Io(std::io::Error::other("thumbnail task failed")))?
+    .map_err(process_error)?;
     Ok(processed.map(|processed| processed.bytes))
 }
 
