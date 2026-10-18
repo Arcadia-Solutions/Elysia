@@ -6,6 +6,7 @@ use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
+use crate::config::Config;
 use crate::error::Result;
 use crate::services::files::{self, image_url, thumbnail_url};
 
@@ -46,11 +47,20 @@ pub struct MetadataResponse {
         (status = 404, description = "Not found"),
     )
 )]
-pub async fn metadata(pool: Data<PgPool>, id: Path<String>) -> Result<HttpResponse> {
+pub async fn metadata(
+    config: Data<Config>,
+    pool: Data<PgPool>,
+    id: Path<String>,
+) -> Result<HttpResponse> {
     let row = files::get_metadata(pool.get_ref(), &id.into_inner()).await?;
     Ok(HttpResponse::Ok().json(MetadataResponse {
-        url: image_url(&row.id, &row.ext),
-        thumbnail_url: thumbnail_url(&row.id, &row.ext, row.has_thumbnail),
+        url: image_url(&config.server.public_url, &row.id, &row.ext),
+        thumbnail_url: thumbnail_url(
+            &config.server.public_url,
+            &row.id,
+            &row.ext,
+            row.has_thumbnail,
+        ),
         id: row.id,
         ext: row.ext,
         mime: row.mime,

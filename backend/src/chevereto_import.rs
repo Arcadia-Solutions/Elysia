@@ -148,11 +148,8 @@ pub fn link_rewrites(
             .collect(),
     };
     let elysia = settings.elysia_public_url.trim_end_matches('/');
-    let image_link = format!("{elysia}{}", image_url(elysia_id, elysia_ext));
-    let thumbnail_link = format!(
-        "{elysia}{}",
-        thumbnail_url(elysia_id, elysia_ext, has_thumbnail)
-    );
+    let image_link = image_url(elysia, elysia_id, elysia_ext);
+    let thumbnail_link = thumbnail_url(elysia, elysia_id, elysia_ext, has_thumbnail);
     let (name, extension) = (&image.name, &image.extension);
     let mut rewrites = Vec::new();
     for base in bases {

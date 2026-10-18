@@ -14,6 +14,12 @@ pub struct Config {
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    /// Where Elysia is reached from the outside, e.g. `https://images.example.com`.
+    /// Prefixes every image and thumbnail URL the API returns. Empty (the
+    /// default) keeps them relative, which only works on Elysia's own site, so
+    /// it is required with SSO. Stored without a trailing slash.
+    #[serde(default)]
+    pub public_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,8 +113,14 @@ const EXAMPLE_JWT_SECRET: &str = "change-me-to-a-long-random-secret";
 const MINIMUM_JWT_SECRET_LENGTH: usize = 32;
 
 impl Config {
-    /// Refuse to boot with a placeholder or short session secret.
+    /// Refuse to boot with a placeholder or short session secret, or with SSO
+    /// but relative image links, which break on the provider's site.
     pub fn validate(&self) {
+        if self.auth.sso.is_some() && self.server.public_url.is_empty() {
+            panic!(
+                "server.public_url must be set when auth.sso is: the SSO provider stores the image links Elysia returns"
+            );
+        }
         if self.auth.jwt_secret.len() < MINIMUM_JWT_SECRET_LENGTH
             || self.auth.jwt_secret == EXAMPLE_JWT_SECRET
         {
@@ -119,11 +131,18 @@ impl Config {
     }
 
     /// Loads `config.yml`. Honors `ELYSIA_CONFIG` (explicit path); otherwise walks
-    /// up from the cwd until it finds one.
+    /// up from the cwd until it finds one. `ELYSIA_<SECTION>__<KEY>` environment
+    /// variables override it, e.g. `ELYSIA_DATABASE__PASSWORD`.
     pub fn load() -> Self {
         let path = Self::find_config();
         let mut config: Config = config::Config::builder()
             .add_source(config::File::from(path.as_path()))
+            .add_source(
+                config::Environment::with_prefix("ELYSIA")
+                    .prefix_separator("_")
+                    .separator("__")
+                    .try_parsing(true),
+            )
             .build()
             .expect("failed to read config.yml")
             .try_deserialize()
@@ -133,6 +152,7 @@ impl Config {
         // running from a subdirectory reads and writes a different folder.
         // An absolute upload_dir is kept as is by `join`.
         let config_dir = path.parent().expect("config path has a parent");
+        config.server.public_url = config.server.public_url.trim_end_matches('/').to_string();
         config.storage.upload_dir = config_dir
             .join(&config.storage.upload_dir)
             .to_string_lossy()

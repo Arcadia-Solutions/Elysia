@@ -2,6 +2,11 @@ server:
   host: 0.0.0.0
   # 8090 so local dev does not collide with Arcadia's API on 8080.
   port: 8090
+  # Where Elysia is reached from the outside: prefixes the image links the API
+  # returns, so they work from other sites (e.g. Arcadia). Set it before the first
+  # upload from another site: links already stored there keep the old value.
+  # Empty or unset keeps the links relative. Required when auth.sso is set.
+  public_url: http://localhost:5174
 
 database:
   host: localhost

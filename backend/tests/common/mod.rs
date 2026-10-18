@@ -28,6 +28,7 @@ pub fn test_config() -> Config {
         server: ServerConfig {
             host: "127.0.0.1".into(),
             port: 8080,
+            public_url: "http://elysia.test".into(),
         },
         database: DatabaseConfig {
             host: "localhost".into(),
@@ -169,9 +170,30 @@ pub async fn upload_with_token(
     query: &str,
     token: &str,
 ) -> (StatusCode, serde_json::Value) {
+    upload_with_headers(
+        pool,
+        test_config(),
+        settings,
+        image,
+        query,
+        &[("Authorization", format!("Bearer {token}"))],
+    )
+    .await
+}
+
+/// POST `image` to `/api/upload` against an app built from `config`, with
+/// the given extra request headers, returning the status and the parsed JSON
+/// body.
+pub async fn upload_with_headers(
+    pool: PgPool,
+    config: Config,
+    settings: ElysiaSettings,
+    image: Vec<u8>,
+    query: &str,
+    headers: &[(&str, String)],
+) -> (StatusCode, serde_json::Value) {
     let upload_dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
     std::fs::create_dir_all(&upload_dir).unwrap();
-    let config = test_config();
     let storage = Storage::new(upload_dir.to_str().unwrap());
 
     let app = actix_test::init_service(
@@ -195,9 +217,11 @@ pub async fn upload_with_token(
     body.extend_from_slice(&image);
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
 
-    let request = actix_test::TestRequest::post()
-        .uri(&format!("/api/upload?{query}"))
-        .insert_header(("Authorization", format!("Bearer {token}")))
+    let mut request = actix_test::TestRequest::post().uri(&format!("/api/upload?{query}"));
+    for (name, value) in headers {
+        request = request.insert_header((*name, value.as_str()));
+    }
+    let request = request
         .insert_header((
             "Content-Type",
             format!("multipart/form-data; boundary={boundary}"),

@@ -42,20 +42,21 @@ pub struct StoredFile {
 
 impl StoredFile {
     /// Public URL for the stored image.
-    pub fn image_url(&self) -> String {
-        image_url(&self.id, &self.ext)
+    pub fn image_url(&self, public_url: &str) -> String {
+        image_url(public_url, &self.id, &self.ext)
     }
 
     /// Public URL for the thumbnail. Generated thumbnails are always WebP;
     /// without one, `/t/` falls back to the original, hence its extension.
-    pub fn thumbnail_url(&self) -> String {
-        thumbnail_url(&self.id, &self.ext, self.has_thumbnail)
+    pub fn thumbnail_url(&self, public_url: &str) -> String {
+        thumbnail_url(public_url, &self.id, &self.ext, self.has_thumbnail)
     }
 }
 
-/// Public URL for a stored image.
-pub fn image_url(id: &str, ext: &str) -> String {
-    format!("/i/{id}.{ext}")
+/// Public URL for a stored image, under `public_url` (the configured
+/// `server.public_url`, without a trailing slash).
+pub fn image_url(public_url: &str, id: &str, ext: &str) -> String {
+    format!("{public_url}/i/{id}.{ext}")
 }
 
 /// Images returned per browse page.
@@ -63,9 +64,9 @@ pub const IMAGES_PER_PAGE: i64 = 100;
 
 /// Public thumbnail URL for a stored file. Generated thumbnails are always
 /// WebP; without one, `/t/` falls back to the original, hence its extension.
-pub fn thumbnail_url(id: &str, ext: &str, has_thumbnail: bool) -> String {
+pub fn thumbnail_url(public_url: &str, id: &str, ext: &str, has_thumbnail: bool) -> String {
     let extension = if has_thumbnail { "webp" } else { ext };
-    format!("/t/{id}.{extension}")
+    format!("{public_url}/t/{id}.{extension}")
 }
 
 /// Fetch one page (1-based) of stored images in the given order, with the total

@@ -7,8 +7,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::middlewares::AuthUser;
+use crate::middlewares::UploadUser;
 use crate::services::files::{self, Actions, UploadOptions};
 use crate::services::image::TargetFormat;
 use crate::settings::ElysiaSettings;
@@ -110,16 +111,17 @@ impl UploadOptionsQuery {
     path = "/api/upload",
     request_body(content = UploadForm, content_type = "multipart/form-data"),
     params(UploadOptionsQuery),
-    security(("bearer" = [])),
+    security(("bearer" = []), ("sso_client_basic" = [])),
     responses(
         (status = 200, description = "Image uploaded", body = UploadResponse),
         (status = 400, description = "File too large"),
-        (status = 401, description = "Missing or invalid session"),
+        (status = 401, description = "Missing or invalid session, or invalid SSO client credentials. The SSO provider may upload on behalf of its users with its client credentials as Basic auth and the user subject in the On-Behalf-Of-Sub header (On-Behalf-Of-Username names the account on first upload)"),
         (status = 415, description = "Not a supported image"),
     )
 )]
 pub async fn upload(
-    authenticated: AuthUser,
+    authenticated: UploadUser,
+    config: Data<Config>,
     settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     storage: Data<Storage>,
@@ -139,8 +141,8 @@ pub async fn upload(
     .await?;
 
     Ok(HttpResponse::Ok().json(UploadResponse {
-        url: stored.image_url(),
-        thumbnail_url: stored.thumbnail_url(),
+        url: stored.image_url(&config.server.public_url),
+        thumbnail_url: stored.thumbnail_url(&config.server.public_url),
         id: stored.id,
         ext: stored.ext,
         existed: stored.existed,

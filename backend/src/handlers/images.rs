@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::config::Config;
 use crate::error::Result;
 use crate::middlewares::AuthUser;
 use crate::repository::files::{ImagesSortBy, SortOrder};
@@ -54,6 +55,7 @@ pub struct ImagesQuery {
 )]
 pub async fn images(
     authenticated: AuthUser,
+    config: Data<Config>,
     pool: Data<PgPool>,
     query: Query<ImagesQuery>,
 ) -> Result<HttpResponse> {
@@ -68,7 +70,12 @@ pub async fn images(
     let images = rows
         .into_iter()
         .map(|row| ImageSummary {
-            thumbnail_url: files::thumbnail_url(&row.id, &row.ext, row.has_thumbnail),
+            thumbnail_url: files::thumbnail_url(
+                &config.server.public_url,
+                &row.id,
+                &row.ext,
+                row.has_thumbnail,
+            ),
             id: row.id,
         })
         .collect();

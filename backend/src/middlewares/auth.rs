@@ -2,6 +2,8 @@ use std::future::Future;
 use std::pin::Pin;
 
 use actix_web::{FromRequest, HttpRequest, dev::Payload, web::Data};
+use base64::{Engine, engine::general_purpose::STANDARD};
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -83,6 +85,92 @@ impl FromRequest for AuthUser {
                 user_id: row.id,
                 is_admin: row.is_admin,
             })
+        })
+    }
+}
+
+/// Upload caller: a session user (see [`AuthUser`]), or the SSO provider
+/// uploading on behalf of one of its users. The provider authenticates with
+/// the SSO client credentials (`Authorization: Basic`) and names the user in
+/// `On-Behalf-Of-Sub` (plus `On-Behalf-Of-Username` for first provisioning).
+/// The user maps to the same shadow row an SSO login would. Only the upload
+/// routes take this extractor, so the client secret opens nothing else.
+pub struct UploadUser {
+    pub user_id: Uuid,
+}
+
+/// Decoded `Authorization: Basic` credentials, if present.
+fn basic_credentials(request: &HttpRequest) -> Option<(String, String)> {
+    let encoded = request
+        .headers()
+        .get("Authorization")?
+        .to_str()
+        .ok()?
+        .strip_prefix("Basic ")?;
+    let decoded = String::from_utf8(STANDARD.decode(encoded).ok()?).ok()?;
+    let (client_id, client_secret) = decoded.split_once(':')?;
+    Some((client_id.to_string(), client_secret.to_string()))
+}
+
+fn header_value(request: &HttpRequest, name: &str) -> Option<String> {
+    request
+        .headers()
+        .get(name)
+        .and_then(|header| header.to_str().ok())
+        .map(str::to_string)
+}
+
+/// Compare secrets through their SHA-256, so the comparison time leaks
+/// nothing about the expected value.
+fn secrets_match(given: &str, expected: &str) -> bool {
+    Sha256::digest(given.as_bytes()) == Sha256::digest(expected.as_bytes())
+}
+
+impl FromRequest for UploadUser {
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self>>>>;
+
+    fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
+        let Some((client_id, client_secret)) = basic_credentials(request) else {
+            let session = AuthUser::from_request(request, payload);
+            return Box::pin(async move {
+                Ok(UploadUser {
+                    user_id: session.await?.user_id,
+                })
+            });
+        };
+        let config = request
+            .app_data::<Data<Config>>()
+            .expect("Config not configured")
+            .clone();
+        let pool = request
+            .app_data::<Data<PgPool>>()
+            .expect("PgPool not configured")
+            .clone();
+        let subject = header_value(request, "On-Behalf-Of-Sub");
+        let username = header_value(request, "On-Behalf-Of-Username").unwrap_or_default();
+        Box::pin(async move {
+            let sso = config.auth.sso.as_ref().ok_or(Error::Unauthorized)?;
+            if !(client_id == sso.client_id && secrets_match(&client_secret, &sso.client_secret)) {
+                return Err(Error::Unauthorized);
+            }
+            let subject = subject
+                .filter(|subject| !subject.is_empty())
+                .ok_or_else(|| Error::BadRequest("missing On-Behalf-Of-Sub header".into()))?;
+            // The provider vouches for the user, so its status endpoint is not
+            // asked again; a local ban still applies.
+            let row = users::upsert_sso_user(
+                pool.get_ref(),
+                sso.normalized_issuer(),
+                &subject,
+                &username,
+                None,
+            )
+            .await?;
+            if row.banned {
+                return Err(Error::Unauthorized);
+            }
+            Ok(UploadUser { user_id: row.id })
         })
     }
 }
