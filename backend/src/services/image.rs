@@ -1,7 +1,8 @@
 //! Pure image pipeline: decode, resize, encode, optional target-size search.
 //! No DB, no HTTP: just bytes in, bytes out.
 
-use image::{DynamicImage, GenericImageView};
+use image::metadata::Orientation;
+use image::{DynamicImage, GenericImageView, ImageDecoder};
 use serde::{Deserialize, Serialize};
 
 /// Output format; `jxl` is accepted as an alias for `jpegxl` on input. Stored in
@@ -75,9 +76,29 @@ pub fn decode(input: &[u8]) -> Result<Option<DynamicImage>, ProcessError> {
     if input.starts_with(b"GIF") {
         return decode_gif(input);
     }
-    image::load_from_memory(input)
-        .map(Some)
-        .map_err(|_| ProcessError::Undecodable)
+    let mut decoder = reader(input)
+        .into_decoder()
+        .map_err(|_| ProcessError::Undecodable)?;
+    let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+    let mut image = DynamicImage::from_decoder(decoder).map_err(|_| ProcessError::Undecodable)?;
+    // Re-encoding drops EXIF, so bake the orientation into the pixels.
+    image.apply_orientation(orientation);
+    Ok(Some(image))
+}
+
+/// EXIF orientation of the input, read from the header only (no pixel decode).
+/// `NoTransforms` when absent or unreadable.
+pub fn orientation(input: &[u8]) -> Orientation {
+    reader(input)
+        .into_decoder()
+        .and_then(|mut decoder| decoder.orientation())
+        .unwrap_or(Orientation::NoTransforms)
+}
+
+fn reader(input: &[u8]) -> image::ImageReader<std::io::Cursor<&[u8]>> {
+    image::ImageReader::new(std::io::Cursor::new(input))
+        .with_guessed_format()
+        .expect("reading from memory cannot fail")
 }
 
 /// Resize and encode an already-decoded image. Lets callers decode once and

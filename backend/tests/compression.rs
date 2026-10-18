@@ -348,22 +348,27 @@ async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
-/// A real baseline JPEG carrying an EXIF APP1 segment. `color` varies the pixels
-/// so two fixtures hash differently (the store dedups identical sources).
-fn jpeg_with_exif(color: [u8; 3]) -> Vec<u8> {
-    let image = image::RgbImage::from_pixel(8, 8, image::Rgb(color));
+/// A real baseline JPEG carrying an EXIF APP1 segment, with an Orientation tag
+/// when `orientation` is set. `color` varies the pixels so two fixtures hash
+/// differently (the store dedups identical sources).
+fn jpeg_with_exif(color: [u8; 3], width: u32, height: u32, orientation: Option<u8>) -> Vec<u8> {
+    let image = image::RgbImage::from_pixel(width, height, image::Rgb(color));
     let mut jpeg = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgb8(image)
         .write_to(&mut jpeg, image::ImageFormat::Jpeg)
         .unwrap();
     let jpeg = jpeg.into_inner();
 
-    // Minimal EXIF: little-endian TIFF header + an IFD0 holding zero entries.
-    let tiff = [
-        0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, // "II", 42, IFD0 at offset 8
-        0x00, 0x00, // entry count = 0
-        0x00, 0x00, 0x00, 0x00, // next IFD = 0
-    ];
+    // Minimal EXIF: little-endian TIFF header + an IFD0 holding zero or one entry.
+    let mut tiff = vec![0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00]; // "II", 42, IFD0 at offset 8
+    match orientation {
+        // One entry: tag 0x0112 (Orientation), type SHORT, count 1, value.
+        Some(value) => tiff.extend_from_slice(&[
+            0x01, 0x00, 0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, value, 0x00, 0x00, 0x00,
+        ]),
+        None => tiff.extend_from_slice(&[0x00, 0x00]),
+    }
+    tiff.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]); // next IFD = 0
     let mut payload = b"Exif\0\0".to_vec();
     payload.extend_from_slice(&tiff);
     let segment_len = (payload.len() + 2) as u16; // length field counts itself
@@ -395,7 +400,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
     let uploader = test_user(&pool, "exifstripper").await.0.id;
 
     // Stripping on: the stored file must have no EXIF.
-    let source = jpeg_with_exif([10, 20, 30]);
+    let source = jpeg_with_exif([10, 20, 30], 8, 8, None);
     assert!(contains(&source, exif_marker), "fixture should carry EXIF");
     let stored = store_from_url(
         &pool,
@@ -421,7 +426,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
     );
 
     // Stripping off (a different source to dodge dedup): EXIF survives passthrough.
-    let kept_source = jpeg_with_exif([200, 100, 50]);
+    let kept_source = jpeg_with_exif([200, 100, 50], 8, 8, None);
     let kept = store_from_url(
         &pool,
         &storage,
@@ -444,6 +449,75 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
         "passthrough without stripping keeps EXIF"
     );
 
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn exif_orientation_is_applied(pool: PgPool) {
+    use image::ImageDecoder;
+    let (storage, dir) = temp_storage();
+    let uploader = test_user(&pool, "orienter").await.0.id;
+    // 16x8 pixels tagged Orientation=6 (rotate 90): displayed as 8x16.
+    let cases = [
+        (
+            webp_settings(),
+            [10, 20, 30],
+            image::metadata::Orientation::NoTransforms,
+        ),
+        (
+            test_settings(),
+            [200, 100, 50],
+            image::metadata::Orientation::Rotate90,
+        ),
+    ];
+    for (settings, color, stored_orientation) in cases {
+        let stored = store_from_url(
+            &pool,
+            &storage,
+            &settings,
+            elysia::services::files::http_client(),
+            &serve_once(
+                "HTTP/1.1 200 OK",
+                "image/jpeg",
+                jpeg_with_exif(color, 16, 8, Some(6)),
+            ),
+            None,
+            &UploadOptions {
+                lossy_compression_value: None,
+                target_file_format: None,
+                strip_exif: true,
+            },
+            uploader,
+        )
+        .await
+        .unwrap();
+        assert!(
+            stored
+                .actions
+                .is_none_or(|actions| actions.resize.is_none())
+        );
+        let row = elysia::repository::files::find_metadata(&pool, &stored.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!((row.width, row.height), (8, 16));
+        assert_eq!((row.original_width, row.original_height), (8, 16));
+        // The pipeline rotates the pixels; a stripped passthrough keeps the tag.
+        let bytes = std::fs::read(storage.path_for(&stored.id, &stored.ext)).unwrap();
+        let mut decoder = image::ImageReader::new(std::io::Cursor::new(bytes))
+            .with_guessed_format()
+            .unwrap()
+            .into_decoder()
+            .unwrap();
+        assert_eq!(decoder.orientation().unwrap(), stored_orientation);
+        let (width, height) = decoder.dimensions();
+        let upright = if stored_orientation == image::metadata::Orientation::Rotate90 {
+            (height, width)
+        } else {
+            (width, height)
+        };
+        assert_eq!(upright, (8, 16));
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 

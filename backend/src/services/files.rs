@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use ::image::metadata::Orientation;
 use actix_multipart::form::tempfile::TempFile;
 use serde::Serialize;
 use sqlx::PgPool;
@@ -310,9 +311,17 @@ async fn store(
     let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
     check_dimensions(settings, dimensions.width as u32, dimensions.height as u32)?;
     let source_ext = ext;
-    let (source_width, source_height) = (dimensions.width as i32, dimensions.height as i32);
     // Single read reused for the pipeline, EXIF strip and thumbnails below.
     let source_bytes = tokio::fs::read(path).await?;
+    // Browsers and the pipeline apply the EXIF orientation, so record the upright size.
+    let orientation = image::orientation(&source_bytes);
+    let (source_width, source_height) = match orientation {
+        Orientation::Rotate90
+        | Orientation::Rotate270
+        | Orientation::Rotate90FlipH
+        | Orientation::Rotate270FlipH => (dimensions.height as i32, dimensions.width as i32),
+        _ => (dimensions.width as i32, dimensions.height as i32),
+    };
     let original_hash = hash_bytes(&source_bytes);
     let requested_quality = options.lossy_compression_value.map(|q| q as i32);
 
@@ -404,7 +413,7 @@ async fn store(
         // drops metadata (re-encode starts from a bare pixel buffer), so EXIF is
         // only stripped here, when requested, by rewriting the container.
         None if options.strip_exif => {
-            let stripped = strip_exif(source_bytes.clone())?;
+            let stripped = strip_exif(source_bytes.clone(), orientation)?;
             let mut temp = storage.new_temp()?;
             temp.write_all(&stripped)?;
             Output {
@@ -522,7 +531,7 @@ async fn store(
 /// Strip EXIF (and other sidecar metadata) from an image container without
 /// re-encoding the pixels. JPEG, PNG and WebP carry EXIF; anything else
 /// (e.g. GIF) is returned unchanged.
-fn strip_exif(input: Vec<u8>) -> Result<Vec<u8>> {
+fn strip_exif(input: Vec<u8>, orientation: Orientation) -> Result<Vec<u8>> {
     use img_parts::{DynImage, ImageEXIF};
 
     let bytes = img_parts::Bytes::from(input);
@@ -530,7 +539,12 @@ fn strip_exif(input: Vec<u8>) -> Result<Vec<u8>> {
         .map_err(|e| Error::BadRequest(format!("could not parse image to strip EXIF: {e}")))?
     {
         Some(mut image) => {
-            image.set_exif(None);
+            // The pixels are stored unrotated, so dropping the Orientation tag would
+            // show them sideways: keep a minimal EXIF with only that tag rather
+            // than rotate, which would mean a lossy re-encode.
+            image.set_exif(
+                (orientation != Orientation::NoTransforms).then(|| orientation_exif(orientation)),
+            );
             let mut output = Vec::new();
             image
                 .encoder()
@@ -541,6 +555,13 @@ fn strip_exif(input: Vec<u8>) -> Result<Vec<u8>> {
         // Not an EXIF-bearing container (GIF, or an unrecognized wrapper): nothing to strip.
         None => Ok(bytes.to_vec()),
     }
+}
+
+/// Minimal little-endian EXIF (TIFF) block holding only the Orientation tag.
+fn orientation_exif(orientation: Orientation) -> img_parts::Bytes {
+    let mut exif = b"II*\0\x08\0\0\0\x01\0\x12\x01\x03\0\x01\0\0\0".to_vec();
+    exif.extend_from_slice(&[orientation.to_exif(), 0, 0, 0, 0, 0, 0, 0]);
+    exif.into()
 }
 
 /// Build a `StoredFile` for a dedup or skip hit from a stored record.
