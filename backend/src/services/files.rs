@@ -3,7 +3,7 @@ use std::io::Write;
 use ::image::metadata::Orientation;
 use serde::Serialize;
 use sqlx::PgPool;
-use tempfile::NamedTempFile;
+use tempfile::{NamedTempFile, TempPath};
 use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
@@ -526,11 +526,13 @@ pub async fn store_upload(
     // removed again before retrying.
     const ID_ALLOC_RETRIES: u8 = 5;
     let mut id = None;
+    // Renamed into place, never copied: the temp file lives under the storage root.
+    let mut temp = output.temp.into_temp_path();
     for _ in 0..ID_ALLOC_RETRIES {
         let candidate = generate_id();
         storage.prepare_shard(&candidate).await?;
         let dest = storage.path_for(&candidate, output.ext);
-        tokio::fs::copy(output.temp.path(), &dest).await?;
+        temp.persist(&dest).map_err(|error| error.error)?;
         if let Some(bytes) = &thumbnail
             && let Err(error) = storage.write_thumbnail(&candidate, bytes).await
         {
@@ -565,7 +567,8 @@ pub async fn store_upload(
                 break;
             }
             Ok(false) => {
-                let _ = tokio::fs::remove_file(&dest).await;
+                // Keep the bytes for the next candidate; deleted on drop if none succeeds.
+                temp = TempPath::try_from_path(dest)?;
                 let _ = tokio::fs::remove_file(storage.thumbnail_path_for(&candidate)).await;
                 // A failed insert is an id collision or a concurrent upload of the same
                 // bytes winning the hash race; in the latter case, reuse its row.
