@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update api_keys set revoked_at = now()\n         where id = $1 and user_id = $2 and revoked_at is null\n           and (expires_at is null or expires_at > now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8bbd7b32e6da5207a99d9478985da417e51669e495459a5176fdc4f7996cf29e"
+}

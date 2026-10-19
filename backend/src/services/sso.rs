@@ -108,7 +108,8 @@ pub fn generate_verifier() -> String {
     URL_SAFE_NO_PAD.encode(random_bytes::<32>())
 }
 
-fn random_bytes<const LENGTH: usize>() -> [u8; LENGTH] {
+/// `LENGTH` bytes from the system RNG.
+pub fn random_bytes<const LENGTH: usize>() -> [u8; LENGTH] {
     let mut bytes = [0u8; LENGTH];
     OsRng
         .try_fill_bytes(&mut bytes)

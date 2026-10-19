@@ -4,6 +4,7 @@ use actix_web::{HttpRequest, HttpResponse};
 use crate::error::{Error, Result};
 use crate::settings::{RefererHost, SharedElysiaSettings, referer_host};
 
+pub mod api_keys;
 pub mod change_password;
 pub mod empty_trash;
 pub mod get_elysia_settings;
@@ -26,6 +27,7 @@ pub mod upload;
 pub mod upload_url;
 pub mod users;
 
+pub use api_keys::{create_api_key, list_api_keys, revoke_api_key};
 pub use change_password::change_password;
 pub use empty_trash::empty_trash;
 pub use get_elysia_settings::get_elysia_settings;

@@ -58,6 +58,7 @@ pub async fn upload_url(
         None,
         &options,
         authenticated.user_id,
+        authenticated.api_key_id,
     )
     .await?;
 

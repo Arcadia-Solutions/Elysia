@@ -175,11 +175,22 @@ pub async fn set_banned(pool: &PgPool, user_id: Uuid, banned: bool) -> Result<bo
     Ok(result.rows_affected() == 1)
 }
 
-/// Stamp a user who just made an API request as seen now.
-pub async fn update_last_seen(pool: &PgPool, user_id: Uuid) -> Result<()> {
-    sqlx::query!("update users set last_seen = now() where id = $1", user_id)
-        .execute(pool)
-        .await?;
+/// Stamp a user who just made an API request as seen now, and the API key it
+/// authenticated with (if any) as used now.
+pub async fn update_last_seen(
+    pool: &PgPool,
+    user_id: Uuid,
+    api_key_id: Option<Uuid>,
+) -> Result<()> {
+    // One round trip stamps the user and, when the request used one, its API key.
+    sqlx::query!(
+        "with used_key as (update api_keys set last_used_at = now() where id = $2)
+         update users set last_seen = now() where id = $1",
+        user_id,
+        api_key_id,
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }
 

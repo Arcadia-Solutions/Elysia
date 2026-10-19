@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with used_key as (update api_keys set last_used_at = now() where id = $2)\n         update users set last_seen = now() where id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1f5f8bfe3b0946f02525fa725478e23fc9f1611f2127a51185e71ebe9986fa3b"
+}

@@ -183,6 +183,7 @@ pub async fn upload(
         file_name,
         &options,
         authenticated.user_id,
+        authenticated.api_key_id,
     )
     .await?;
 

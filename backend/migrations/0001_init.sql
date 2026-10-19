@@ -32,6 +32,35 @@ values ('admin', 'admin@example.com',
   '$argon2id$v=19$m=19456,t=2,p=1$jPojWbnVBAX8ShW6rTqduA$KiXMlsmfe39aYNAKHYsWPSJS1+9EqnIOAHXwhEbDE1M',
   true);
 
+-- Long-lived bearer tokens for scripts and upload tools. Only the
+-- SHA-256 of the token is stored. Rows are never deleted: revoked and expired
+-- keys stay so files.api_key_id keeps pointing at the key that uploaded them.
+create type api_key_scope as enum ('upload', 'full');
+
+create table api_keys (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  name text not null,
+  scope api_key_scope not null,
+  token_hash text not null,
+  token_prefix text not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz,
+  last_used_at timestamptz,
+  revoked_at timestamptz
+);
+
+comment on table api_keys is 'API keys acting as their user; soft revoked (revoked_at), never deleted';
+comment on column api_keys.scope is 'upload = only the upload routes, full = every route a session reaches except password change, API key management and admin powers';
+comment on column api_keys.token_hash is 'SHA-256 (hex) of the token; the token itself is shown once at creation';
+comment on column api_keys.token_prefix is 'First characters of the token, so users can tell their keys apart';
+comment on column api_keys.expires_at is 'After this the key is refused; null never expires';
+comment on column api_keys.last_used_at is 'Last request authenticated with the key';
+comment on column api_keys.revoked_at is 'When the user revoked the key; null while not revoked';
+
+-- Every API key request looks its key up by token hash.
+create unique index api_keys_token_hash_idx on api_keys (token_hash);
+
 create type file_status as enum ('available', 'trashed', 'deleted');
 create type deletion_source as enum ('manual', 'scheduler');
 
@@ -54,6 +83,7 @@ create table files (
   views bigint not null default 0,
   thumbnail_views bigint not null default 0,
   uploaded_by_user_id uuid not null references users(id),
+  api_key_id uuid references api_keys(id),
   created_at timestamptz not null default now(),
   status file_status not null default 'available',
   trashed_at timestamptz,
@@ -85,6 +115,7 @@ comment on column files.has_thumbnail is 'True when a separate <first 2 id chars
 comment on column files.views is 'Times the image was served from /i/';
 comment on column files.thumbnail_views is 'Times the thumbnail was served from /t/';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
+comment on column files.api_key_id is 'The API key the file was uploaded with; null for session and SSO delegated uploads';
 comment on column files.created_at is 'When the file was uploaded';
 comment on column files.status is 'available = served, trashed = moved to <root>/trash and no longer served, deleted = wiped from disk (the row stays for stats)';
 comment on column files.trashed_at is 'When the file was trashed; trashed files are wiped 30 days later. Null while available';

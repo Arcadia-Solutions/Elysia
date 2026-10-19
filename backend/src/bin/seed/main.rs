@@ -164,6 +164,7 @@ async fn main() {
             Some(format!("seed-{index}.{source_ext}")),
             &options,
             uploader,
+            None,
         )
         .await
         {

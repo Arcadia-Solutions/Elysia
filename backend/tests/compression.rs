@@ -235,6 +235,7 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -262,6 +263,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -275,6 +277,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -304,6 +307,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
             None,
             &options,
             uploader,
+            None,
         )
         .await
         .unwrap();
@@ -328,6 +332,7 @@ async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -415,6 +420,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
             strip_exif: true,
         },
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -440,6 +446,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
             strip_exif: false,
         },
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -488,6 +495,7 @@ async fn exif_orientation_is_applied(pool: PgPool) {
                 strip_exif: true,
             },
             uploader,
+            None,
         )
         .await
         .unwrap();

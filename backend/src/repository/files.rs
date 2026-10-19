@@ -24,6 +24,8 @@ pub struct NewFile<'a> {
     pub applied_quality: Option<i32>,
     pub has_thumbnail: bool,
     pub uploaded_by_user_id: Uuid,
+    /// The API key the file was uploaded with, if any.
+    pub api_key_id: Option<Uuid>,
 }
 
 pub struct FileRow {
@@ -42,8 +44,8 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         "insert into files \
          (id, ext, mime, original_name, size, width, height, hash, \
           original_hash, original_ext, original_width, original_height, \
-          requested_quality, applied_quality, has_thumbnail, uploaded_by_user_id) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+          requested_quality, applied_quality, has_thumbnail, uploaded_by_user_id, api_key_id) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)",
         f.id,
         f.ext,
         f.mime,
@@ -60,6 +62,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.applied_quality,
         f.has_thumbnail,
         f.uploaded_by_user_id,
+        f.api_key_id,
     )
     .execute(pool)
     .await;

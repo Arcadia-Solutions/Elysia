@@ -216,6 +216,7 @@ async fn rehost_stores_a_fetched_image(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -242,6 +243,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -256,6 +258,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -289,7 +292,8 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
             &url,
             None,
             &Default::default(),
-            uploader
+            uploader,
+            None,
         )
         .await,
         Err(Error::UnsupportedMediaType)
@@ -311,7 +315,8 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
             &url,
             None,
             &Default::default(),
-            uploader
+            uploader,
+            None,
         )
         .await,
         Err(Error::BadRequest(_))
@@ -335,6 +340,7 @@ async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await;
     assert!(
@@ -362,6 +368,7 @@ async fn rehost_rejects_a_body_over_size_limit(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await;
     assert!(
@@ -459,5 +466,6 @@ fn sample_file(id: &str, uploaded_by_user_id: uuid::Uuid) -> NewFile<'_> {
         applied_quality: None,
         has_thumbnail: false,
         uploaded_by_user_id,
+        api_key_id: None,
     }
 }

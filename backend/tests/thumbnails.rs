@@ -50,6 +50,7 @@ async fn thumbnail_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();
@@ -77,6 +78,7 @@ async fn no_thumbnail_when_image_fits_box(pool: PgPool) {
         None,
         &Default::default(),
         uploader,
+        None,
     )
     .await
     .unwrap();

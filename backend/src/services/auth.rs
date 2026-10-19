@@ -2,12 +2,15 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
 };
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::services::sso::random_bytes;
 
 /// Session token lifetime: 24 hours.
 const SESSION_LIFETIME_SECONDS: u64 = 24 * 60 * 60;
@@ -175,4 +178,35 @@ pub fn decode_jwt(token: &str, jwt_secret: &str) -> Result<SessionClaims> {
     )
     .map(|valid| valid.claims)
     .map_err(|_| Error::Unauthorized)
+}
+
+/// Start of every API key token, telling them apart from session tokens.
+pub const API_KEY_TOKEN_PREFIX: &str = "elysia_";
+
+/// Characters of a token kept as its displayed prefix.
+const API_KEY_DISPLAYED_PREFIX_LENGTH: usize = 16;
+
+/// A freshly generated API key: the token shown once, plus what gets stored.
+pub struct GeneratedApiKey {
+    pub token: String,
+    pub token_hash: String,
+    pub token_prefix: String,
+}
+
+/// A fresh API key token: the prefix plus 32 random bytes, base64url-encoded.
+pub fn generate_api_key() -> GeneratedApiKey {
+    let token = format!(
+        "{API_KEY_TOKEN_PREFIX}{}",
+        URL_SAFE_NO_PAD.encode(random_bytes::<32>())
+    );
+    GeneratedApiKey {
+        token_hash: hash_api_key_token(&token),
+        token_prefix: token[..API_KEY_DISPLAYED_PREFIX_LENGTH].to_string(),
+        token,
+    }
+}
+
+/// SHA-256 (hex) of an API key token, as stored.
+pub fn hash_api_key_token(token: &str) -> String {
+    format!("{:x}", Sha256::digest(token.as_bytes()))
 }

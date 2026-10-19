@@ -257,6 +257,7 @@ async fn import_image(
         image.original_filename.clone(),
         &options,
         uploader,
+        None,
     )
     .await
     .map_err(|error| failure(error.to_string()))?;

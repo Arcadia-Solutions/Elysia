@@ -9,15 +9,19 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::error::{Error, Result};
+use crate::repository::api_keys::{self, ApiKeyScope};
 use crate::repository::users::{self, AuthProvider};
 use crate::services::sso::SharedSsoState;
 use crate::services::{auth, sso as sso_service};
 
-/// Authenticated caller: the bearer must be a JWT session token for a live,
-/// unbanned user row.
+/// Authenticated caller: the bearer must be a JWT session token or a
+/// `full` scope API key, of a live, unbanned user row.
 pub struct AuthUser {
     pub user_id: Uuid,
+    /// Always false for API key callers.
     pub is_admin: bool,
+    /// The API key the request authenticated with; None for a session.
+    pub api_key_id: Option<Uuid>,
 }
 
 impl AuthUser {
@@ -27,6 +31,15 @@ impl AuthUser {
             Ok(())
         } else {
             Err(Error::Forbidden)
+        }
+    }
+
+    /// Reject API key callers, so a leaked key cannot change the password or
+    /// mint and revoke keys.
+    pub fn require_session(&self) -> Result<()> {
+        match self.api_key_id {
+            None => Ok(()),
+            Some(_) => Err(Error::Forbidden),
         }
     }
 }
@@ -41,56 +54,81 @@ fn bearer_token(request: &HttpRequest) -> Option<String> {
         .map(str::to_string)
 }
 
+fn config_and_pool(request: &HttpRequest) -> (Data<Config>, Data<PgPool>) {
+    let config = request
+        .app_data::<Data<Config>>()
+        .expect("Config not configured")
+        .clone();
+    let pool = request
+        .app_data::<Data<PgPool>>()
+        .expect("PgPool not configured")
+        .clone();
+    (config, pool)
+}
+
+/// Authenticate a bearer token: a session JWT, or an API key whose scope
+/// allows `required_scope`. The user must be live either way.
+fn authenticate(
+    request: &HttpRequest,
+    required_scope: ApiKeyScope,
+) -> Pin<Box<dyn Future<Output = Result<AuthUser>>>> {
+    let (config, pool) = config_and_pool(request);
+    let sso_state = request.app_data::<SharedSsoState>().cloned();
+    let token = bearer_token(request);
+    Box::pin(async move {
+        let token = token.ok_or(Error::Unauthorized)?;
+        let (user_id, api_key_id) = if token.starts_with(auth::API_KEY_TOKEN_PREFIX) {
+            let api_key = api_keys::find_active(pool.get_ref(), &auth::hash_api_key_token(&token))
+                .await?
+                .ok_or(Error::Unauthorized)?;
+            if !api_key.scope.allows(required_scope) {
+                return Err(Error::Forbidden);
+            }
+            (api_key.user_id, Some(api_key.id))
+        } else {
+            let claims = auth::decode_jwt(&token, &config.auth.jwt_secret)?;
+            (claims.user_id()?, None)
+        };
+        let row = users::find_by_id(pool.get_ref(), user_id)
+            .await?
+            .ok_or(Error::Unauthorized)?;
+        if row.banned {
+            return Err(Error::Unauthorized);
+        }
+        // SSO rows are only as live as the provider's status endpoint says
+        // (the local banned flag is not set from there). Fail closed when
+        // SSO got disabled or the row has no subject.
+        if row.provider == AuthProvider::Sso {
+            let (Some(sso), Some(sso_state), Some(subject)) = (
+                config.auth.sso.as_ref(),
+                sso_state,
+                row.external_sub.as_deref(),
+            ) else {
+                return Err(Error::Unauthorized);
+            };
+            if !sso_service::user_active(&sso_state, sso, row.id, subject).await {
+                return Err(Error::Unauthorized);
+            }
+        }
+        users::update_last_seen(pool.get_ref(), row.id, api_key_id).await?;
+        Ok(AuthUser {
+            user_id: row.id,
+            is_admin: row.is_admin && api_key_id.is_none(),
+            api_key_id,
+        })
+    })
+}
+
 impl FromRequest for AuthUser {
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self>>>>;
 
     fn from_request(request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let config = request
-            .app_data::<Data<Config>>()
-            .expect("Config not configured")
-            .clone();
-        let pool = request
-            .app_data::<Data<PgPool>>()
-            .expect("PgPool not configured")
-            .clone();
-        let sso_state = request.app_data::<SharedSsoState>().cloned();
-        let token = bearer_token(request);
-        Box::pin(async move {
-            let token = token.ok_or(Error::Unauthorized)?;
-            let claims = auth::decode_jwt(&token, &config.auth.jwt_secret)?;
-            let user_id = claims.user_id()?;
-            let row = users::find_by_id(pool.get_ref(), user_id)
-                .await?
-                .ok_or(Error::Unauthorized)?;
-            if row.banned {
-                return Err(Error::Unauthorized);
-            }
-            // SSO rows are only as live as the provider's status endpoint says
-            // (the local banned flag is not set from there). Fail closed when
-            // SSO got disabled or the row has no subject.
-            if row.provider == AuthProvider::Sso {
-                let (Some(sso), Some(sso_state), Some(subject)) = (
-                    config.auth.sso.as_ref(),
-                    sso_state,
-                    row.external_sub.as_deref(),
-                ) else {
-                    return Err(Error::Unauthorized);
-                };
-                if !sso_service::user_active(&sso_state, sso, row.id, subject).await {
-                    return Err(Error::Unauthorized);
-                }
-            }
-            users::update_last_seen(pool.get_ref(), row.id).await?;
-            Ok(AuthUser {
-                user_id: row.id,
-                is_admin: row.is_admin,
-            })
-        })
+        authenticate(request, ApiKeyScope::Full)
     }
 }
 
-/// Upload caller: a session user (see [`AuthUser`]), or the SSO provider
+/// Upload caller: a session user or API key of any scope (see [`AuthUser`]), or the SSO provider
 /// uploading on behalf of one of its users. The provider authenticates with
 /// the SSO client credentials (`Authorization: Basic`) and names the user in
 /// `On-Behalf-Of-Sub` (plus `On-Behalf-Of-Username` for first provisioning).
@@ -98,6 +136,8 @@ impl FromRequest for AuthUser {
 /// routes take this extractor, so the client secret opens nothing else.
 pub struct UploadUser {
     pub user_id: Uuid,
+    /// The API key the upload authenticated with, recorded on the file.
+    pub api_key_id: Option<Uuid>,
 }
 
 /// Decoded `Authorization: Basic` credentials, if present.
@@ -131,23 +171,18 @@ impl FromRequest for UploadUser {
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self>>>>;
 
-    fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
+    fn from_request(request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let Some((client_id, client_secret)) = basic_credentials(request) else {
-            let session = AuthUser::from_request(request, payload);
+            let authenticated = authenticate(request, ApiKeyScope::Upload);
             return Box::pin(async move {
+                let authenticated = authenticated.await?;
                 Ok(UploadUser {
-                    user_id: session.await?.user_id,
+                    user_id: authenticated.user_id,
+                    api_key_id: authenticated.api_key_id,
                 })
             });
         };
-        let config = request
-            .app_data::<Data<Config>>()
-            .expect("Config not configured")
-            .clone();
-        let pool = request
-            .app_data::<Data<PgPool>>()
-            .expect("PgPool not configured")
-            .clone();
+        let (config, pool) = config_and_pool(request);
         let subject = header_value(request, "On-Behalf-Of-Sub");
         let username = header_value(request, "On-Behalf-Of-Username").unwrap_or_default();
         Box::pin(async move {
@@ -171,8 +206,11 @@ impl FromRequest for UploadUser {
             if row.banned {
                 return Err(Error::Unauthorized);
             }
-            users::update_last_seen(pool.get_ref(), row.id).await?;
-            Ok(UploadUser { user_id: row.id })
+            users::update_last_seen(pool.get_ref(), row.id, None).await?;
+            Ok(UploadUser {
+                user_id: row.id,
+                api_key_id: None,
+            })
         })
     }
 }

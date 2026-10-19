@@ -332,6 +332,7 @@ pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usiz
                 applied_quality: None,
                 has_thumbnail: false,
                 uploaded_by_user_id: uploader,
+                api_key_id: None,
             },
         )
         .await

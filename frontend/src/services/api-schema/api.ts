@@ -32,6 +32,56 @@ export interface Actions {
     'resize'?: ResizeAction | null;
 }
 /**
+ * What an API key may do, the `api_key_scope` Postgres enum.
+ */
+
+export const ApiKeyScope = {
+    Upload: 'upload',
+    Full: 'full'
+} as const;
+
+export type ApiKeyScope = typeof ApiKeyScope[keyof typeof ApiKeyScope];
+
+
+/**
+ * An API key as its owner sees it. The token itself is never stored.
+ */
+export interface ApiKeySummary {
+    /**
+     * True when the key is neither revoked nor expired.
+     */
+    'active': boolean;
+    /**
+     * Creation time as a UTC ISO-8601 string.
+     */
+    'created_at': string;
+    /**
+     * Expiry as a UTC ISO-8601 string; null never expires.
+     */
+    'expires_at'?: string | null;
+    'id': string;
+    /**
+     * Last use as a UTC ISO-8601 string; null if never used.
+     */
+    'last_used_at'?: string | null;
+    'name': string;
+    /**
+     * Revocation time as a UTC ISO-8601 string; null while not revoked.
+     */
+    'revoked_at'?: string | null;
+    'scope': ApiKeyScope;
+    /**
+     * First characters of the token, to tell keys apart.
+     */
+    'token_prefix': string;
+    /**
+     * Files uploaded with the key, trashed and deleted ones included.
+     */
+    'uploads': number;
+}
+
+
+/**
  * Current plus replacement password for a self-service password change.
  */
 export interface ChangePasswordRequest {
@@ -53,6 +103,26 @@ export interface CompressionActionOneOf {
 export interface ConvertAction {
     'from': string;
     'to': string;
+}
+export interface CreateApiKeyRequest {
+    /**
+     * When the key expires, an ISO-8601 timestamp in the future; null never expires.
+     */
+    'expires_at'?: string | null;
+    /**
+     * Label telling the key apart, 1 to 64 characters.
+     */
+    'name': string;
+    'scope': ApiKeyScope;
+}
+
+
+export interface CreatedApiKey {
+    'api_key': ApiKeySummary;
+    /**
+     * The secret token, shown only this once. Send it as `Authorization: Bearer <token>`.
+     */
+    'token': string;
 }
 /**
  * Runtime-editable elysia settings: the upload limits and processing options edited from the web UI and persisted as the single `elysia_settings` row.  Kept separate from [`crate::config::Config`], which holds only the boot-time infrastructure values (bind address, database, upload dir).
@@ -631,6 +701,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Create an API key for the caller. The token is returned only in this response.
+         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createApiKey: async (createApiKeyRequest: CreateApiKeyRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'createApiKeyRequest' is not null or undefined
+            assertParamExists('createApiKey', 'createApiKeyRequest', createApiKeyRequest)
+            const localVarPath = `/api/api-keys`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createApiKeyRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Wipe every trashed image from disk now, without waiting for its 30 days.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -829,6 +934,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             if (username !== undefined) {
                 localVarQueryParameter['username'] = username;
             }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listApiKeys: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/api-keys`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
 
 
     
@@ -1057,6 +1191,39 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(registerRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * @param {string} id API key id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        revokeApiKey: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('revokeApiKey', 'id', id)
+            const localVarPath = `/api/api-keys/{id}/revoke`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1470,6 +1637,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Create an API key for the caller. The token is returned only in this response.
+         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreatedApiKey>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createApiKey(createApiKeyRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.createApiKey']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Wipe every trashed image from disk now, without waiting for its 30 days.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1539,6 +1718,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, status, username, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listApiKeys(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ApiKeySummary>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listApiKeys(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listApiKeys']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1613,6 +1803,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.register(registerRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.register']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * @param {string} id API key id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async revokeApiKey(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.revokeApiKey(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.revokeApiKey']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1761,6 +1963,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.changePassword(changePasswordRequest, options).then((request) => request(axios, basePath));
         },
         /**
+         * Create an API key for the caller. The token is returned only in this response.
+         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreatedApiKey> {
+            return localVarFp.createApiKey(createApiKeyRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Wipe every trashed image from disk now, without waiting for its 30 days.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1813,6 +2024,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
             return localVarFp.images(page, sortBy, order, status, username, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listApiKeys(options?: RawAxiosRequestConfig): AxiosPromise<Array<ApiKeySummary>> {
+            return localVarFp.listApiKeys(options).then((request) => request(axios, basePath));
         },
         /**
          * Users, local and SSO, optionally searched by username or email. Admin only.
@@ -1869,6 +2088,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): AxiosPromise<RegisterResponse> {
             return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * @param {string} id API key id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        revokeApiKey(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.revokeApiKey(id, options).then((request) => request(axios, basePath));
         },
         /**
          * Served straight from disk, without a database lookup.
@@ -1985,6 +2213,16 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * Create an API key for the caller. The token is returned only in this response.
+     * @param {CreateApiKeyRequest} createApiKeyRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).createApiKey(createApiKeyRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Wipe every trashed image from disk now, without waiting for its 30 days.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2042,6 +2280,15 @@ export class ElysiaApi extends BaseAPI {
      */
     public images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).images(page, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The caller\'s API keys, revoked and expired ones included, newest first.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listApiKeys(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).listApiKeys(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2104,6 +2351,16 @@ export class ElysiaApi extends BaseAPI {
      */
     public register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).register(registerRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+     * @param {string} id API key id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public revokeApiKey(id: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).revokeApiKey(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

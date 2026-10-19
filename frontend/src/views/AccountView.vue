@@ -58,6 +58,12 @@
       <Button :label="$t('account.password_title')" size="small" @click="showDialog = true" />
       <ChangePasswordDialog v-model:visible="showDialog" />
     </template>
+
+    <template v-if="!userId">
+      <hr />
+
+      <ApiKeys />
+    </template>
   </div>
 </template>
 
@@ -66,6 +72,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import ApiKeys from '@/components/account/ApiKeys.vue'
 import ChangePasswordDialog from '@/components/account/ChangePasswordDialog.vue'
 import { api } from '@/services/api/http'
 import { showToast } from '@/services/toast'

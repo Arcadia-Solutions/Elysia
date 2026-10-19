@@ -13,9 +13,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
 use elysia::handlers::{
-    change_password, empty_trash, get_elysia_settings, get_elysia_unauth_settings,
-    get_public_elysia_settings, get_user, images, list_users, login, me, metadata,
-    put_elysia_settings, register, serve, serve_thumbnail, serve_trashed_thumbnail,
+    change_password, create_api_key, empty_trash, get_elysia_settings, get_elysia_unauth_settings,
+    get_public_elysia_settings, get_user, images, list_api_keys, list_users, login, me, metadata,
+    put_elysia_settings, register, revoke_api_key, serve, serve_thumbnail, serve_trashed_thumbnail,
     set_user_banned, sso_callback, sso_login, stats_overview, trash_images, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
@@ -83,6 +83,9 @@ async fn main() -> std::io::Result<()> {
             .route("/api/auth/login", web::post().to(login))
             .route("/api/auth/me", web::get().to(me))
             .route("/api/auth/password", web::put().to(change_password))
+            .route("/api/api-keys", web::get().to(list_api_keys))
+            .route("/api/api-keys", web::post().to(create_api_key))
+            .route("/api/api-keys/{id}/revoke", web::post().to(revoke_api_key))
             .route("/api/auth/sso/login", web::get().to(sso_login))
             .route("/api/auth/sso/callback", web::post().to(sso_callback))
             .route("/api/upload", web::post().to(upload))

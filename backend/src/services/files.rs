@@ -291,6 +291,7 @@ pub async fn store_from_url(
     original_name: Option<String>,
     options: &UploadOptions,
     uploaded_by_user_id: Uuid,
+    api_key_id: Option<Uuid>,
 ) -> Result<StoredFile> {
     let mut response = client.get(url).send().await.map_err(|e| {
         // The guard's refusal is buried in reqwest's error chain.
@@ -339,6 +340,7 @@ pub async fn store_from_url(
         original_name,
         options,
         uploaded_by_user_id,
+        api_key_id,
     )
     .await
 }
@@ -356,6 +358,7 @@ pub async fn store_upload(
     original_name: Option<String>,
     options: &UploadOptions,
     uploaded_by_user_id: Uuid,
+    api_key_id: Option<Uuid>,
 ) -> Result<StoredFile> {
     check_size(settings, size)?;
 
@@ -562,6 +565,7 @@ pub async fn store_upload(
                 applied_quality: output.applied_quality,
                 has_thumbnail: thumbnail.is_some(),
                 uploaded_by_user_id,
+                api_key_id,
             },
         )
         .await;

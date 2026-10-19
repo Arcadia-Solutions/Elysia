@@ -273,5 +273,32 @@
     "title": "Users",
     "profile": "User profile",
     "search_placeholder": "Search by username or email"
+  },
+  "api_keys": {
+    "title": "API keys",
+    "create": "Create API key",
+    "empty": "No API keys yet.",
+    "scope_upload": "Upload",
+    "scope_full": "Full access",
+    "scope_upload_help": "Can only upload images.",
+    "scope_full_help": "Everything, except changing your password, managing API keys and admin actions.",
+    "revoked": "Revoked",
+    "expired": "Expired",
+    "revoke": "Revoke",
+    "revoke_confirm": "Revoke {name}? Anything using it stops working right away.",
+    "revoked_toast": "{name} is revoked",
+    "uploads": "{count} uploads",
+    "last_used": "last used",
+    "created": "Created",
+    "expires": "expires",
+    "never": "never",
+    "token_once": "Copy this token now: it will not be shown again.",
+    "token": "Token",
+    "done": "Done",
+    "name_placeholder": "Name",
+    "expires_in_days": "Expires in {days} days",
+    "never_expires": "Never expires",
+    "custom_date": "Custom date",
+    "expiry_date": "Expiry date"
   }
 }

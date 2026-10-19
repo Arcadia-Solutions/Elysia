@@ -28,6 +28,7 @@ pub struct ChangePasswordRequest {
         (status = 200, description = "Password changed"),
         (status = 400, description = "Wrong current password, weak replacement, or SSO account"),
         (status = 401, description = "Missing, invalid or banned session"),
+        (status = 403, description = "Called with an API key"),
     )
 )]
 pub async fn change_password(
@@ -35,6 +36,7 @@ pub async fn change_password(
     pool: Data<PgPool>,
     body: Json<ChangePasswordRequest>,
 ) -> Result<HttpResponse> {
+    authenticated.require_session()?;
     let request = body.into_inner();
     auth_service::validate_password(&request.new_password)?;
     let row = users::find_by_id(pool.get_ref(), authenticated.user_id)
