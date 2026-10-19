@@ -8,20 +8,19 @@ use std::sync::RwLock;
 use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
-use actix_web::web::{self, Data};
+use actix_web::web::Data;
 use sqlx::PgPool;
 
-use elysia::handlers::change_password;
-use elysia::handlers::get_elysia_settings::get_elysia_settings;
-use elysia::handlers::login::{self, LoginResponse};
-use elysia::handlers::me::{self, ProfileResponse};
-use elysia::handlers::register::{self, RegisterResponse};
+use elysia::handlers::auth::login::LoginResponse;
+use elysia::handlers::auth::me::ProfileResponse;
+use elysia::handlers::auth::register::RegisterResponse;
 use elysia::repository::{files, users};
+use elysia::routes;
 use elysia::storage::Storage;
 
 use common::*;
 
-/// Auth routes plus the settings and upload routes that enforce auth.
+/// The full app, to hit the auth routes and the routes that enforce auth.
 macro_rules! auth_app {
     ($pool:expr) => {{ auth_app_with_settings!($pool, test_settings()) }};
 }
@@ -41,16 +40,7 @@ macro_rules! auth_app_with_settings {
                 .app_data(Data::new($pool))
                 .app_data(Data::new(storage))
                 .app_data(Data::new(RwLock::new($settings)))
-                .route("/api/auth/register", web::post().to(register::register))
-                .route("/api/auth/login", web::post().to(login::login))
-                .route("/api/auth/me", web::get().to(me::me))
-                .route(
-                    "/api/auth/password",
-                    web::put().to(change_password::change_password),
-                )
-                .route("/api/elysia-settings", web::get().to(get_elysia_settings))
-                .route("/api/upload", web::post().to(elysia::handlers::upload))
-                .route("/api/i/{id}", web::get().to(elysia::handlers::metadata)),
+                .configure(routes::init),
         )
         .await
     }};

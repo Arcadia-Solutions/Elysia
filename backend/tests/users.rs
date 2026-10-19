@@ -2,14 +2,14 @@
 
 mod common;
 
+use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
 use actix_web::web::Data;
-use actix_web::{App, web};
 use sqlx::PgPool;
 
-use elysia::handlers::{get_user, images, list_users, set_user_banned};
 use elysia::repository::users;
+use elysia::routes;
 use elysia::services::auth as auth_service;
 
 #[sqlx::test(migrations = "./migrations")]
@@ -31,10 +31,7 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
         App::new()
             .app_data(Data::new(config))
             .app_data(Data::new(pool.clone()))
-            .route("/api/users", web::get().to(list_users))
-            .route("/api/users/{id}", web::get().to(get_user))
-            .route("/api/users/{id}/banned", web::put().to(set_user_banned))
-            .route("/api/images", web::get().to(images)),
+            .configure(routes::init),
     )
     .await;
     let call = |method: actix_test::TestRequest, uri: String, token: &str| {

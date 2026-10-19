@@ -1,0 +1,16 @@
+use actix_web::web::{ServiceConfig, scope};
+
+use crate::handlers::{api_keys, auth, images, settings, stats, users};
+
+pub fn init(cfg: &mut ServiceConfig) {
+    cfg.service(
+        scope("/api")
+            .service(scope("/auth").configure(auth::config))
+            .service(scope("/api-keys").configure(api_keys::config))
+            .service(scope("/users").configure(users::config))
+            .service(scope("/stats").configure(stats::config))
+            .configure(images::config)
+            .configure(settings::config),
+    )
+    .configure(images::config_public);
+}

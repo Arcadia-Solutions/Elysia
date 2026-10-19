@@ -3,19 +3,19 @@
 
 use std::sync::RwLock;
 
+use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
 use actix_web::web::Data;
-use actix_web::{App, web};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use elysia::config::{
     AuthConfig, Config, DatabaseConfig, ServerConfig, SsoConfig, StorageConfig, TelemetryConfig,
 };
-use elysia::handlers::upload;
 use elysia::repository::files::{self, NewFile};
 use elysia::repository::users::{self, AuthUserRow};
+use elysia::routes;
 use elysia::services::auth as auth_service;
 use elysia::services::files::generate_id;
 use elysia::services::image::{ProcessOptions, TargetFormat};
@@ -200,7 +200,7 @@ pub async fn upload_with_headers(
             .app_data(Data::new(pool))
             .app_data(Data::new(storage))
             .app_data(Data::new(RwLock::new(settings)))
-            .route("/api/upload", web::post().to(upload)),
+            .configure(routes::init),
     )
     .await;
 

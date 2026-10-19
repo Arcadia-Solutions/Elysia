@@ -6,12 +6,12 @@ mod common;
 use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
-use actix_web::web::{self, Data};
+use actix_web::web::Data;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
 
-use elysia::handlers::me;
 use elysia::repository::{files, users};
+use elysia::routes;
 
 use common::*;
 
@@ -110,7 +110,7 @@ async fn client_credentials_open_nothing_but_uploads(pool: PgPool) {
         App::new()
             .app_data(Data::new(sso_config(ISSUER)))
             .app_data(Data::new(pool))
-            .route("/api/auth/me", web::get().to(me::me)),
+            .configure(routes::init),
     )
     .await;
     let mut request = actix_test::TestRequest::get().uri("/api/auth/me");

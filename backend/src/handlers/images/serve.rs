@@ -3,8 +3,8 @@ use actix_web::{
     web::{Data, Path},
 };
 
+use super::{check_referrer, file_response, parse_filename};
 use crate::error::{Error, Result};
-use crate::handlers::{check_referrer, file_response, parse_filename};
 use crate::services::views::ViewCounter;
 use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;

@@ -4,8 +4,8 @@ use actix_web::{
 };
 use utoipa::ToSchema;
 
+use super::{file_response, parse_filename};
 use crate::error::{Error, Result};
-use crate::handlers::{file_response, parse_filename};
 use crate::middlewares::AuthUser;
 use crate::storage::Storage;
 

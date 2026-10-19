@@ -8,14 +8,11 @@ use std::sync::RwLock;
 use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
-use actix_web::web::{self, Data};
+use actix_web::web::Data;
 use sqlx::PgPool;
 
-use elysia::handlers::get_elysia_settings::get_elysia_settings;
-use elysia::handlers::get_elysia_unauth_settings::get_elysia_unauth_settings;
-use elysia::handlers::get_public_elysia_settings::get_public_elysia_settings;
-use elysia::handlers::put_elysia_settings::put_elysia_settings;
 use elysia::repository::{settings as settings_repo, users};
+use elysia::routes;
 use elysia::services::auth as auth_service;
 use elysia::services::image::TargetFormat;
 use elysia::settings::{ElysiaSettings, RefererHost, referer_host};
@@ -33,7 +30,7 @@ async fn auth_header(pool: &PgPool) -> (&'static str, String) {
     ("Authorization", format!("Bearer {token}"))
 }
 
-/// Build the two settings routes over `pool`, seeding shared state from the DB.
+/// Build the app over `pool`, seeding shared settings state from the DB.
 /// Inlined per test because actix's `init_service` return type is awkward to name.
 macro_rules! settings_app {
     ($pool:expr) => {{
@@ -43,16 +40,7 @@ macro_rules! settings_app {
                 .app_data(Data::new(test_config()))
                 .app_data(Data::new($pool))
                 .app_data(Data::new(RwLock::new(current)))
-                .route("/api/elysia-settings", web::get().to(get_elysia_settings))
-                .route("/api/elysia-settings", web::put().to(put_elysia_settings))
-                .route(
-                    "/api/public-elysia-settings",
-                    web::get().to(get_public_elysia_settings),
-                )
-                .route(
-                    "/api/elysia-unauth-settings",
-                    web::get().to(get_elysia_unauth_settings),
-                ),
+                .configure(routes::init),
         )
         .await
     }};

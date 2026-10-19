@@ -5,7 +5,7 @@ mod common;
 use sqlx::PgPool;
 
 use common::page;
-use elysia::handlers::parse_filename;
+use elysia::handlers::images::parse_filename;
 use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder};
 use elysia::services::files::{IMAGES_PER_PAGE, list_images};
 use elysia::services::views::ViewCounter;

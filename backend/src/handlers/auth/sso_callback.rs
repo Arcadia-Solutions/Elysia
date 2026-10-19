@@ -6,11 +6,11 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
+use super::login::LoginResponse;
+use super::me::ProfileResponse;
+use super::sso_login::enabled_sso;
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::handlers::login::LoginResponse;
-use crate::handlers::me::ProfileResponse;
-use crate::handlers::sso_login::enabled_sso;
 use crate::repository::users;
 use crate::services::sso::SharedSsoState;
 use crate::services::{auth as auth_service, sso as sso_service};

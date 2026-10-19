@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
+use super::me::ProfileResponse;
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::handlers::me::ProfileResponse;
 use crate::repository::users;
 use crate::services::auth as auth_service;
 

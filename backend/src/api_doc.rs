@@ -1,6 +1,6 @@
 use utoipa::OpenApi;
 
-use crate::handlers::upload::UploadOptionsQuery;
+use crate::handlers::images::upload::UploadOptionsQuery;
 use crate::repository::files::{ImagesSortBy, ImagesStatus, SortOrder};
 use crate::repository::stats::{StatsInterval, StatsPeriod};
 use crate::repository::users::UsersSortBy;
@@ -9,29 +9,29 @@ use crate::repository::users::UsersSortBy;
 #[openapi(
     info(title = "Elysia image host API"),
     paths(
-        crate::handlers::register::register,
-        crate::handlers::login::login,
-        crate::handlers::me::me,
-        crate::handlers::change_password::change_password,
+        crate::handlers::auth::register::register,
+        crate::handlers::auth::login::login,
+        crate::handlers::auth::me::me,
+        crate::handlers::auth::change_password::change_password,
         crate::handlers::api_keys::list_api_keys::list_api_keys,
         crate::handlers::api_keys::create_api_key::create_api_key,
         crate::handlers::api_keys::revoke_api_key::revoke_api_key,
-        crate::handlers::sso_login::sso_login,
-        crate::handlers::sso_callback::sso_callback,
-        crate::handlers::upload::upload,
-        crate::handlers::upload_url::upload_url,
-        crate::handlers::serve::serve,
-        crate::handlers::serve_thumbnail::serve_thumbnail,
-        crate::handlers::metadata::metadata,
-        crate::handlers::images::images,
-        crate::handlers::trash_images::trash_images,
-        crate::handlers::empty_trash::empty_trash,
-        crate::handlers::serve_trashed_thumbnail::serve_trashed_thumbnail,
+        crate::handlers::auth::sso_login::sso_login,
+        crate::handlers::auth::sso_callback::sso_callback,
+        crate::handlers::images::upload::upload,
+        crate::handlers::images::upload_url::upload_url,
+        crate::handlers::images::serve::serve,
+        crate::handlers::images::serve_thumbnail::serve_thumbnail,
+        crate::handlers::images::metadata::metadata,
+        crate::handlers::images::list_images::images,
+        crate::handlers::images::trash_images::trash_images,
+        crate::handlers::images::empty_trash::empty_trash,
+        crate::handlers::images::serve_trashed_thumbnail::serve_trashed_thumbnail,
         crate::handlers::stats::overview::stats_overview,
-        crate::handlers::get_elysia_settings::get_elysia_settings,
-        crate::handlers::get_public_elysia_settings::get_public_elysia_settings,
-        crate::handlers::get_elysia_unauth_settings::get_elysia_unauth_settings,
-        crate::handlers::put_elysia_settings::put_elysia_settings,
+        crate::handlers::settings::get_elysia_settings::get_elysia_settings,
+        crate::handlers::settings::get_public_elysia_settings::get_public_elysia_settings,
+        crate::handlers::settings::get_elysia_unauth_settings::get_elysia_unauth_settings,
+        crate::handlers::settings::put_elysia_settings::put_elysia_settings,
         crate::handlers::users::list_users::list_users,
         crate::handlers::users::get_user::get_user,
         crate::handlers::users::set_user_banned::set_user_banned,

@@ -6,7 +6,7 @@ mod common;
 use actix_web::http::StatusCode;
 use sqlx::PgPool;
 
-use elysia::handlers::upload::UploadOptionsQuery;
+use elysia::handlers::images::upload::UploadOptionsQuery;
 use elysia::services::files::{UploadOptions, store_from_url};
 use elysia::services::image::{ProcessError, ProcessOptions, TargetFormat, process};
 use elysia::settings::ElysiaSettings;

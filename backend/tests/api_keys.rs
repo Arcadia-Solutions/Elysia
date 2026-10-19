@@ -2,18 +2,16 @@
 
 mod common;
 
+use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
 use actix_web::web::Data;
-use actix_web::{App, web};
 use serde_json::json;
 use sqlx::PgPool;
 
-use elysia::handlers::{
-    change_password, create_api_key, list_api_keys, list_users, me, revoke_api_key,
-};
 use elysia::repository::api_keys::{self, ApiKeyScope};
 use elysia::repository::users;
+use elysia::routes;
 use elysia::services::auth as auth_service;
 
 #[sqlx::test(migrations = "./migrations")]
@@ -23,10 +21,7 @@ async fn api_keys_are_scoped_tracked_and_revoked(pool: PgPool) {
         App::new()
             .app_data(Data::new(common::test_config()))
             .app_data(Data::new(pool.clone()))
-            .route("/api/auth/me", web::get().to(me))
-            .route("/api/api-keys", web::get().to(list_api_keys))
-            .route("/api/api-keys", web::post().to(create_api_key))
-            .route("/api/api-keys/{id}/revoke", web::post().to(revoke_api_key)),
+            .configure(routes::init),
     )
     .await;
     let call = |request: actix_test::TestRequest, token: &str| {
@@ -176,8 +171,7 @@ async fn expired_keys_behave_like_revoked_ones(pool: PgPool) {
         App::new()
             .app_data(Data::new(common::test_config()))
             .app_data(Data::new(pool.clone()))
-            .route("/api/api-keys", web::post().to(create_api_key))
-            .route("/api/api-keys/{id}/revoke", web::post().to(revoke_api_key)),
+            .configure(routes::init),
     )
     .await;
 
@@ -233,8 +227,7 @@ async fn admin_keys_reach_neither_admin_routes_nor_password_change(pool: PgPool)
         App::new()
             .app_data(Data::new(config))
             .app_data(Data::new(pool.clone()))
-            .route("/api/users", web::get().to(list_users))
-            .route("/api/auth/password", web::put().to(change_password)),
+            .configure(routes::init),
     )
     .await;
     let list_users_request = |token: &str| {

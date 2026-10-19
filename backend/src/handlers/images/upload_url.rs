@@ -6,9 +6,9 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
+use super::upload::{UploadOptionsQuery, UploadResponse};
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::handlers::upload::{UploadOptionsQuery, UploadResponse};
 use crate::middlewares::UploadUser;
 use crate::services::files;
 use crate::settings::SharedElysiaSettings;

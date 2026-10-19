@@ -14,9 +14,9 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use sqlx::PgPool;
 
-use elysia::handlers::login::LoginResponse;
-use elysia::handlers::{me, sso_callback, sso_login};
+use elysia::handlers::auth::login::LoginResponse;
 use elysia::repository::users;
+use elysia::routes;
 use elysia::services::auth as auth_service;
 use elysia::services::sso::SsoState;
 
@@ -141,7 +141,7 @@ async fn spawn_mock() -> (String, Data<MockIdp>) {
     (issuer, mock)
 }
 
-/// SSO routes plus the session-guarded `me` route.
+/// The app wired with SSO state, so the SSO and session-guarded routes work.
 macro_rules! sso_app {
     ($pool:expr, $config:expr) => {{
         actix_test::init_service(
@@ -149,12 +149,7 @@ macro_rules! sso_app {
                 .app_data(Data::new($config))
                 .app_data(Data::new($pool))
                 .app_data(Data::new(SsoState::default()))
-                .route("/api/auth/sso/login", web::get().to(sso_login::sso_login))
-                .route(
-                    "/api/auth/sso/callback",
-                    web::post().to(sso_callback::sso_callback),
-                )
-                .route("/api/auth/me", web::get().to(me::me)),
+                .configure(routes::init),
         )
         .await
     }};

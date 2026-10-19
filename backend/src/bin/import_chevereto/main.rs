@@ -22,7 +22,7 @@ use uuid::Uuid;
 
 use elysia::chevereto_import::{self, BackendUsers, CheveretoImage, LinkSettings};
 use elysia::config::Config;
-use elysia::handlers::upload::UploadOptionsQuery;
+use elysia::handlers::images::upload::UploadOptionsQuery;
 use elysia::repository::files as files_repo;
 use elysia::repository::settings as settings_repo;
 use elysia::repository::users;
