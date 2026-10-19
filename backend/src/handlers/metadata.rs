@@ -49,14 +49,16 @@ pub struct MetadataResponse {
     tag = "elysia",
     get,
     path = "/api/i/{id}",
+    security(("bearer" = [])),
     params(("id" = String, Path, description = "File id")),
     responses(
         (status = 200, description = "File metadata", body = MetadataResponse),
+        (status = 401, description = "Missing or invalid session"),
         (status = 404, description = "Not found, or trashed"),
     )
 )]
 pub async fn metadata(
-    authenticated: Option<AuthUser>,
+    user: AuthUser,
     config: Data<Config>,
     pool: Data<PgPool>,
     id: Path<String>,
@@ -70,14 +72,12 @@ pub async fn metadata(
             &row.ext,
             row.has_thumbnail,
         ),
-        can_delete: authenticated.is_some_and(|user| {
-            files::may_trash(
-                user.user_id,
-                user.is_admin,
-                row.uploaded_by_user_id,
-                row.recent,
-            )
-        }),
+        can_delete: files::may_trash(
+            user.user_id,
+            user.is_admin,
+            row.uploaded_by_user_id,
+            row.recent,
+        ),
         id: row.id,
         ext: row.ext,
         mime: row.mime,

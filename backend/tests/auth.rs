@@ -49,7 +49,8 @@ macro_rules! auth_app_with_settings {
                     web::put().to(change_password::change_password),
                 )
                 .route("/api/elysia-settings", web::get().to(get_elysia_settings))
-                .route("/api/upload", web::post().to(elysia::handlers::upload)),
+                .route("/api/upload", web::post().to(elysia::handlers::upload))
+                .route("/api/i/{id}", web::get().to(elysia::handlers::metadata)),
         )
         .await
     }};

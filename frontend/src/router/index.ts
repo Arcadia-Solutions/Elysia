@@ -37,12 +37,11 @@ const router = createRouter({
     { path: '/users', name: 'Users', component: UsersView, meta: { requiresAdmin: true } },
     { path: '/users/:id', name: 'User', component: AccountView, meta: { requiresAdmin: true } },
     { path: '/account', name: 'Account', component: AccountView },
-    { path: '/i/:id', name: 'Image', component: ImageView, meta: { public: true } },
+    { path: '/i/:id', name: 'Image', component: ImageView },
   ],
 })
 
 router.beforeEach((to) => {
-  // Image viewer pages are public, like the raw images they show.
   if (to.meta.public) return
   if (!getToken()) return '/login'
   // Dashboard, settings and users are admin-only, like their APIs.
