@@ -55,7 +55,7 @@
   },
   "upload": {
     "choose": "Choose image",
-    "drop_hint": "or drop an image here",
+    "drop_hint": "or drop or paste an image here",
     "url_placeholder": "Paste an image link to rehost",
     "upload": "Upload",
     "clear": "Remove image",

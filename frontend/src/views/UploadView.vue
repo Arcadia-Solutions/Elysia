@@ -97,7 +97,7 @@
 
 <script setup lang="ts">
 import { formatBytes } from '@/services/format'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
@@ -163,7 +163,9 @@ onMounted(() => {
     settings.value = r.data
     stripExif.value = r.data.strip_exif_by_default
   })
+  window.addEventListener('paste', onPaste)
 })
+onUnmounted(() => window.removeEventListener('paste', onPaste))
 
 const readDimensions = (file: File): Promise<{ width: number; height: number }> =>
   new Promise((resolve, reject) => {
@@ -249,6 +251,15 @@ const onSelect = (event: FileUploadSelectEvent) => {
 const onDrop = (event: DragEvent) => {
   dragging.value = false
   pick(event.dataTransfer?.files?.[0])
+}
+
+// Page-wide paste: grab a pasted image file, leave text pastes (e.g. into the URL field) alone.
+const onPaste = (event: ClipboardEvent) => {
+  const file = event.clipboardData?.files?.[0]
+  if (uploading.value || !file?.type.startsWith('image/')) return
+  event.preventDefault()
+  urlInput.value = ''
+  pick(file)
 }
 
 // One button: upload the chosen file, else rehost the pasted URL.
