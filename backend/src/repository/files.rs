@@ -265,8 +265,8 @@ pub struct ImagesQuery {
     pub status: ImagesStatus,
 }
 
-/// Fetch one page of images with the given status in the given order, with the total count. `id`
-/// breaks ties so rows never shift across pages.
+/// Fetch one page of images with the given status in the given order, with the total count,
+/// limited to `uploader`'s files when set. `id` breaks ties so rows never shift across pages.
 // ponytail: CASE ordering can't use an index (full sort per page, as the window
 // count scans every row anyway); add per-column queries + indexes if it gets slow.
 pub async fn list_page(
@@ -274,11 +274,13 @@ pub async fn list_page(
     offset: i64,
     limit: i64,
     query: &ImagesQuery,
+    uploader: Option<Uuid>,
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
         "select id, ext, has_thumbnail, count(*) over() as \"total!\" \
-         from files where status = $5 order by \
+         from files where status = $5 \
+           and ($6::uuid is null or uploaded_by_user_id = $6) order by \
            case when $3 = 'created_at' and $4 then created_at end asc, \
            case when $3 = 'created_at' and not $4 then created_at end desc, \
            case when $3 = 'size' and $4 then size end asc, \
@@ -300,17 +302,20 @@ pub async fn list_page(
         query.sort_by.as_sql(),
         matches!(query.order, SortOrder::Asc),
         query.status as ImagesStatus,
+        uploader,
     )
     .fetch_all(pool)
     .await?)
 }
 
-/// Number of files with the given status; the count for an out-of-range page,
-/// where the window count in `list_page` returns no rows.
-pub async fn count(pool: &PgPool, status: ImagesStatus) -> Result<i64> {
+/// Number of files with the given status, limited to `uploader`'s when set; the
+/// count for an out-of-range page, where the window count in `list_page` returns no rows.
+pub async fn count(pool: &PgPool, status: ImagesStatus, uploader: Option<Uuid>) -> Result<i64> {
     Ok(sqlx::query_scalar!(
-        "select count(*) as \"count!\" from files where status = $1",
-        status as ImagesStatus
+        "select count(*) as \"count!\" from files where status = $1 \
+           and ($2::uuid is null or uploaded_by_user_id = $2)",
+        status as ImagesStatus,
+        uploader
     )
     .fetch_one(pool)
     .await?)

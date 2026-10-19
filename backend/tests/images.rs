@@ -16,16 +16,16 @@ async fn paginates_with_total(pool: PgPool) {
     let uploader = common::test_user(&pool, "browser").await.0.id;
     common::seed_files(&pool, uploader, "id", per_page + 1, 1).await;
 
-    let (first, total) = list_images(&pool, &page(1)).await.unwrap();
+    let (first, total) = list_images(&pool, &page(1), None).await.unwrap();
     assert_eq!(first.len(), per_page);
     assert_eq!(total, per_page as i64 + 1);
     assert!(first.iter().all(|row| row.total == total));
 
-    let (second, _) = list_images(&pool, &page(2)).await.unwrap();
+    let (second, _) = list_images(&pool, &page(2), None).await.unwrap();
     assert_eq!(second.len(), 1);
 
     // Past the last page: no rows, but the total still reflects every file.
-    let (empty, empty_total) = list_images(&pool, &page(3)).await.unwrap();
+    let (empty, empty_total) = list_images(&pool, &page(3), None).await.unwrap();
     assert!(empty.is_empty());
     assert_eq!(empty_total, per_page as i64 + 1);
 }
@@ -46,6 +46,7 @@ async fn sorts_by_column_and_direction(pool: PgPool) {
                     order,
                     ..page(1)
                 },
+                None,
             )
             .await
             .unwrap()
@@ -121,6 +122,7 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
                 order: SortOrder::Desc,
                 ..page(1)
             },
+            None,
         )
         .await
         .unwrap()
@@ -147,4 +149,17 @@ fn parses_only_plain_filenames() {
     ] {
         assert!(parse_filename(filename).is_err(), "{filename}");
     }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn filters_by_uploader(pool: PgPool) {
+    let mine = common::test_user(&pool, "mine").await.0.id;
+    let other = common::test_user(&pool, "other").await.0.id;
+    common::seed_files(&pool, mine, "mine", 2, 1).await;
+    common::seed_files(&pool, other, "other", 3, 1).await;
+
+    let (rows, total) = list_images(&pool, &page(1), Some(mine)).await.unwrap();
+    assert_eq!(total, 2);
+    assert!(rows.iter().all(|row| row.id.starts_with("mine")));
+    assert_eq!(list_images(&pool, &page(1), None).await.unwrap().1, 5);
 }

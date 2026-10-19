@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::config::Config;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::middlewares::AuthUser;
 use crate::repository::files::{ImagesQuery, ImagesStatus};
 use crate::services::files::{self, IMAGES_PER_PAGE};
@@ -33,12 +33,13 @@ pub struct ImagesPage {
     tag = "elysia",
     get,
     path = "/api/images",
+    description = "Admins browse all images, other users only their own uploads.",
     params(ImagesQuery),
     security(("bearer" = [])),
     responses(
         (status = 200, description = "A page of stored images", body = ImagesPage),
         (status = 401, description = "Missing or invalid session"),
-        (status = 403, description = "Authenticated but not an admin"),
+        (status = 403, description = "Not an admin, and asked for trashed images"),
     )
 )]
 pub async fn images(
@@ -47,8 +48,13 @@ pub async fn images(
     pool: Data<PgPool>,
     query: Query<ImagesQuery>,
 ) -> Result<HttpResponse> {
-    authenticated.require_admin()?;
-    let (rows, total) = files::list_images(pool.get_ref(), &query).await?;
+    // The trash is admin-only.
+    let uploader = match (authenticated.is_admin, query.status) {
+        (true, _) => None,
+        (false, ImagesStatus::Available) => Some(authenticated.user_id),
+        (false, ImagesStatus::Trashed) => return Err(Error::Forbidden),
+    };
+    let (rows, total) = files::list_images(pool.get_ref(), &query, uploader).await?;
     let public_url = &config.server.public_url;
     let images = rows
         .into_iter()

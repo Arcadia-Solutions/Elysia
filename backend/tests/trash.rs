@@ -39,7 +39,7 @@ async fn trashes_own_files(pool: PgPool) {
     assert!(storage.path_for(kept, "png").exists());
     // Trashed files leave the browse page, the viewer page and the stored totals,
     // but still count as uploads.
-    let (rows, total) = list_images(&pool, &common::page(1)).await.unwrap();
+    let (rows, total) = list_images(&pool, &common::page(1), None).await.unwrap();
     assert_eq!((rows.len(), total), (1, 1));
     assert!(files::find_metadata(&pool, &id).await.unwrap().is_none());
     let all_time = stats::period_totals(&pool, StatsPeriod::AllTime, StatsInterval::Day)
@@ -99,6 +99,7 @@ async fn wipes_trash(pool: PgPool) {
                 status: ImagesStatus::Trashed,
                 ..common::page(1)
             },
+            None,
         )
         .await
         .unwrap()

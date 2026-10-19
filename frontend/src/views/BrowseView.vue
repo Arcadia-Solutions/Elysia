@@ -1,7 +1,9 @@
 <template>
   <div class="browse">
     <div class="toolbar">
+      <!-- The trash is admin-only; other users browse their own uploads. -->
       <SelectButton
+        v-if="isAdmin()"
         :modelValue="status"
         size="small"
         :allowEmpty="false"
@@ -77,6 +79,7 @@ import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
 import http, { api } from '@/services/api/http'
+import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
 import { ImagesSortBy, ImagesStatus, SortOrder, type ImageSummary } from '@/services/api-schema'
 

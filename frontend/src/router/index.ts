@@ -24,7 +24,7 @@ const router = createRouter({
     { path: '/', redirect: '/upload' },
     { path: '/upload', name: 'Upload', component: UploadView },
     { path: '/uploaded', name: 'Uploaded', component: UploadedView },
-    { path: '/browse', name: 'Browse', component: BrowseView, meta: { requiresAdmin: true } },
+    { path: '/browse', name: 'Browse', component: BrowseView },
     {
       path: '/dashboard',
       name: 'Dashboard',
@@ -42,7 +42,7 @@ router.beforeEach((to) => {
   // Image viewer pages are public, like the raw images they show.
   if (to.meta.public) return
   if (!getToken()) return '/login'
-  // Browse, dashboard and settings are admin-only, like their APIs.
+  // Dashboard and settings are admin-only, like their APIs.
   if (to.meta.requiresAdmin && !isAdmin()) return '/upload'
 })
 

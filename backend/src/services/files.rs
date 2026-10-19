@@ -74,18 +74,19 @@ pub fn thumbnail_url(public_url: &str, id: &str, ext: &str, has_thumbnail: bool)
     format!("{public_url}/t/{id}.{extension}")
 }
 
-/// Fetch one page (1-based) of images matching the query, with the total
-/// count. An out-of-range page returns no rows but still reports the real
+/// Fetch one page (1-based) of images matching the query, only `uploader`'s
+/// when set, with the total count. An out-of-range page returns no rows but still reports the real
 /// total, so callers can show the pager.
 pub async fn list_images(
     pool: &PgPool,
     query: &files::ImagesQuery,
+    uploader: Option<Uuid>,
 ) -> Result<(Vec<files::ImageListRow>, i64)> {
     paginate(
         query.page,
         IMAGES_PER_PAGE,
-        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE, query),
-        files::count(pool, query.status),
+        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE, query, uploader),
+        files::count(pool, query.status, uploader),
         |row| row.total,
     )
     .await
