@@ -267,7 +267,7 @@ async fn register_rejects_bad_input(pool: PgPool) {
         );
     }
     // Nothing was stored beyond the seeded admin.
-    assert_eq!(users::count_users(&pool).await.unwrap(), 1);
+    assert_eq!(users::count_users(&pool, None).await.unwrap(), 1);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -446,7 +446,7 @@ async fn register_rejects_malformed_emails(pool: PgPool) {
             "email should be rejected: {email}"
         );
     }
-    assert_eq!(users::count_users(&pool).await.unwrap(), 1);
+    assert_eq!(users::count_users(&pool, None).await.unwrap(), 1);
 }
 
 #[sqlx::test(migrations = "./migrations")]

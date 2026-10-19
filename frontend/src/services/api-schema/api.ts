@@ -352,6 +352,9 @@ export interface ResizeAction {
     'from': Array<number>;
     'to': Array<number>;
 }
+export interface SetUserBannedRequest {
+    'banned': boolean;
+}
 /**
  * Sort direction.
  */
@@ -514,6 +517,57 @@ export interface Uploader {
     'last_upload': string;
     'username': string;
 }
+/**
+ * A user as the admin user list and profile page show it.
+ */
+export interface UserSummary {
+    'banned': boolean;
+    /**
+     * Account creation time as a UTC ISO-8601 string.
+     */
+    'created_at': string;
+    'email'?: string | null;
+    'id': string;
+    'is_admin': boolean;
+    /**
+     * Last authenticated API request as a UTC ISO-8601 string; null if never.
+     */
+    'last_seen'?: string | null;
+    /**
+     * `local` or `sso`.
+     */
+    'provider': string;
+    /**
+     * Available (not trashed) files the user uploaded.
+     */
+    'uploads': number;
+    'username': string;
+}
+/**
+ * A page of users in the requested order.
+ */
+export interface UsersPage {
+    'per_page': number;
+    /**
+     * Users matching the search, across all pages.
+     */
+    'total': number;
+    'users': Array<UserSummary>;
+}
+/**
+ * Column the user list is sorted by.
+ */
+
+export const UsersSortBy = {
+    Username: 'username',
+    CreatedAt: 'created_at',
+    LastSeen: 'last_seen',
+    Uploads: 'uploads'
+} as const;
+
+export type UsersSortBy = typeof UsersSortBy[keyof typeof UsersSortBy];
+
+
 /**
  * Uploads and sign-ups within `period` back from now, unrounded, unlike the series which starts on an `interval` boundary.
  */
@@ -693,15 +747,49 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * 
+         * One user\'s profile. Admin only.
+         * @param {string} id User id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUser: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('getUser', 'id', id)
+            const localVarPath = `/api/users/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
          * @param {number} page 1-based page number.
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
+         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images: async (page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        images: async (page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'page' is not null or undefined
             assertParamExists('images', 'page', page)
             // verify required parameter 'sortBy' is not null or undefined
@@ -736,6 +824,65 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (status !== undefined) {
                 localVarQueryParameter['status'] = status;
+            }
+
+            if (username !== undefined) {
+                localVarQueryParameter['username'] = username;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Users, local and SSO, optionally searched by username or email. Admin only.
+         * @param {number} page 1-based page number.
+         * @param {UsersSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [search] Only users whose username or email contains this, ignoring case.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listUsers: async (page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listUsers', 'page', page)
+            // verify required parameter 'sortBy' is not null or undefined
+            assertParamExists('listUsers', 'sortBy', sortBy)
+            // verify required parameter 'order' is not null or undefined
+            assertParamExists('listUsers', 'order', order)
+            const localVarPath = `/api/users`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (search !== undefined) {
+                localVarQueryParameter['search'] = search;
+            }
+
+            if (sortBy !== undefined) {
+                localVarQueryParameter['sort_by'] = sortBy;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
             }
 
 
@@ -1009,6 +1156,45 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
+         * @param {string} id User id
+         * @param {SetUserBannedRequest} setUserBannedRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setUserBanned: async (id: string, setUserBannedRequest: SetUserBannedRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('setUserBanned', 'id', id)
+            // verify required parameter 'setUserBannedRequest' is not null or undefined
+            assertParamExists('setUserBanned', 'setUserBannedRequest', setUserBannedRequest)
+            const localVarPath = `/api/users/{id}/banned`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(setUserBannedRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1328,18 +1514,46 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * 
+         * One user\'s profile. Admin only.
+         * @param {string} id User id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getUser(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UserSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getUser(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getUser']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
          * @param {number} page 1-based page number.
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
+         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, status, options);
+        async images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, status, username, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Users, local and SSO, optionally searched by username or email. Admin only.
+         * @param {number} page 1-based page number.
+         * @param {UsersSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [search] Only users whose username or email contains this, ignoring case.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listUsers(page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UsersPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listUsers(page, sortBy, order, search, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listUsers']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1435,6 +1649,19 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.serveTrashedThumbnail(filename, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serveTrashedThumbnail']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
+         * @param {string} id User id
+         * @param {SetUserBannedRequest} setUserBannedRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.setUserBanned(id, setUserBannedRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.setUserBanned']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1566,16 +1793,38 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.getPublicElysiaSettings(options).then((request) => request(axios, basePath));
         },
         /**
-         * 
+         * One user\'s profile. Admin only.
+         * @param {string} id User id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUser(id: string, options?: RawAxiosRequestConfig): AxiosPromise<UserSummary> {
+            return localVarFp.getUser(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
          * @param {number} page 1-based page number.
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
+         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
-            return localVarFp.images(page, sortBy, order, status, options).then((request) => request(axios, basePath));
+        images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
+            return localVarFp.images(page, sortBy, order, status, username, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Users, local and SSO, optionally searched by username or email. Admin only.
+         * @param {number} page 1-based page number.
+         * @param {UsersSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [search] Only users whose username or email contains this, ignoring case.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listUsers(page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): AxiosPromise<UsersPage> {
+            return localVarFp.listUsers(page, sortBy, order, search, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1647,6 +1896,16 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         serveTrashedThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<File> {
             return localVarFp.serveTrashedThumbnail(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
+         * @param {string} id User id
+         * @param {SetUserBannedRequest} setUserBannedRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.setUserBanned(id, setUserBannedRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1762,16 +2021,40 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * 
+     * One user\'s profile. Admin only.
+     * @param {string} id User id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getUser(id: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getUser(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
      * @param {number} page 1-based page number.
      * @param {ImagesSortBy} sortBy 
      * @param {SortOrder} order 
      * @param {ImagesStatus} status Available or trashed images.
+     * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).images(page, sortBy, order, status, options).then((request) => request(this.axios, this.basePath));
+    public images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).images(page, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Users, local and SSO, optionally searched by username or email. Admin only.
+     * @param {number} page 1-based page number.
+     * @param {UsersSortBy} sortBy 
+     * @param {SortOrder} order 
+     * @param {string} [search] Only users whose username or email contains this, ignoring case.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listUsers(page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).listUsers(page, sortBy, order, search, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1851,6 +2134,17 @@ export class ElysiaApi extends BaseAPI {
      */
     public serveTrashedThumbnail(filename: string, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).serveTrashedThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
+     * @param {string} id User id
+     * @param {SetUserBannedRequest} setUserBannedRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).setUserBanned(id, setUserBannedRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

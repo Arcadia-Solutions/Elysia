@@ -347,5 +347,6 @@ pub fn page(page: u32) -> elysia::repository::files::ImagesQuery {
         sort_by: ImagesSortBy::CreatedAt,
         order: SortOrder::Desc,
         status: ImagesStatus::Available,
+        username: None,
     }
 }

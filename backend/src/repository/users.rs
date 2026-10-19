@@ -1,7 +1,12 @@
+use std::num::NonZeroU32;
+
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::repository::files::SortOrder;
 use crate::services::auth as auth_service;
 
 /// Which credential backs a user row. Local rows hold an Argon2 hash;
@@ -158,18 +163,19 @@ pub async fn update_password_hash(pool: &PgPool, user_id: Uuid, password_hash: &
 }
 
 /// Ban or unban a user. Banned users fail every login and session check.
-pub async fn set_banned(pool: &PgPool, user_id: Uuid, banned: bool) -> Result<()> {
-    sqlx::query!(
+/// False when no user has this id.
+pub async fn set_banned(pool: &PgPool, user_id: Uuid, banned: bool) -> Result<bool> {
+    let result = sqlx::query!(
         "update users set banned = $2 where id = $1",
         user_id,
         banned
     )
     .execute(pool)
     .await?;
-    Ok(())
+    Ok(result.rows_affected() == 1)
 }
 
-/// Stamp a successful login. Failures are ignored by callers on purpose.
+/// Stamp a user who just made an API request as seen now.
 pub async fn update_last_seen(pool: &PgPool, user_id: Uuid) -> Result<()> {
     sqlx::query!("update users set last_seen = now() where id = $1", user_id)
         .execute(pool)
@@ -177,13 +183,17 @@ pub async fn update_last_seen(pool: &PgPool, user_id: Uuid) -> Result<()> {
     Ok(())
 }
 
-/// Total user rows.
-pub async fn count_users(pool: &PgPool) -> Result<i64> {
-    Ok(
-        sqlx::query_scalar!(r#"select count(*) as "count!" from users"#)
-            .fetch_one(pool)
-            .await?,
+/// User rows whose username or email contains `search` (ignoring case), all when unset.
+pub async fn count_users(pool: &PgPool, search: Option<&str>) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        r#"select count(*) as "count!" from users
+           where $1::text is null
+              or strpos(lower(username), lower($1)) > 0
+              or strpos(lower(email), lower($1)) > 0"#,
+        search
     )
+    .fetch_one(pool)
+    .await?)
 }
 
 /// Username deconfliction tries before giving up.
@@ -313,4 +323,135 @@ async fn usable_email(pool: &PgPool, email: Option<&str>) -> Result<Option<Strin
 
 fn is_unique_violation(error: &sqlx::Error) -> bool {
     matches!(error, sqlx::Error::Database(database) if database.is_unique_violation())
+}
+
+/// A user as the admin user list and profile page show it.
+#[derive(Serialize, ToSchema)]
+pub struct UserSummary {
+    #[schema(value_type = String)]
+    pub id: Uuid,
+    pub username: String,
+    pub email: Option<String>,
+    /// `local` or `sso`.
+    pub provider: String,
+    pub is_admin: bool,
+    pub banned: bool,
+    /// Account creation time as a UTC ISO-8601 string.
+    pub created_at: String,
+    /// Last authenticated API request as a UTC ISO-8601 string; null if never.
+    pub last_seen: Option<String>,
+    /// Available (not trashed) files the user uploaded.
+    pub uploads: i64,
+}
+
+/// Column the user list is sorted by.
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UsersSortBy {
+    Username,
+    CreatedAt,
+    LastSeen,
+    Uploads,
+}
+
+impl UsersSortBy {
+    fn as_sql(self) -> &'static str {
+        match self {
+            UsersSortBy::Username => "username",
+            UsersSortBy::CreatedAt => "created_at",
+            UsersSortBy::LastSeen => "last_seen",
+            UsersSortBy::Uploads => "uploads",
+        }
+    }
+}
+
+/// Users returned per list page.
+pub const USERS_PER_PAGE: i64 = 50;
+
+/// User list query.
+#[derive(Clone, Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct UsersQuery {
+    /// 1-based page number.
+    #[param(value_type = i64, minimum = 1)]
+    pub page: NonZeroU32,
+    /// Only users whose username or email contains this, ignoring case.
+    pub search: Option<String>,
+    pub sort_by: UsersSortBy,
+    pub order: SortOrder,
+}
+
+impl UsersQuery {
+    /// The search term, unless blank.
+    pub fn search(&self) -> Option<&str> {
+        self.search
+            .as_deref()
+            .map(str::trim)
+            .filter(|search| !search.is_empty())
+    }
+}
+
+/// One page of the users matching the query, in its order; users never
+/// seen sort last by `last_seen` either way. `id` breaks ties.
+// ponytail: the upload counts scan every file per page, add an index on
+// files.uploaded_by_user_id if it gets slow.
+pub async fn list(pool: &PgPool, query: &UsersQuery) -> Result<Vec<UserSummary>> {
+    Ok(sqlx::query_as!(
+        UserSummary,
+        r#"select users.id, username, email, provider::text as "provider!", is_admin, banned,
+                  to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
+                  to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_seen,
+                  count(files.id) as "uploads!"
+           from users
+           left join files on files.uploaded_by_user_id = users.id and files.status = 'available'
+           where $1::text is null
+              or strpos(lower(username), lower($1)) > 0
+              or strpos(lower(email), lower($1)) > 0
+           group by users.id
+           order by
+             case when $2 = 'username' and $3 then username end asc,
+             case when $2 = 'username' and not $3 then username end desc,
+             case when $2 = 'created_at' and $3 then users.created_at end asc,
+             case when $2 = 'created_at' and not $3 then users.created_at end desc,
+             case when $2 = 'last_seen' and $3 then last_seen end asc nulls last,
+             case when $2 = 'last_seen' and not $3 then last_seen end desc nulls last,
+             case when $2 = 'uploads' and $3 then count(files.id) end asc,
+             case when $2 = 'uploads' and not $3 then count(files.id) end desc,
+             users.id
+           offset $4 limit $5"#,
+        query.search(),
+        query.sort_by.as_sql(),
+        matches!(query.order, SortOrder::Asc),
+        (i64::from(query.page.get()) - 1) * USERS_PER_PAGE,
+        USERS_PER_PAGE,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// One user's summary by id.
+pub async fn find_summary(pool: &PgPool, user_id: Uuid) -> Result<Option<UserSummary>> {
+    Ok(sqlx::query_as!(
+        UserSummary,
+        r#"select users.id, username, email, provider::text as "provider!", is_admin, banned,
+                  to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
+                  to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_seen,
+                  count(files.id) as "uploads!"
+           from users
+           left join files on files.uploaded_by_user_id = users.id and files.status = 'available'
+           where users.id = $1
+           group by users.id"#,
+        user_id,
+    )
+    .fetch_optional(pool)
+    .await?)
+}
+
+/// Id of the user with exactly this username.
+pub async fn find_id_by_username(pool: &PgPool, username: &str) -> Result<Option<Uuid>> {
+    Ok(
+        sqlx::query_scalar!("select id from users where username = $1", username)
+            .fetch_optional(pool)
+            .await?,
+    )
 }

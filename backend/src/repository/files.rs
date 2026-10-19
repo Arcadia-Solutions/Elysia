@@ -253,7 +253,7 @@ pub enum SortOrder {
 }
 
 /// Browse page query.
-#[derive(Clone, Copy, Debug, Deserialize, IntoParams)]
+#[derive(Clone, Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct ImagesQuery {
     /// 1-based page number.
@@ -263,6 +263,8 @@ pub struct ImagesQuery {
     pub order: SortOrder,
     /// Available or trashed images.
     pub status: ImagesStatus,
+    /// Admin only: just this user's uploads (exact username).
+    pub username: Option<String>,
 }
 
 /// Fetch one page of images with the given status in the given order, with the total count,

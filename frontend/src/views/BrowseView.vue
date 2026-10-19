@@ -12,6 +12,19 @@
         option-value="value"
         @update:modelValue="(value: ImagesStatus) => router.push({ query: { ...route.query, status: value, page: undefined } })"
       />
+      <!-- Admins may narrow the list to one user's uploads (exact username), suggested as they type. -->
+      <AutoComplete
+        v-if="isAdmin()"
+        v-model="usernameInput"
+        :suggestions="usernameSuggestions"
+        :loading="usernamesLoading"
+        size="small"
+        :placeholder="$t('browse.username_placeholder')"
+        @complete="(event: AutoCompleteCompleteEvent) => suggestUsernames(event.query)"
+        @option-select="(event: AutoCompleteOptionSelectEvent) => setUsername(event.value)"
+        @keydown.enter="setUsername(usernameInput)"
+        @clear="setUsername('')"
+      />
       <Select
         :modelValue="sortBy"
         size="small"
@@ -78,10 +91,11 @@ import Paginator, { type PageState } from 'primevue/paginator'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
+import AutoComplete, { type AutoCompleteCompleteEvent, type AutoCompleteOptionSelectEvent } from 'primevue/autocomplete'
 import http, { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
-import { ImagesSortBy, ImagesStatus, SortOrder, type ImageSummary } from '@/services/api-schema'
+import { ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy, type ImageSummary } from '@/services/api-schema'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -100,6 +114,25 @@ const trashedThumbnails = ref<Record<string, string>>({})
 const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) ?? ImagesSortBy.CreatedAt)
 const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)
 const status = computed(() => (route.query.status as ImagesStatus | undefined) ?? ImagesStatus.Available)
+const username = computed(() => route.query.username as string | undefined)
+const usernameInput = ref(username.value ?? '')
+const usernameSuggestions = ref<string[]>([])
+const usernamesLoading = ref(false)
+watch(username, (value) => (usernameInput.value = value ?? ''))
+
+const suggestUsernames = (search: string) => {
+  usernamesLoading.value = true
+  api
+    .listUsers(1, UsersSortBy.Username, SortOrder.Asc, search.trim())
+    .then((response) => {
+      usernameSuggestions.value = response.data.users.slice(0, 10).map((user) => user.username)
+    })
+    .finally(() => {
+      usernamesLoading.value = false
+    })
+}
+
+const setUsername = (value: string) => router.push({ query: { ...route.query, username: value.trim() || undefined, page: undefined } })
 
 const loadTrashedThumbnails = () => {
   Object.values(trashedThumbnails.value).forEach(URL.revokeObjectURL)
@@ -114,7 +147,7 @@ const loadTrashedThumbnails = () => {
 
 const load = (target: number) => {
   api
-    .images(target, sortBy.value, order.value, status.value)
+    .images(target, sortBy.value, order.value, status.value, username.value)
     .then((response) => {
       images.value = response.data.images
       page.value = target
@@ -128,7 +161,8 @@ const load = (target: number) => {
 }
 
 // A new order starts back at the first page.
-const setSort = (sort_by: ImagesSortBy, order: SortOrder) => router.push({ query: { status: route.query.status, sort_by, order } })
+const setSort = (sort_by: ImagesSortBy, order: SortOrder) =>
+  router.push({ query: { status: route.query.status, username: route.query.username, sort_by, order } })
 
 const toggleSelected = (id: string) => {
   if (!selected.value.delete(id)) selected.value.add(id)

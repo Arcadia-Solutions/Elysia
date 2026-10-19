@@ -272,7 +272,7 @@ async fn callback_provisions_user_and_relogin_reuses_row(pool: PgPool) {
     assert_eq!(first.user.username, "arcadia-bob");
     assert_eq!(first.user.email.as_deref(), Some("bob@arcadia.example"));
     assert_eq!(first.user.provider, "sso");
-    assert_eq!(users::count_users(&pool).await.unwrap(), 2);
+    assert_eq!(users::count_users(&pool, None).await.unwrap(), 2);
 
     // A second login provisions nothing new and keeps the same row.
     let (code_verifier, _) = start_login!(&app);
@@ -281,7 +281,7 @@ async fn callback_provisions_user_and_relogin_reuses_row(pool: PgPool) {
     let second: LoginResponse = serde_json::from_value(body).unwrap();
     assert_eq!(second.user.id, first.user.id);
     assert_eq!(second.user.username, "arcadia-bob");
-    assert_eq!(users::count_users(&pool).await.unwrap(), 2);
+    assert_eq!(users::count_users(&pool, None).await.unwrap(), 2);
 
     // The minted session passes the live ban check.
     assert_eq!(me_status!(&app, first.token), StatusCode::OK);

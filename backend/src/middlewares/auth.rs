@@ -81,6 +81,7 @@ impl FromRequest for AuthUser {
                     return Err(Error::Unauthorized);
                 }
             }
+            users::update_last_seen(pool.get_ref(), row.id).await?;
             Ok(AuthUser {
                 user_id: row.id,
                 is_admin: row.is_admin,
@@ -170,6 +171,7 @@ impl FromRequest for UploadUser {
             if row.banned {
                 return Err(Error::Unauthorized);
             }
+            users::update_last_seen(pool.get_ref(), row.id).await?;
             Ok(UploadUser { user_id: row.id })
         })
     }

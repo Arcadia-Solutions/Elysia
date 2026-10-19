@@ -24,6 +24,7 @@ pub mod stats;
 pub mod trash_images;
 pub mod upload;
 pub mod upload_url;
+pub mod users;
 
 pub use change_password::change_password;
 pub use empty_trash::empty_trash;
@@ -45,6 +46,7 @@ pub use stats::stats_overview;
 pub use trash_images::trash_images;
 pub use upload::upload;
 pub use upload_url::upload_url;
+pub use users::{get_user, list_users, set_user_banned};
 
 /// Split a `/i/` or `/t/` path segment `<id>.<ext>` into its id and extension.
 /// Both must be plain ASCII alphanumerics, so the pair can only name a stored

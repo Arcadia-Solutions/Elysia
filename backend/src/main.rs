@@ -14,9 +14,9 @@ use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
 use elysia::handlers::{
     change_password, empty_trash, get_elysia_settings, get_elysia_unauth_settings,
-    get_public_elysia_settings, images, login, me, metadata, put_elysia_settings, register, serve,
-    serve_thumbnail, serve_trashed_thumbnail, sso_callback, sso_login, stats_overview,
-    trash_images, upload, upload_url,
+    get_public_elysia_settings, get_user, images, list_users, login, me, metadata,
+    put_elysia_settings, register, serve, serve_thumbnail, serve_trashed_thumbnail,
+    set_user_banned, sso_callback, sso_login, stats_overview, trash_images, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
 use elysia::scheduler;
@@ -104,6 +104,9 @@ async fn main() -> std::io::Result<()> {
                 "/api/images/trash/{filename}",
                 web::get().to(serve_trashed_thumbnail),
             )
+            .route("/api/users", web::get().to(list_users))
+            .route("/api/users/{id}", web::get().to(get_user))
+            .route("/api/users/{id}/banned", web::put().to(set_user_banned))
             .route("/api/stats/overview", web::get().to(stats_overview))
             .route("/api/i/{id}", web::get().to(metadata))
             .route("/i/{filename}", web::get().to(serve))

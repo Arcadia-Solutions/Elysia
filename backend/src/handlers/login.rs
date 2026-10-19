@@ -59,7 +59,6 @@ pub async fn login(
     if !password_ok || row.password_hash.is_none() || row.banned {
         return Err(Error::Unauthorized);
     }
-    let _ = users::update_last_seen(pool.get_ref(), row.id).await;
     let token = auth_service::mint_jwt(&row.id, &config.auth.jwt_secret)?;
     Ok(HttpResponse::Ok().json(LoginResponse {
         token,

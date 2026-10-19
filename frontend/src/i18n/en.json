@@ -39,7 +39,19 @@
     "confirm_placeholder": "Confirm new password",
     "mismatch": "The new passwords do not match.",
     "submit": "Change password",
-    "success": "Password changed."
+    "success": "Password changed.",
+    "status": "Status",
+    "active": "Active",
+    "banned": "Banned",
+    "registered_at": "Registered",
+    "last_seen": "Last seen",
+    "uploads": "See uploads",
+    "ban": "Ban",
+    "unban": "Unban",
+    "ban_confirm": "Ban {username}? They are signed out right away and can no longer log in or upload.",
+    "banned_toast": "{username} is banned",
+    "unbanned_toast": "{username} is no longer banned",
+    "uploads_count": "Uploads"
   },
   "upload": {
     "choose": "Choose image",
@@ -137,7 +149,8 @@
     "clear_selection": "Clear selection",
     "empty_trash": "Empty trash",
     "empty_trash_confirm": "Delete the image in the trash for good? This cannot be undone. | Delete the {count} images in the trash for good? This cannot be undone.",
-    "trash_emptied": "Trash emptied"
+    "trash_emptied": "Trash emptied",
+    "username_placeholder": "Username"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -255,5 +268,10 @@
       "label": "Allowed referrers",
       "help": "Hostnames allowed to embed images (/i/ and /t/), checked against the Referer header. Press Enter after each one. Empty allows any site and direct links. Elysia's own host is always allowed."
     }
+  },
+  "users": {
+    "title": "Users",
+    "profile": "User profile",
+    "search_placeholder": "Search by username or email"
   }
 }

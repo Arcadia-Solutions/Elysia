@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select count(*) as \"count!\" from users\n           where $1::text is null\n              or strpos(lower(username), lower($1)) > 0\n              or strpos(lower(email), lower($1)) > 0",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e7080e16a4bd0c96a34af20703c24b860c5b3d1e1205efb4e5776a3f583b208a"
+}

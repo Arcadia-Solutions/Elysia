@@ -8,6 +8,7 @@ import SettingsView from '@/views/SettingsView.vue'
 import AccountView from '@/views/AccountView.vue'
 import ImageView from '@/views/ImageView.vue'
 import BrowseView from '@/views/BrowseView.vue'
+import UsersView from '@/views/UsersView.vue'
 import { getToken, isAdmin } from '@/services/session'
 
 const router = createRouter({
@@ -33,6 +34,8 @@ const router = createRouter({
       meta: { requiresAdmin: true },
     },
     { path: '/settings', name: 'Settings', component: SettingsView, meta: { requiresAdmin: true } },
+    { path: '/users', name: 'Users', component: UsersView, meta: { requiresAdmin: true } },
+    { path: '/users/:id', name: 'User', component: AccountView, meta: { requiresAdmin: true } },
     { path: '/account', name: 'Account', component: AccountView },
     { path: '/i/:id', name: 'Image', component: ImageView, meta: { public: true } },
   ],
@@ -42,7 +45,7 @@ router.beforeEach((to) => {
   // Image viewer pages are public, like the raw images they show.
   if (to.meta.public) return
   if (!getToken()) return '/login'
-  // Dashboard and settings are admin-only, like their APIs.
+  // Dashboard, settings and users are admin-only, like their APIs.
   if (to.meta.requiresAdmin && !isAdmin()) return '/upload'
 })
 

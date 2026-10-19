@@ -3,6 +3,7 @@ use utoipa::OpenApi;
 use crate::handlers::upload::UploadOptionsQuery;
 use crate::repository::files::{ImagesSortBy, ImagesStatus, SortOrder};
 use crate::repository::stats::{StatsInterval, StatsPeriod};
+use crate::repository::users::UsersSortBy;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -28,10 +29,13 @@ use crate::repository::stats::{StatsInterval, StatsPeriod};
         crate::handlers::get_public_elysia_settings::get_public_elysia_settings,
         crate::handlers::get_elysia_unauth_settings::get_elysia_unauth_settings,
         crate::handlers::put_elysia_settings::put_elysia_settings,
+        crate::handlers::users::list_users::list_users,
+        crate::handlers::users::get_user::get_user,
+        crate::handlers::users::set_user_banned::set_user_banned,
     ),
     // Query parameter types are inlined into each path; list them so the
     // generated client still gets them as named types. The rest is collected
     // from the paths.
-    components(schemas(UploadOptionsQuery, StatsInterval, StatsPeriod, ImagesSortBy, ImagesStatus, SortOrder))
+    components(schemas(UploadOptionsQuery, StatsInterval, StatsPeriod, ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy))
 )]
 pub struct ApiDoc;

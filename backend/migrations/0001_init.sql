@@ -22,6 +22,7 @@ create table users (
 
 comment on table users is 'Login accounts: local rows hold an Argon2 hash, sso rows are JIT-provisioned from an external sign-on backend (issuer/subject)';
 comment on column users.provider is 'local = password login, sso = shadow row provisioned on first sign-in';
+comment on column users.last_seen is 'Last authenticated API request';
 
 -- Default admin account (username `admin`, password `change-me-123`).
 -- Change the password right after the first login. The hash below is the
