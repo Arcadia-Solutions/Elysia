@@ -21,9 +21,9 @@ impl Storage {
         }
     }
 
-    /// Create the root dir if missing. Called once at startup.
+    /// Create the root and trash dirs if missing. Called once at startup.
     pub async fn ensure_root(&self) -> Result<()> {
-        tokio::fs::create_dir_all(&self.root).await?;
+        tokio::fs::create_dir_all(self.trash_dir()).await?;
         Ok(())
     }
 
@@ -73,5 +73,60 @@ impl Storage {
     /// Open a stored thumbnail for streaming.
     pub async fn open_thumbnail(&self, id: &str) -> std::io::Result<NamedFile> {
         NamedFile::open_async(self.thumbnail_path_for(id)).await
+    }
+
+    /// Trash dir: `<root>/trash`. Shard dirs are 2 chars, so it never clashes.
+    // ponytail: flat dir, fine for 30 days of deletions; shard it like the
+    // live files if trashing ever runs into the 100k entries range.
+    fn trash_dir(&self) -> PathBuf {
+        self.root.join("trash")
+    }
+
+    /// Trashed path for a file: `<root>/trash/<id>.<ext>`.
+    fn trash_path_for(&self, id: &str, ext: &str) -> PathBuf {
+        self.trash_dir().join(format!("{id}.{ext}"))
+    }
+
+    /// Trashed path for a file's thumbnail: `<root>/trash/<id>.t.webp`.
+    fn trash_thumbnail_path_for(&self, id: &str) -> PathBuf {
+        self.trash_dir().join(format!("{id}.t.webp"))
+    }
+
+    /// Move a file and its thumbnail out of the served tree into the trash, so
+    /// `/i/` and `/t/` stop serving them. Missing files are skipped, so a retry
+    /// after a partial failure goes through.
+    pub async fn trash(&self, id: &str, ext: &str) -> Result<()> {
+        ignore_missing(
+            tokio::fs::rename(self.path_for(id, ext), self.trash_path_for(id, ext)).await,
+        )?;
+        ignore_missing(
+            tokio::fs::rename(
+                self.thumbnail_path_for(id),
+                self.trash_thumbnail_path_for(id),
+            )
+            .await,
+        )
+    }
+
+    /// Open a trashed file's thumbnail, or the trashed file itself when it has
+    /// none (same fallback as `/t/`).
+    pub async fn open_trashed_thumbnail(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
+        match NamedFile::open_async(self.trash_thumbnail_path_for(id)).await {
+            Ok(file) => Ok(file),
+            Err(_) => NamedFile::open_async(self.trash_path_for(id, ext)).await,
+        }
+    }
+
+    /// Delete a trashed file and its thumbnail for good. Missing files are skipped.
+    pub async fn wipe_trashed(&self, id: &str, ext: &str) -> Result<()> {
+        ignore_missing(tokio::fs::remove_file(self.trash_path_for(id, ext)).await)?;
+        ignore_missing(tokio::fs::remove_file(self.trash_thumbnail_path_for(id)).await)
+    }
+}
+
+fn ignore_missing(result: std::io::Result<()>) -> Result<()> {
+    match result {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error.into()),
+        _ => Ok(()),
     }
 }

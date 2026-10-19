@@ -8,6 +8,7 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::error::Result;
+use crate::middlewares::AuthUser;
 use crate::services::files::{self, image_url, thumbnail_url};
 
 /// Display metadata for the `/i/<id>` viewer page.
@@ -39,6 +40,9 @@ pub struct MetadataResponse {
     pub url: String,
     /// Public URL for the thumbnail.
     pub thumbnail_url: String,
+    /// Whether the caller may trash the image: an admin, or its uploader during
+    /// the hour after upload.
+    pub can_delete: bool,
 }
 
 #[utoipa::path(
@@ -48,10 +52,11 @@ pub struct MetadataResponse {
     params(("id" = String, Path, description = "File id")),
     responses(
         (status = 200, description = "File metadata", body = MetadataResponse),
-        (status = 404, description = "Not found"),
+        (status = 404, description = "Not found, or trashed"),
     )
 )]
 pub async fn metadata(
+    authenticated: Option<AuthUser>,
     config: Data<Config>,
     pool: Data<PgPool>,
     id: Path<String>,
@@ -65,6 +70,14 @@ pub async fn metadata(
             &row.ext,
             row.has_thumbnail,
         ),
+        can_delete: authenticated.is_some_and(|user| {
+            files::may_trash(
+                user.user_id,
+                user.is_admin,
+                row.uploaded_by_user_id,
+                row.recent,
+            )
+        }),
         id: row.id,
         ext: row.ext,
         mime: row.mime,

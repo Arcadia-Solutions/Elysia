@@ -104,9 +104,17 @@
       "compressed": "Compressed at quality {quality}"
     }
   },
+  "trash": {
+    "delete": "Delete | Delete ({count})",
+    "delete_confirm": "Move this image to the trash? It stops being served right away and is deleted for good after 30 days. | Move these {count} images to the trash? They stop being served right away and are deleted for good after 30 days.",
+    "deleted": "Image moved to the trash | {count} images moved to the trash"
+  },
   "browse": {
     "title": "Browse images",
-    "empty": "No images uploaded yet",
+    "empty": {
+      "available": "No images uploaded yet",
+      "trashed": "The trash is empty"
+    },
     "load_error": "Could not load images",
     "sort": {
       "created_at": "Date added",
@@ -120,7 +128,16 @@
     "order": {
       "asc": "Ascending",
       "desc": "Descending"
-    }
+    },
+    "select": "Select",
+    "status": {
+      "available": "Available",
+      "trashed": "Trash"
+    },
+    "clear_selection": "Clear selection",
+    "empty_trash": "Empty trash",
+    "empty_trash_confirm": "Delete the image in the trash for good? This cannot be undone. | Delete the {count} images in the trash for good? This cannot be undone.",
+    "trash_emptied": "Trash emptied"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -151,7 +168,9 @@
     },
     "uploaded_size": "Uploaded size",
     "new_users": "New users",
-    "active_uploaders": "Active uploaders"
+    "active_uploaders": "Active uploaders",
+    "deletions_per": "Deletions per {interval}",
+    "deletions": "Deletions"
   },
   "settings": {
     "title": "Elysia settings",

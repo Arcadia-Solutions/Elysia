@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, ext, uploaded_by_user_id, created_at > now() - make_interval(mins => $2) as \"recent!\" from files where id = any($1) and status = 'available'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ext",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "ext"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "uploaded_by_user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "uploaded_by_user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "recent!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "e0da1e32986c5d3009c0b0cefe84dd1d621074213762c3c5f54328a4ddfa739a"
+}

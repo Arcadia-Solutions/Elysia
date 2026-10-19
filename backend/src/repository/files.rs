@@ -1,6 +1,8 @@
+use std::num::NonZeroU32;
+
 use serde::Deserialize;
 use sqlx::PgPool;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::error::Result;
@@ -127,7 +129,7 @@ pub async fn find_record_by_source(
         FileRecord,
         "select id, ext, mime, original_ext, original_width, original_height, \
                 width, height, applied_quality, has_thumbnail \
-         from files where original_hash = $1 \
+         from files where original_hash = $1 and status = 'available' \
            and requested_quality is not distinct from $2 \
          order by created_at limit 1",
         original_hash,
@@ -152,22 +154,33 @@ pub struct FileMetadata {
     pub has_thumbnail: bool,
     pub views: i64,
     pub thumbnail_views: i64,
+    pub uploaded_by_user_id: Uuid,
     pub uploader_username: String,
     pub created_at: String,
+    /// Still within `UPLOADER_TRASH_WINDOW_MINUTES` of its upload.
+    pub recent: bool,
 }
 
-/// Fetch a file's display metadata and its uploader's username by id.
+/// Minutes after upload during which uploaders may trash their own files.
+/// Also spelled out as "an hour" in the OpenAPI descriptions.
+pub const UPLOADER_TRASH_WINDOW_MINUTES: i32 = 60;
+
+/// Fetch an available file's display metadata and its uploader's username by
+/// id; `recent` while within `UPLOADER_TRASH_WINDOW_MINUTES` of its upload.
 pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadata>> {
     Ok(sqlx::query_as!(
         FileMetadata,
         "select files.id, ext, mime, original_name, size, width, height, \
                 original_ext, original_width, original_height, applied_quality, \
-                has_thumbnail, views, thumbnail_views, users.username as uploader_username, \
+                has_thumbnail, views, thumbnail_views, uploaded_by_user_id, \
+                users.username as uploader_username, \
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as \"created_at!\" \
+                  as \"created_at!\", \
+                files.created_at > now() - make_interval(mins => $2) as \"recent!\" \
          from files join users on users.id = files.uploaded_by_user_id \
-         where files.id = $1",
-        id
+         where files.id = $1 and status = 'available'",
+        id,
+        UPLOADER_TRASH_WINDOW_MINUTES
     )
     .fetch_optional(pool)
     .await?)
@@ -196,10 +209,9 @@ pub struct ImageListRow {
 }
 
 /// Column the browse page is sorted by.
-#[derive(Clone, Copy, Debug, Default, Deserialize, ToSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ImagesSortBy {
-    #[default]
     CreatedAt,
     Size,
     Width,
@@ -223,16 +235,37 @@ impl ImagesSortBy {
     }
 }
 
+/// Which images the browse page lists: a subset of the `file_status` enum.
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "file_status", rename_all = "lowercase")]
+pub enum ImagesStatus {
+    Available,
+    Trashed,
+}
+
 /// Sort direction.
-#[derive(Clone, Copy, Debug, Default, Deserialize, ToSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum SortOrder {
     Asc,
-    #[default]
     Desc,
 }
 
-/// Fetch one page of images in the given order, with the total count. `id`
+/// Browse page query.
+#[derive(Clone, Copy, Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct ImagesQuery {
+    /// 1-based page number.
+    #[param(value_type = i64, minimum = 1)]
+    pub page: NonZeroU32,
+    pub sort_by: ImagesSortBy,
+    pub order: SortOrder,
+    /// Available or trashed images.
+    pub status: ImagesStatus,
+}
+
+/// Fetch one page of images with the given status in the given order, with the total count. `id`
 /// breaks ties so rows never shift across pages.
 // ponytail: CASE ordering can't use an index (full sort per page, as the window
 // count scans every row anyway); add per-column queries + indexes if it gets slow.
@@ -240,13 +273,12 @@ pub async fn list_page(
     pool: &PgPool,
     offset: i64,
     limit: i64,
-    sort_by: ImagesSortBy,
-    order: SortOrder,
+    query: &ImagesQuery,
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
         "select id, ext, has_thumbnail, count(*) over() as \"total!\" \
-         from files order by \
+         from files where status = $5 order by \
            case when $3 = 'created_at' and $4 then created_at end asc, \
            case when $3 = 'created_at' and not $4 then created_at end desc, \
            case when $3 = 'size' and $4 then size end asc, \
@@ -265,21 +297,23 @@ pub async fn list_page(
          offset $1 limit $2",
         offset,
         limit,
-        sort_by.as_sql(),
-        matches!(order, SortOrder::Asc),
+        query.sort_by.as_sql(),
+        matches!(query.order, SortOrder::Asc),
+        query.status as ImagesStatus,
     )
     .fetch_all(pool)
     .await?)
 }
 
-/// Total number of stored files; the count for an out-of-range page, where the
-/// window count in `list_page` returns no rows.
-pub async fn count(pool: &PgPool) -> Result<i64> {
-    Ok(
-        sqlx::query_scalar!("select count(*) as \"count!\" from files")
-            .fetch_one(pool)
-            .await?,
+/// Number of files with the given status; the count for an out-of-range page,
+/// where the window count in `list_page` returns no rows.
+pub async fn count(pool: &PgPool, status: ImagesStatus) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        "select count(*) as \"count!\" from files where status = $1",
+        status as ImagesStatus
     )
+    .fetch_one(pool)
+    .await?)
 }
 
 /// Output dedup: a different source that normalized to identical output bytes.
@@ -288,9 +322,81 @@ pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<Fil
         FileRecord,
         "select id, ext, mime, original_ext, original_width, original_height, \
                 width, height, applied_quality, has_thumbnail \
-         from files where hash = $1",
+         from files where hash = $1 and status = 'available'",
         hash,
     )
     .fetch_optional(pool)
     .await?)
+}
+
+/// A file the trash acts on; `recent` as in `find_metadata`.
+pub struct TrashRow {
+    pub id: String,
+    pub ext: String,
+    pub uploaded_by_user_id: Uuid,
+    pub recent: bool,
+}
+
+/// The available files among `ids`; unknown or already trashed ids are left out.
+pub async fn find_available(pool: &PgPool, ids: &[String]) -> Result<Vec<TrashRow>> {
+    Ok(sqlx::query_as!(
+        TrashRow,
+        "select id, ext, uploaded_by_user_id, \
+                created_at > now() - make_interval(mins => $2) as \"recent!\" \
+         from files where id = any($1) and status = 'available'",
+        ids,
+        UPLOADER_TRASH_WINDOW_MINUTES
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Flag available files as trashed by `user_id`, starting their 30 days in the trash.
+pub async fn mark_trashed(pool: &PgPool, ids: &[String], user_id: Uuid) -> Result<()> {
+    sqlx::query!(
+        "update files set status = 'trashed', trashed_at = now(), trashed_by_id = $2 \
+         where id = any($1) and status = 'available'",
+        ids,
+        user_id
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// A trashed file the wipe acts on.
+pub struct TrashedRow {
+    pub id: String,
+    pub ext: String,
+}
+
+/// Files trashed more than `days` days ago; every trashed file for 0.
+pub async fn trashed_before(pool: &PgPool, days: i32) -> Result<Vec<TrashedRow>> {
+    Ok(sqlx::query_as!(
+        TrashedRow,
+        "select id, ext from files \
+         where status = 'trashed' and trashed_at <= now() - make_interval(days => $1)",
+        days
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Flag trashed files as deleted, once wiped from disk: by the admin
+/// `deleted_by_id` when set, by the scheduler otherwise.
+pub async fn mark_deleted(
+    pool: &PgPool,
+    ids: &[String],
+    deleted_by_id: Option<Uuid>,
+) -> Result<()> {
+    sqlx::query!(
+        "update files set status = 'deleted', deleted_by_id = $2, \
+           deletion_source = case when $2::uuid is null then 'scheduler' else 'manual' end::deletion_source \
+         where id = any($1) and status = 'trashed'",
+        ids,
+        deleted_by_id as Option<Uuid>
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
 }

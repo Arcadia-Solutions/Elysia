@@ -62,6 +62,11 @@ pub fn image_url(public_url: &str, id: &str, ext: &str) -> String {
 /// Images returned per browse page.
 pub const IMAGES_PER_PAGE: i64 = 100;
 
+/// Thumbnail URL for a trashed file, served admin-only from the trash.
+pub fn trashed_thumbnail_url(public_url: &str, id: &str, ext: &str) -> String {
+    format!("{public_url}/api/images/trash/{id}.{ext}")
+}
+
 /// Public thumbnail URL for a stored file. Generated thumbnails are always
 /// WebP; without one, `/t/` falls back to the original, hence its extension.
 pub fn thumbnail_url(public_url: &str, id: &str, ext: &str, has_thumbnail: bool) -> String {
@@ -69,20 +74,18 @@ pub fn thumbnail_url(public_url: &str, id: &str, ext: &str, has_thumbnail: bool)
     format!("{public_url}/t/{id}.{extension}")
 }
 
-/// Fetch one page (1-based) of stored images in the given order, with the total
-/// count and the clamped page actually used. An out-of-range page returns no
-/// rows but still reports the real total, so callers can show the pager.
+/// Fetch one page (1-based) of images matching the query, with the total
+/// count. An out-of-range page returns no rows but still reports the real
+/// total, so callers can show the pager.
 pub async fn list_images(
     pool: &PgPool,
-    page: i64,
-    sort_by: files::ImagesSortBy,
-    order: files::SortOrder,
-) -> Result<(Vec<files::ImageListRow>, i64, i64)> {
+    query: &files::ImagesQuery,
+) -> Result<(Vec<files::ImageListRow>, i64)> {
     paginate(
-        page,
+        query.page,
         IMAGES_PER_PAGE,
-        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE, sort_by, order),
-        files::count(pool),
+        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE, query),
+        files::count(pool, query.status),
         |row| row.total,
     )
     .await
@@ -773,6 +776,62 @@ async fn generate_thumbnail(
     .map_err(|_| Error::Io(std::io::Error::other("thumbnail task failed")))?
     .map_err(process_error)?;
     Ok(processed.map(|processed| processed.bytes))
+}
+
+/// Whether a user may trash a file: admins always, its uploader while the file
+/// is `recent` (within `files::UPLOADER_TRASH_WINDOW_MINUTES`).
+pub fn may_trash(user_id: Uuid, is_admin: bool, uploaded_by_user_id: Uuid, recent: bool) -> bool {
+    is_admin || (user_id == uploaded_by_user_id && recent)
+}
+
+/// Move files to the trash, where they wait 30 days before the scheduled
+/// wipe. See `may_trash` for who may. Unknown or already trashed ids are skipped.
+pub async fn trash(
+    pool: &PgPool,
+    storage: &Storage,
+    user_id: Uuid,
+    is_admin: bool,
+    ids: &[String],
+) -> Result<()> {
+    let rows = files::find_available(pool, ids).await?;
+    if !rows
+        .iter()
+        .all(|row| may_trash(user_id, is_admin, row.uploaded_by_user_id, row.recent))
+    {
+        return Err(Error::Forbidden);
+    }
+    // Files move before the rows flip: a failure part way leaves rows still
+    // available, and a retry skips the files that already moved.
+    for row in &rows {
+        storage.trash(&row.id, &row.ext).await?;
+    }
+    let ids: Vec<String> = rows.into_iter().map(|row| row.id).collect();
+    files::mark_trashed(pool, &ids, user_id).await
+}
+
+/// Days a trashed file waits before the scheduled wipe. Also spelled out as
+/// "30 days" in the OpenAPI descriptions and the frontend strings: update them
+/// together.
+pub const TRASH_RETENTION_DAYS: i32 = 30;
+
+/// Wipe the files trashed at least `days` days ago from disk (all of them for
+/// 0), keeping their rows as `deleted` for the stats. `deleted_by_id` is the
+/// admin emptying the trash, None for the scheduler. A file that fails to wipe
+/// is logged and stays trashed, so it does not block the others.
+pub async fn wipe_trash(
+    pool: &PgPool,
+    storage: &Storage,
+    days: i32,
+    deleted_by_id: Option<Uuid>,
+) -> Result<()> {
+    let mut wiped_ids = Vec::new();
+    for row in files::trashed_before(pool, days).await? {
+        match storage.wipe_trashed(&row.id, &row.ext).await {
+            Ok(()) => wiped_ids.push(row.id),
+            Err(error) => tracing::warn!("failed to wipe trashed file {}: {error:?}", row.id),
+        }
+    }
+    files::mark_deleted(pool, &wiped_ids, deleted_by_id).await
 }
 
 /// Look up a file's display metadata by id, or `NotFound`.

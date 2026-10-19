@@ -2,21 +2,22 @@ use actix_web::{
     HttpResponse,
     web::{Data, Query},
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::PgPool;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::error::Result;
 use crate::middlewares::AuthUser;
-use crate::repository::files::{ImagesSortBy, SortOrder};
+use crate::repository::files::{ImagesQuery, ImagesStatus};
 use crate::services::files::{self, IMAGES_PER_PAGE};
 
 /// One image in a browse page.
 #[derive(Serialize, ToSchema)]
 pub struct ImageSummary {
     pub id: String,
-    /// Thumbnail URL, served from `/t/`.
+    /// Thumbnail URL: from `/t/`, or for a trashed image from the admin-only
+    /// trash, fetched with the session token.
     pub thumbnail_url: String,
 }
 
@@ -24,21 +25,8 @@ pub struct ImageSummary {
 #[derive(Serialize, ToSchema)]
 pub struct ImagesPage {
     pub images: Vec<ImageSummary>,
-    pub page: i64,
     pub per_page: i64,
     pub total: i64,
-}
-
-#[derive(Debug, Default, Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-pub struct ImagesQuery {
-    /// 1-based page number; absent or below 1 means the first page.
-    #[param(minimum = 1)]
-    pub page: Option<i64>,
-    /// Sort column; defaults to the upload date.
-    pub sort_by: Option<ImagesSortBy>,
-    /// Sort direction; defaults to descending.
-    pub order: Option<SortOrder>,
 }
 
 #[utoipa::path(
@@ -60,28 +48,24 @@ pub async fn images(
     query: Query<ImagesQuery>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
-    let (rows, total, page) = files::list_images(
-        pool.get_ref(),
-        query.page.unwrap_or(1),
-        query.sort_by.unwrap_or_default(),
-        query.order.unwrap_or_default(),
-    )
-    .await?;
+    let (rows, total) = files::list_images(pool.get_ref(), &query).await?;
+    let public_url = &config.server.public_url;
     let images = rows
         .into_iter()
         .map(|row| ImageSummary {
-            thumbnail_url: files::thumbnail_url(
-                &config.server.public_url,
-                &row.id,
-                &row.ext,
-                row.has_thumbnail,
-            ),
+            thumbnail_url: match query.status {
+                ImagesStatus::Available => {
+                    files::thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail)
+                }
+                ImagesStatus::Trashed => {
+                    files::trashed_thumbnail_url(public_url, &row.id, &row.ext)
+                }
+            },
             id: row.id,
         })
         .collect();
     Ok(HttpResponse::Ok().json(ImagesPage {
         images,
-        page,
         per_page: IMAGES_PER_PAGE,
         total,
     }))

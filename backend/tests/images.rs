@@ -4,8 +4,9 @@ mod common;
 
 use sqlx::PgPool;
 
+use common::page;
 use elysia::handlers::parse_filename;
-use elysia::repository::files::{self, ImagesSortBy, SortOrder};
+use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder};
 use elysia::services::files::{IMAGES_PER_PAGE, list_images};
 use elysia::services::views::ViewCounter;
 
@@ -15,33 +16,16 @@ async fn paginates_with_total(pool: PgPool) {
     let uploader = common::test_user(&pool, "browser").await.0.id;
     common::seed_files(&pool, uploader, "id", per_page + 1, 1).await;
 
-    let (first, total, first_page) =
-        list_images(&pool, 1, ImagesSortBy::default(), SortOrder::default())
-            .await
-            .unwrap();
+    let (first, total) = list_images(&pool, &page(1)).await.unwrap();
     assert_eq!(first.len(), per_page);
     assert_eq!(total, per_page as i64 + 1);
-    assert_eq!(first_page, 1);
     assert!(first.iter().all(|row| row.total == total));
 
-    let (second, _, _) = list_images(&pool, 2, ImagesSortBy::default(), SortOrder::default())
-        .await
-        .unwrap();
+    let (second, _) = list_images(&pool, &page(2)).await.unwrap();
     assert_eq!(second.len(), 1);
 
-    // Page below 1 clamps to the first page.
-    let (clamped, _, clamped_page) =
-        list_images(&pool, 0, ImagesSortBy::default(), SortOrder::default())
-            .await
-            .unwrap();
-    assert_eq!(clamped.len(), per_page);
-    assert_eq!(clamped_page, 1);
-
     // Past the last page: no rows, but the total still reflects every file.
-    let (empty, empty_total, _) =
-        list_images(&pool, 3, ImagesSortBy::default(), SortOrder::default())
-            .await
-            .unwrap();
+    let (empty, empty_total) = list_images(&pool, &page(3)).await.unwrap();
     assert!(empty.is_empty());
     assert_eq!(empty_total, per_page as i64 + 1);
 }
@@ -55,7 +39,17 @@ async fn sorts_by_column_and_direction(pool: PgPool) {
     let first_id = |sort_by, order| {
         let pool = pool.clone();
         async move {
-            list_images(&pool, 1, sort_by, order).await.unwrap().0[0]
+            list_images(
+                &pool,
+                &ImagesQuery {
+                    sort_by,
+                    order,
+                    ..page(1)
+                },
+            )
+            .await
+            .unwrap()
+            .0[0]
                 .id
                 .clone()
         }
@@ -120,10 +114,17 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
     assert_eq!((metadata.views, metadata.thumbnail_views), (2, 1));
 
     for sort_by in [ImagesSortBy::Views, ImagesSortBy::ThumbnailViews] {
-        let rows = list_images(&pool, 1, sort_by, SortOrder::Desc)
-            .await
-            .unwrap()
-            .0;
+        let rows = list_images(
+            &pool,
+            &ImagesQuery {
+                sort_by,
+                order: SortOrder::Desc,
+                ..page(1)
+            },
+        )
+        .await
+        .unwrap()
+        .0;
         assert_eq!(rows[0].id, id);
     }
 }

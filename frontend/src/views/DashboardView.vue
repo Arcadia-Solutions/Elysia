@@ -39,7 +39,7 @@
       </div>
     </div>
 
-    <p v-if="stats && stats.periods.length === 0" class="empty">{{ $t('browse.empty') }}</p>
+    <p v-if="stats && stats.periods.length === 0" class="empty">{{ $t('browse.empty.available') }}</p>
     <div v-else-if="stats" class="charts">
       <section v-for="(chart, index) in charts" :key="index">
         <h3>{{ chart.title }}</h3>
@@ -223,6 +223,13 @@ const charts = computed(() => [
     options: chartOptions([{ name: t('dashboard.uploads'), value: (step) => step.uploads, format: formatCount, color: themeColors.value.primary }], {
       label: t('dashboard.size'),
       value: (step) => formatBytes(step.uploaded_bytes),
+    }),
+  },
+  {
+    title: t('dashboard.deletions_per', { interval: t(`dashboard.intervals.${statsInterval.value}`).toLowerCase() }),
+    options: chartOptions([{ name: t('dashboard.deletions'), value: (step) => step.deletions, format: formatCount, color: themeColors.value.secondary }], {
+      label: t('dashboard.size'),
+      value: (step) => formatBytes(step.deleted_bytes),
     }),
   },
 ])

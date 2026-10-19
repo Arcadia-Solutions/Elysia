@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select count(*) as \"count!\" from files where status = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "file_status",
+            "kind": {
+              "Enum": [
+                "available",
+                "trashed",
+                "deleted"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "35a65fbb374f66039fbf6275f3950301a9103420a4c33ff33db3a209e54f6684"
+}

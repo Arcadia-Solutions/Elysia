@@ -56,22 +56,26 @@ impl StatsPeriod {
 pub struct PeriodTotal {
     /// UTC start of the step as an ISO-8601 string.
     pub period: String,
-    /// Files stored by the end of the step.
+    /// Available (not trashed) files by the end of the step.
     pub files: i64,
-    /// Bytes stored by the end of the step (main files, thumbnails excluded).
+    /// Bytes of those files (main files, thumbnails excluded).
     pub bytes: i64,
     /// Files uploaded during the step.
     pub uploads: i64,
     /// Bytes uploaded during the step.
     pub uploaded_bytes: i64,
+    /// Files trashed during the step.
+    pub deletions: i64,
+    /// Bytes trashed during the step.
+    pub deleted_bytes: i64,
 }
 
 /// One row per `interval` step to now, empty steps included so the series
 /// plots evenly. The series starts `period` back from now, or at the first
 /// upload for `AllTime` (no rows when nothing was uploaded), rounded down to an
 /// `interval` step, so it can start before the window `window_totals` counts.
-/// Files are never deleted, so the files uploaded before the start plus a
-/// running sum after it is the stored total.
+/// Uploads add a file and trashing removes it, so the stored total is the sum
+/// of those events before the start plus a running sum after it.
 pub async fn period_totals(
     pool: &PgPool,
     period: StatsPeriod,
@@ -83,21 +87,31 @@ pub async fn period_totals(
            select date_trunc($1, coalesce(now() - $2::text::interval, \
                                           (select min(created_at) from files)) \
                                  at time zone 'UTC') as at), \
+         events as ( \
+           select created_at as at, true as is_upload, 1 as files, size as bytes from files \
+           union all \
+           select trashed_at, false, -1, -size from files where trashed_at is not null), \
          per_step as ( \
-           select date_trunc($1, created_at at time zone 'UTC') as step, \
-                  count(*) as files, sum(size) as bytes \
-           from files, start where created_at at time zone 'UTC' >= start.at \
+           select date_trunc($1, events.at at time zone 'UTC') as step, \
+                  sum(files) as files, sum(bytes) as bytes, \
+                  count(*) filter (where is_upload) as uploads, \
+                  sum(bytes) filter (where is_upload) as uploaded_bytes, \
+                  count(*) filter (where not is_upload) as deletions, \
+                  -sum(bytes) filter (where not is_upload) as deleted_bytes \
+           from events, start where events.at at time zone 'UTC' >= start.at \
            group by 1), \
          earlier as ( \
-           select count(*) as files, coalesce(sum(size), 0) as bytes \
-           from files, start where created_at at time zone 'UTC' < start.at) \
+           select coalesce(sum(files), 0) as files, coalesce(sum(bytes), 0) as bytes \
+           from events, start where events.at at time zone 'UTC' < start.at) \
          select to_char(step, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"period!\", \
                 (earlier.files + sum(coalesce(per_step.files, 0)) over (order by step))::bigint \
                   as \"files!\", \
                 (earlier.bytes + sum(coalesce(per_step.bytes, 0)) over (order by step))::bigint \
                   as \"bytes!\", \
-                coalesce(per_step.files, 0) as \"uploads!\", \
-                coalesce(per_step.bytes, 0)::bigint as \"uploaded_bytes!\" \
+                coalesce(per_step.uploads, 0) as \"uploads!\", \
+                coalesce(per_step.uploaded_bytes, 0)::bigint as \"uploaded_bytes!\", \
+                coalesce(per_step.deletions, 0) as \"deletions!\", \
+                coalesce(per_step.deleted_bytes, 0)::bigint as \"deleted_bytes!\" \
          from earlier, start, \
               generate_series(start.at, now() at time zone 'UTC', ('1 ' || $1)::interval) as step \
          left join per_step using (step) \
@@ -117,12 +131,12 @@ pub struct FormatTotal {
     pub bytes: i64,
 }
 
-/// Stored files grouped by MIME type, largest first.
+/// Available files grouped by MIME type, largest first.
 pub async fn format_totals(pool: &PgPool) -> Result<Vec<FormatTotal>> {
     Ok(sqlx::query_as!(
         FormatTotal,
         "select mime, count(*) as \"files!\", sum(size)::bigint as \"bytes!\" \
-         from files group by mime order by 3 desc, mime"
+         from files where status = 'available' group by mime order by 3 desc, mime"
     )
     .fetch_all(pool)
     .await?)

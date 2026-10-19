@@ -143,7 +143,7 @@ export interface FormatTotal {
 export interface ImageSummary {
     'id': string;
     /**
-     * Thumbnail URL, served from `/t/`.
+     * Thumbnail URL: from `/t/`, or for a trashed image from the admin-only trash, fetched with the session token.
      */
     'thumbnail_url': string;
 }
@@ -152,7 +152,6 @@ export interface ImageSummary {
  */
 export interface ImagesPage {
     'images': Array<ImageSummary>;
-    'page': number;
     'per_page': number;
     'total': number;
 }
@@ -171,6 +170,18 @@ export const ImagesSortBy = {
 } as const;
 
 export type ImagesSortBy = typeof ImagesSortBy[keyof typeof ImagesSortBy];
+
+
+/**
+ * Which images the browse page lists: a subset of the `file_status` enum.
+ */
+
+export const ImagesStatus = {
+    Available: 'available',
+    Trashed: 'trashed'
+} as const;
+
+export type ImagesStatus = typeof ImagesStatus[keyof typeof ImagesStatus];
 
 
 /**
@@ -195,6 +206,10 @@ export interface MetadataResponse {
      * Lossy quality applied while processing; null means lossless.
      */
     'applied_quality'?: number | null;
+    /**
+     * Whether the caller may trash the image: an admin, or its uploader during the hour after upload.
+     */
+    'can_delete': boolean;
     /**
      * Upload time as a UTC ISO-8601 string.
      */
@@ -241,11 +256,19 @@ export interface MetadataResponse {
  */
 export interface PeriodTotal {
     /**
-     * Bytes stored by the end of the step (main files, thumbnails excluded).
+     * Bytes of those files (main files, thumbnails excluded).
      */
     'bytes': number;
     /**
-     * Files stored by the end of the step.
+     * Bytes trashed during the step.
+     */
+    'deleted_bytes': number;
+    /**
+     * Files trashed during the step.
+     */
+    'deletions': number;
+    /**
+     * Available (not trashed) files by the end of the step.
      */
     'files': number;
     /**
@@ -418,6 +441,12 @@ export const TargetFormat = {
 export type TargetFormat = typeof TargetFormat[keyof typeof TargetFormat];
 
 
+export interface TrashImagesRequest {
+    /**
+     * Ids of the images to trash.
+     */
+    'ids': Array<string>;
+}
 /**
  * The subset of settings exposed without authentication, so the login and register pages can offer signup and single sign-on.
  */
@@ -548,6 +577,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        emptyTrash: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/images/trash/empty`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -636,13 +694,22 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
-         * @param {number} [page] 1-based page number; absent or below 1 means the first page.
-         * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
-         * @param {SortOrder} [order] Sort direction; defaults to descending.
+         * @param {number} page 1-based page number.
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {ImagesStatus} status Available or trashed images.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images: async (page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        images: async (page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('images', 'page', page)
+            // verify required parameter 'sortBy' is not null or undefined
+            assertParamExists('images', 'sortBy', sortBy)
+            // verify required parameter 'order' is not null or undefined
+            assertParamExists('images', 'order', order)
+            // verify required parameter 'status' is not null or undefined
+            assertParamExists('images', 'status', status)
             const localVarPath = `/api/images`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -665,6 +732,10 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (order !== undefined) {
                 localVarQueryParameter['order'] = order;
+            }
+
+            if (status !== undefined) {
+                localVarQueryParameter['status'] = status;
             }
 
 
@@ -846,7 +917,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * 
+         * Served straight from disk, without a database lookup.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -879,7 +950,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * 
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -888,6 +959,39 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             // verify required parameter 'filename' is not null or undefined
             assertParamExists('serveThumbnail', 'filename', filename)
             const localVarPath = `/t/{filename}`
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Thumbnail of a trashed image, for the browse page trash view. Falls back to the trashed image itself when it has no thumbnail, like `/t/`.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveTrashedThumbnail: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveTrashedThumbnail', 'filename', filename)
+            const localVarPath = `/api/images/trash/{filename}`
                 .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -1012,6 +1116,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Move images to the trash: they stop being served at once and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {TrashImagesRequest} trashImagesRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashImages: async (trashImagesRequest: TrashImagesRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'trashImagesRequest' is not null or undefined
+            assertParamExists('trashImages', 'trashImagesRequest', trashImagesRequest)
+            const localVarPath = `/api/images/trash`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(trashImagesRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1145,6 +1284,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async emptyTrash(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.emptyTrash(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.emptyTrash']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1179,14 +1329,15 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @param {number} [page] 1-based page number; absent or below 1 means the first page.
-         * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
-         * @param {SortOrder} [order] Sort direction; defaults to descending.
+         * @param {number} page 1-based page number.
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {ImagesStatus} status Available or trashed images.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async images(page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, options);
+        async images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, status, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -1251,7 +1402,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * 
+         * Served straight from disk, without a database lookup.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1263,7 +1414,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * 
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1272,6 +1423,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Thumbnail of a trashed image, for the browse page trash view. Falls back to the trashed image itself when it has no thumbnail, like `/t/`.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveTrashedThumbnail(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<File>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveTrashedThumbnail(filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serveTrashedThumbnail']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1308,6 +1471,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.statsOverview(period, interval, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.statsOverview']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Move images to the trash: they stop being served at once and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {TrashImagesRequest} trashImagesRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(trashImagesRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.trashImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1359,6 +1534,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.changePassword(changePasswordRequest, options).then((request) => request(axios, basePath));
         },
         /**
+         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        emptyTrash(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.emptyTrash(options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1384,14 +1567,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         },
         /**
          * 
-         * @param {number} [page] 1-based page number; absent or below 1 means the first page.
-         * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
-         * @param {SortOrder} [order] Sort direction; defaults to descending.
+         * @param {number} page 1-based page number.
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {ImagesStatus} status Available or trashed images.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images(page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
-            return localVarFp.images(page, sortBy, order, options).then((request) => request(axios, basePath));
+        images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
+            return localVarFp.images(page, sortBy, order, status, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1438,7 +1622,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
         },
         /**
-         * 
+         * Served straight from disk, without a database lookup.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1447,13 +1631,22 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serve(filename, options).then((request) => request(axios, basePath));
         },
         /**
-         * 
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Thumbnail of a trashed image, for the browse page trash view. Falls back to the trashed image itself when it has no thumbnail, like `/t/`.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveTrashedThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<File> {
+            return localVarFp.serveTrashedThumbnail(filename, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1481,6 +1674,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): AxiosPromise<StatsResponse> {
             return localVarFp.statsOverview(period, interval, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Move images to the trash: they stop being served at once and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {TrashImagesRequest} trashImagesRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.trashImages(trashImagesRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1524,6 +1726,15 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * Wipe every trashed image from disk now, without waiting for its 30 days.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public emptyTrash(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).emptyTrash(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1552,14 +1763,15 @@ export class ElysiaApi extends BaseAPI {
 
     /**
      * 
-     * @param {number} [page] 1-based page number; absent or below 1 means the first page.
-     * @param {ImagesSortBy} [sortBy] Sort column; defaults to the upload date.
-     * @param {SortOrder} [order] Sort direction; defaults to descending.
+     * @param {number} page 1-based page number.
+     * @param {ImagesSortBy} sortBy 
+     * @param {SortOrder} order 
+     * @param {ImagesStatus} status Available or trashed images.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public images(page?: number, sortBy?: ImagesSortBy, order?: SortOrder, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).images(page, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+    public images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).images(page, sortBy, order, status, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1612,7 +1824,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * 
+     * Served straight from disk, without a database lookup.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1622,13 +1834,23 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * 
+     * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Thumbnail of a trashed image, for the browse page trash view. Falls back to the trashed image itself when it has no thumbnail, like `/t/`.
+     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveTrashedThumbnail(filename: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).serveTrashedThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1659,6 +1881,16 @@ export class ElysiaApi extends BaseAPI {
      */
     public statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).statsOverview(period, interval, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Move images to the trash: they stop being served at once and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+     * @param {TrashImagesRequest} trashImagesRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).trashImages(trashImagesRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

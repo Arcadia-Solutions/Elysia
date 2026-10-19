@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::settings::{RefererHost, SharedElysiaSettings, referer_host};
 
 pub mod change_password;
+pub mod empty_trash;
 pub mod get_elysia_settings;
 pub mod get_elysia_unauth_settings;
 pub mod get_public_elysia_settings;
@@ -16,13 +17,16 @@ pub mod put_elysia_settings;
 pub mod register;
 pub mod serve;
 pub mod serve_thumbnail;
+pub mod serve_trashed_thumbnail;
 pub mod sso_callback;
 pub mod sso_login;
 pub mod stats;
+pub mod trash_images;
 pub mod upload;
 pub mod upload_url;
 
 pub use change_password::change_password;
+pub use empty_trash::empty_trash;
 pub use get_elysia_settings::get_elysia_settings;
 pub use get_elysia_unauth_settings::get_elysia_unauth_settings;
 pub use get_public_elysia_settings::get_public_elysia_settings;
@@ -34,9 +38,11 @@ pub use put_elysia_settings::put_elysia_settings;
 pub use register::register;
 pub use serve::serve;
 pub use serve_thumbnail::serve_thumbnail;
+pub use serve_trashed_thumbnail::serve_trashed_thumbnail;
 pub use sso_callback::sso_callback;
 pub use sso_login::sso_login;
 pub use stats::stats_overview;
+pub use trash_images::trash_images;
 pub use upload::upload;
 pub use upload_url::upload_url;
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select files.id, ext, mime, original_name, size, width, height, original_ext, original_width, original_height, applied_quality, has_thumbnail, views, thumbnail_views, users.username as uploader_username, to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\" from files join users on users.id = files.uploaded_by_user_id where files.id = $1",
+  "query": "select files.id, ext, mime, original_name, size, width, height, original_ext, original_width, original_height, applied_quality, has_thumbnail, views, thumbnail_views, uploaded_by_user_id, users.username as uploader_username, to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\", files.created_at > now() - make_interval(mins => $2) as \"recent!\" from files join users on users.id = files.uploaded_by_user_id where files.id = $1 and status = 'available'",
   "describe": {
     "columns": [
       {
@@ -159,6 +159,17 @@
       },
       {
         "ordinal": 14,
+        "name": "uploaded_by_user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "uploaded_by_user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
         "name": "uploader_username",
         "type_info": "Text",
         "origin": {
@@ -169,15 +180,22 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "created_at!",
         "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 17,
+        "name": "recent!",
+        "type_info": "Bool",
         "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Int4"
       ]
     },
     "nullable": [
@@ -196,8 +214,10 @@
       false,
       false,
       false,
+      false,
+      null,
       null
     ]
   },
-  "hash": "e6ec40527abb26d75e93776999b54e2fccd0471ead98c2fc69684a45d46396b0"
+  "hash": "dcaee0d7673e8f1e3654e0e79bef8fdd67a78cf0fb6cdd87f1dbc3345947905c"
 }

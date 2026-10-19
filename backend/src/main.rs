@@ -13,9 +13,10 @@ use utoipa_swagger_ui::SwaggerUi;
 use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
 use elysia::handlers::{
-    change_password, get_elysia_settings, get_elysia_unauth_settings, get_public_elysia_settings,
-    images, login, me, metadata, put_elysia_settings, register, serve, serve_thumbnail,
-    sso_callback, sso_login, stats_overview, upload, upload_url,
+    change_password, empty_trash, get_elysia_settings, get_elysia_unauth_settings,
+    get_public_elysia_settings, images, login, me, metadata, put_elysia_settings, register, serve,
+    serve_thumbnail, serve_trashed_thumbnail, sso_callback, sso_login, stats_overview,
+    trash_images, upload, upload_url,
 };
 use elysia::repository::settings as settings_repo;
 use elysia::scheduler;
@@ -61,8 +62,8 @@ async fn main() -> std::io::Result<()> {
     let views = Data::new(ViewCounter::default());
 
     let scheduler_handle = tokio::spawn({
-        let (pool, views) = (pool.clone(), views.clone());
-        async move { scheduler::handle(&pool, &views).await }
+        let (pool, storage, views) = (pool.clone(), storage.clone(), views.clone());
+        async move { scheduler::handle(&pool, &storage, &views).await }
     });
     let (shutdown_pool, shutdown_views) = (pool.clone(), views.clone());
 
@@ -97,6 +98,12 @@ async fn main() -> std::io::Result<()> {
             .route("/api/elysia-settings", web::get().to(get_elysia_settings))
             .route("/api/elysia-settings", web::put().to(put_elysia_settings))
             .route("/api/images", web::get().to(images))
+            .route("/api/images/trash", web::post().to(trash_images))
+            .route("/api/images/trash/empty", web::post().to(empty_trash))
+            .route(
+                "/api/images/trash/{filename}",
+                web::get().to(serve_trashed_thumbnail),
+            )
             .route("/api/stats/overview", web::get().to(stats_overview))
             .route("/api/i/{id}", web::get().to(metadata))
             .route("/i/{filename}", web::get().to(serve))

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select mime, count(*) as \"files!\", sum(size)::bigint as \"bytes!\" from files group by mime order by 3 desc, mime",
+  "query": "select mime, count(*) as \"files!\", sum(size)::bigint as \"bytes!\" from files where status = 'available' group by mime order by 3 desc, mime",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       null
     ]
   },
-  "hash": "86c37e8d6abc5ee1c706753eb66ba4a30f2bc37a4a15481597430e1324ca1665"
+  "hash": "2ed97822022a859af515e4342cc5d1cd4f21be941e6c8c6984edd12aee7dc118"
 }

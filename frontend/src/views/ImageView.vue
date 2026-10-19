@@ -35,6 +35,7 @@
         <h3>{{ group.title }}</h3>
         <CopyLink v-for="row in group.rows" :key="row.label" :label="row.label" :value="row.value" />
       </template>
+      <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" class="delete" @click="trash" />
     </aside>
   </div>
 </template>
@@ -43,13 +44,17 @@
 import { absoluteUrl, formatBytes, timeAgo } from '@/services/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import Button from 'primevue/button'
 import CopyLink from '@/components/CopyLink.vue'
 import { api } from '@/services/api/http'
+import { isAdmin } from '@/services/session'
+import { showToast } from '@/services/toast'
 import type { MetadataResponse } from '@/services/api-schema'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const meta = ref<MetadataResponse | null>(null)
 
 // What the upload pipeline changed compared to the source file.
@@ -96,6 +101,14 @@ const linkGroups = computed(() => {
   ]
 })
 
+const trash = () => {
+  if (!meta.value || !confirm(t('trash.delete_confirm', 1))) return
+  api.trashImages({ ids: [meta.value.id] }).then(() => {
+    showToast(t('trash.deleted', 1), 'success')
+    router.push({ name: isAdmin() ? 'Browse' : 'Upload' })
+  })
+}
+
 api.metadata(String(route.params.id)).then((response) => {
   meta.value = response.data
 })
@@ -139,6 +152,10 @@ api.metadata(String(route.params.id)).then((response) => {
   margin: 8px 0 2px;
   font-size: 0.875rem;
   font-weight: 600;
+}
+.delete {
+  align-self: flex-start;
+  margin-top: 16px;
 }
 .meta dd {
   margin: 0 0 12px;

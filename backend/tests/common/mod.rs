@@ -258,7 +258,7 @@ pub fn serve_once(status_line: &'static str, content_type: &'static str, body: V
 /// Build a Storage over a fresh temp dir for rehost tests.
 pub fn temp_storage() -> (Storage, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
-    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::create_dir_all(dir.join("trash")).unwrap();
     (Storage::new(dir.to_str().unwrap()), dir)
 }
 
@@ -336,5 +336,16 @@ pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usiz
         )
         .await
         .unwrap();
+    }
+}
+
+/// Newest available images first, on the given browse page.
+pub fn page(page: u32) -> elysia::repository::files::ImagesQuery {
+    use elysia::repository::files::{ImagesQuery, ImagesSortBy, ImagesStatus, SortOrder};
+    ImagesQuery {
+        page: std::num::NonZeroU32::new(page).unwrap(),
+        sort_by: ImagesSortBy::CreatedAt,
+        order: SortOrder::Desc,
+        status: ImagesStatus::Available,
     }
 }

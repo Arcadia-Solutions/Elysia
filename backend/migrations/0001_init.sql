@@ -31,6 +31,9 @@ values ('admin', 'admin@example.com',
   '$argon2id$v=19$m=19456,t=2,p=1$jPojWbnVBAX8ShW6rTqduA$KiXMlsmfe39aYNAKHYsWPSJS1+9EqnIOAHXwhEbDE1M',
   true);
 
+create type file_status as enum ('available', 'trashed', 'deleted');
+create type deletion_source as enum ('manual', 'scheduler');
+
 create table files (
   id text primary key,
   ext text not null,
@@ -39,7 +42,7 @@ create table files (
   size bigint not null,
   width int not null,
   height int not null,
-  hash text unique not null,
+  hash text not null,
   original_hash text not null,
   original_ext text not null,
   original_width int not null,
@@ -50,7 +53,16 @@ create table files (
   views bigint not null default 0,
   thumbnail_views bigint not null default 0,
   uploaded_by_user_id uuid not null references users(id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  status file_status not null default 'available',
+  trashed_at timestamptz,
+  trashed_by_id uuid references users(id),
+  deletion_source deletion_source,
+  deleted_by_id uuid references users(id),
+  check ((status = 'available') = (trashed_at is null)),
+  check ((status = 'available') = (trashed_by_id is null)),
+  check ((status = 'deleted') = (deletion_source is not null)),
+  check ((deletion_source = 'manual') is true = (deleted_by_id is not null))
 );
 
 comment on table files is 'One row per uploaded image; the row id is also the on-disk filename stem';
@@ -61,7 +73,7 @@ comment on column files.original_name is 'Original filename from the upload form
 comment on column files.size is 'File size in bytes';
 comment on column files.width is 'Image width in pixels';
 comment on column files.height is 'Image height in pixels';
-comment on column files.hash is 'SHA-256 of the stored (output) bytes; unique, so identical outputs are deduplicated to one row';
+comment on column files.hash is 'SHA-256 of the stored (output) bytes; unique among available files, so identical outputs are deduplicated to one row';
 comment on column files.original_hash is 'SHA-256 of the source bytes as uploaded';
 comment on column files.original_ext is 'Source file extension before processing';
 comment on column files.original_width is 'Source image width in pixels before processing';
@@ -73,6 +85,16 @@ comment on column files.views is 'Times the image was served from /i/';
 comment on column files.thumbnail_views is 'Times the thumbnail was served from /t/';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
 comment on column files.created_at is 'When the file was uploaded';
+comment on column files.status is 'available = served, trashed = moved to <root>/trash and no longer served, deleted = wiped from disk (the row stays for stats)';
+comment on column files.trashed_at is 'When the file was trashed; trashed files are wiped 30 days later. Null while available';
+comment on column files.trashed_by_id is 'Who trashed the file. Null while available';
+comment on column files.deletion_source is 'What wiped the file from disk: manual = an admin emptied the trash, scheduler = its 30 days ran out. Null until deleted';
+comment on column files.deleted_by_id is 'The admin who emptied the trash, for a manual deletion. Null otherwise';
+
+-- Dedup only matches available files, so re-uploading a trashed image stores it anew.
+create unique index files_hash_idx on files (hash) where status = 'available';
+-- The trash wipe looks up old trashed files.
+create index files_trashed_at_idx on files (trashed_at) where status = 'trashed';
 
 -- Skip-reprocess lookup filters on original_hash (see find_record_by_source).
 create index files_original_hash_idx on files (original_hash);
