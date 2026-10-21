@@ -199,6 +199,39 @@ export interface ElysiaSettings {
 }
 
 
+export interface FixturesParams {
+    /**
+     * Upload dates are spread over this many past days, at most 3650.
+     */
+    'history_days': number;
+    /**
+     * Images to generate, at most 10000.
+     */
+    'image_count': number;
+    /**
+     * Password given to the fixture users this run creates. Existing ones keep theirs.
+     */
+    'password': string;
+    /**
+     * Fixture users the images are spread over (`alice`, `bob`, ..., then `alice2`, ...).
+     */
+    'user_count': number;
+}
+/**
+ * State of the current or last generation run.
+ */
+export interface FixturesProgress {
+    /**
+     * Images handled so far, rejected ones included.
+     */
+    'done': number;
+    /**
+     * Why the last run stopped early, if it did.
+     */
+    'error'?: string | null;
+    'running': boolean;
+    'total': number;
+}
 /**
  * File count and bytes for one stored MIME type.
  */
@@ -765,6 +798,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * @param {FixturesParams} fixturesParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        generateFixtures: async (fixturesParams: FixturesParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'fixturesParams' is not null or undefined
+            assertParamExists('generateFixtures', 'fixturesParams', fixturesParams)
+            const localVarPath = `/api/fixtures`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(fixturesParams, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -800,6 +868,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
          */
         getElysiaUnauthSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/api/elysia-unauth-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Progress of the current or last fixtures generation.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getFixturesProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/fixtures`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1198,7 +1295,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
          * @param {string} id API key id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1660,6 +1757,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * @param {FixturesParams} fixturesParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.generateFixtures(fixturesParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.generateFixtures']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1679,6 +1788,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaUnauthSettings(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getElysiaUnauthSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Progress of the current or last fixtures generation.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getFixturesProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<FixturesProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getFixturesProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getFixturesProgress']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1806,7 +1926,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
          * @param {string} id API key id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1980,6 +2100,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.emptyTrash(options).then((request) => request(axios, basePath));
         },
         /**
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * @param {FixturesParams} fixturesParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.generateFixtures(fixturesParams, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1994,6 +2123,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         getElysiaUnauthSettings(options?: RawAxiosRequestConfig): AxiosPromise<UnauthElysiaSettings> {
             return localVarFp.getElysiaUnauthSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Progress of the current or last fixtures generation.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getFixturesProgress(options?: RawAxiosRequestConfig): AxiosPromise<FixturesProgress> {
+            return localVarFp.getFixturesProgress(options).then((request) => request(axios, basePath));
         },
         /**
          * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
@@ -2090,7 +2227,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
         },
         /**
-         * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
          * @param {string} id API key id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2232,6 +2369,16 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+     * @param {FixturesParams} fixturesParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).generateFixtures(fixturesParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2247,6 +2394,15 @@ export class ElysiaApi extends BaseAPI {
      */
     public getElysiaUnauthSettings(options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).getElysiaUnauthSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Progress of the current or last fixtures generation.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getFixturesProgress(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getFixturesProgress(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2354,7 +2510,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * Revoke one of the caller\'s API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+     * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
      * @param {string} id API key id
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

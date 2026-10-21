@@ -150,7 +150,8 @@
     "empty_trash": "Empty trash",
     "empty_trash_confirm": "Delete the image in the trash for good? This cannot be undone. | Delete the {count} images in the trash for good? This cannot be undone.",
     "trash_emptied": "Trash emptied",
-    "username_placeholder": "Username"
+    "username_placeholder": "Username",
+    "fixtures": "Generate fixtures"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -300,5 +301,17 @@
     "never_expires": "Never expires",
     "custom_date": "Custom date",
     "expiry_date": "Expiry date"
+  },
+  "fixtures": {
+    "title": "Generate fixtures",
+    "help": "Uploads generated images through the real pipeline, from fixture users, dated over the past days. Existing fixture users keep their password.",
+    "image_count": "Images",
+    "user_count": "Users",
+    "history_days": "Spread over days",
+    "password": "Password of the new users",
+    "show_password": "Show password",
+    "generate": "Generate",
+    "progress": "{done} / {total} images",
+    "done": "Generated {count} images"
   }
 }

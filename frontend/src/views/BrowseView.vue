@@ -53,7 +53,9 @@
         severity="danger"
         @click="emptyTrash"
       />
+      <Button v-if="isAdmin()" :label="$t('browse.fixtures')" icon="pi pi-database" size="small" severity="secondary" @click="fixturesVisible = true" />
     </div>
+    <FixturesDialog v-if="isAdmin()" v-model:visible="fixturesVisible" @done="load(1)" />
     <p v-if="total === 0" class="empty">{{ $t(`browse.empty.${status}`) }}</p>
     <template v-else>
       <div class="grid" :class="{ selecting: selected.size > 0 }">
@@ -92,6 +94,7 @@ import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
 import AutoComplete, { type AutoCompleteCompleteEvent, type AutoCompleteOptionSelectEvent } from 'primevue/autocomplete'
+import FixturesDialog from '@/components/FixturesDialog.vue'
 import http, { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
@@ -105,6 +108,7 @@ const images = ref<ImageSummary[]>([])
 const page = ref(1)
 const perPage = ref(100)
 const total = ref(0)
+const fixturesVisible = ref(false)
 // Selection survives page changes, so images from several pages can go at once.
 const selected = ref(new Set<string>())
 // Object URLs of the trashed thumbnails, by image id. The trash is admin-only,

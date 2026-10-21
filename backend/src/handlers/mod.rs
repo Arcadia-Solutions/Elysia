@@ -1,5 +1,6 @@
 pub mod api_keys;
 pub mod auth;
+pub mod fixtures;
 pub mod images;
 pub mod settings;
 pub mod stats;

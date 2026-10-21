@@ -28,6 +28,8 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::images::empty_trash::empty_trash,
         crate::handlers::images::serve_trashed_thumbnail::serve_trashed_thumbnail,
         crate::handlers::stats::overview::stats_overview,
+        crate::handlers::fixtures::generate_fixtures::generate_fixtures,
+        crate::handlers::fixtures::get_fixtures_progress::get_fixtures_progress,
         crate::handlers::settings::get_elysia_settings::get_elysia_settings,
         crate::handlers::settings::get_public_elysia_settings::get_public_elysia_settings,
         crate::handlers::settings::get_elysia_unauth_settings::get_elysia_unauth_settings,

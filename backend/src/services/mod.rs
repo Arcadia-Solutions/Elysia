@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod files;
+pub mod fixtures;
 pub mod image;
 pub mod sso;
 pub mod views;

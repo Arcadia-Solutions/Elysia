@@ -2,7 +2,7 @@
 name = "elysia"
 version = "0.1.0"
 edition = "2024"
-# src/bin/ holds extra binaries (seed, import_chevereto); plain `cargo run` stays the server.
+# src/bin/ holds the import_chevereto binary; plain `cargo run` stays the server.
 default-run = "elysia"
 
 [dependencies]

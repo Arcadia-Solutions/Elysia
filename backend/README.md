@@ -30,15 +30,13 @@ DATABASE_URL=postgres://elysia:password@localhost:5432/elysia \
 
 ## Test data
 
-```sh
-cargo run --release --manifest-path backend/Cargo.toml --bin seed -- 300   # image count, default 300
-```
-
-Creates 12 users (`alice`, `bob`, ..., password `password123`) and uploads generated
-images through the real upload pipeline, spread over the last 3 years. Runs on top
-of what is there, so run it again to add more. Reset with
-`cargo sqlx database reset --force` and `rm -r data/uploads`. Use `--release`: the
-AVIF and JPEG XL encoders take seconds per image in a debug build.
+Admins can generate fixtures from the browse page ("Generate fixtures", or
+`POST /api/fixtures`): it creates the chosen number of users (`alice`, `bob`, ..., then `alice2`, ...,
+with the password given in the form) and uploads generated images through the real upload pipeline,
+dated over the chosen number of past days. Runs on top of what is there, so run
+it again to add more. Reset with `cargo sqlx database reset --force` and
+`rm -r data/uploads`. Run the server with `--release`: the AVIF and JPEG XL
+encoders take seconds per image in a debug build.
 
 ## Importing from Chevereto
 

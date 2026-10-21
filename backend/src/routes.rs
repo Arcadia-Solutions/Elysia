@@ -1,6 +1,6 @@
 use actix_web::web::{ServiceConfig, scope};
 
-use crate::handlers::{api_keys, auth, images, settings, stats, users};
+use crate::handlers::{api_keys, auth, fixtures, images, settings, stats, users};
 
 pub fn init(cfg: &mut ServiceConfig) {
     cfg.service(
@@ -8,6 +8,7 @@ pub fn init(cfg: &mut ServiceConfig) {
             .service(scope("/auth").configure(auth::config))
             .service(scope("/api-keys").configure(api_keys::config))
             .service(scope("/users").configure(users::config))
+            .service(scope("/fixtures").configure(fixtures::config))
             .service(scope("/stats").configure(stats::config))
             .configure(images::config)
             .configure(settings::config),
