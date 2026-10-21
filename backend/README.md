@@ -84,6 +84,9 @@ Chevereto users are matched to backend users by exact username when their first 
 is imported. A user without a backend account is logged once and their images go to
 `fallback_username`.
 
+`tests/chevereto/test.sh` runs the importer end to end against a real Chevereto in
+docker (also run in CI).
+
 ## System dependencies
 
 The JPEG XL encoder (libjxl) is built from vendored source, so no system libjxl is needed.

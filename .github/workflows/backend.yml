@@ -69,6 +69,9 @@ jobs:
       - name: Run tests
         run: cargo test
 
+      - name: Chevereto import end to end test
+        run: tests/chevereto/test.sh
+
   formatting:
     name: cargo fmt
     runs-on: ubuntu-latest
