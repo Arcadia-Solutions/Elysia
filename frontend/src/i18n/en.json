@@ -313,5 +313,32 @@
     "generate": "Generate",
     "progress": "{done} / {total} images",
     "done": "Generated {count} images"
+  },
+  "maintenance": {
+    "title": "Maintenance tools",
+    "unreferenced_images": {
+      "title": "Unreferenced images",
+      "help": "Scans the text columns of a Postgres or MySQL database in the background for links to this instance's images, thumbnails or viewer pages under the given hosts (add every domain, alias or CDN the links may use), one query per table, and lists the available images linked from nowhere. Links are found ignoring case, JSON-escaped or URL-encoded, but not as relative paths or bare ids. Nothing is changed until you delete them, which moves them to the trash. Deleting them all is refused once the scan is more than 24 hours old.",
+      "hosts": "Hosts the links use, e.g. img.example.com, old.example.com",
+      "exclude": "Exclude these tables or columns, e.g. logs, posts.raw (optional)",
+      "scan": "Scan",
+      "progress": {
+        "scan": "{done} / {total} tables scanned",
+        "trash": "{done} / {total} images moved to the trash"
+      },
+      "scanned_at": "Scanned {when}",
+      "summary": "Last scan: {columns} columns read, {referenced} linked images found",
+      "empty": "No unreferenced images from the last scan",
+      "trash_all": "Delete all ({count})",
+      "image": "Image",
+      "original_name": "Original name",
+      "uploader": "Uploader",
+      "uploaded_at": "Uploaded",
+      "size": "Size",
+      "width": "Width",
+      "height": "Height",
+      "format": "Format",
+      "views": "Views"
+    }
   }
 }

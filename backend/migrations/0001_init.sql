@@ -128,6 +128,14 @@ create unique index files_hash_idx on files (hash) where status = 'available';
 -- The trash wipe looks up old trashed files.
 create index files_trashed_at_idx on files (trashed_at) where status = 'trashed';
 
+create table unreferenced_files (
+  file_id text primary key references files(id) on delete cascade,
+  scanned_at timestamptz not null
+);
+
+comment on table unreferenced_files is 'Result of the last unreferenced images scan: available files no column of the scanned database linked to.';
+comment on column unreferenced_files.scanned_at is 'When the scan started';
+
 -- Skip-reprocess lookup filters on original_hash (see find_record_by_source).
 create index files_original_hash_idx on files (original_hash);
 

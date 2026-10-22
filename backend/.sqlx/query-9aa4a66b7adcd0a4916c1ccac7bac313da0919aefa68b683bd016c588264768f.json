@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from unreferenced_files",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9aa4a66b7adcd0a4916c1ccac7bac313da0919aefa68b683bd016c588264768f"
+}

@@ -9,6 +9,7 @@ import AccountView from '@/views/AccountView.vue'
 import ImageView from '@/views/ImageView.vue'
 import BrowseView from '@/views/BrowseView.vue'
 import UsersView from '@/views/UsersView.vue'
+import MaintenanceView from '@/views/MaintenanceView.vue'
 import { getToken, isAdmin } from '@/services/session'
 
 const router = createRouter({
@@ -35,6 +36,7 @@ const router = createRouter({
     },
     { path: '/settings', name: 'Settings', component: SettingsView, meta: { requiresAdmin: true } },
     { path: '/users', name: 'Users', component: UsersView, meta: { requiresAdmin: true } },
+    { path: '/maintenance', name: 'Maintenance', component: MaintenanceView, meta: { requiresAdmin: true } },
     { path: '/users/:id', name: 'User', component: AccountView, meta: { requiresAdmin: true } },
     { path: '/account', name: 'Account', component: AccountView },
     { path: '/i/:id', name: 'Image', component: ImageView },
@@ -44,7 +46,6 @@ const router = createRouter({
 router.beforeEach((to) => {
   if (to.meta.public) return
   if (!getToken()) return '/login'
-  // Dashboard, settings and users are admin-only, like their APIs.
   if (to.meta.requiresAdmin && !isAdmin()) return '/upload'
 })
 

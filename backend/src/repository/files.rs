@@ -313,6 +313,141 @@ pub async fn list_page(
     .await?)
 }
 
+/// One of the last unreferenced images scan's images, plus the total row
+/// count (window function, as in `list_page`).
+pub struct UnreferencedImageRow {
+    pub id: String,
+    pub ext: String,
+    pub original_name: Option<String>,
+    pub size: i64,
+    pub width: i32,
+    pub height: i32,
+    pub has_thumbnail: bool,
+    pub views: i64,
+    pub uploader_username: String,
+    /// RFC 3339, UTC.
+    pub created_at: String,
+    pub total: i64,
+}
+
+/// One page of the last unreferenced images scan's images that are still
+/// available, in the given order, like `list_page`.
+pub async fn unreferenced_page(
+    pool: &PgPool,
+    offset: i64,
+    limit: i64,
+    sort_by: ImagesSortBy,
+    order: SortOrder,
+) -> Result<Vec<UnreferencedImageRow>> {
+    Ok(sqlx::query_as!(
+        UnreferencedImageRow,
+        "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail, \
+                f.views, u.username as uploader_username, \
+                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                  as \"created_at!\", \
+                count(*) over() as \"total!\" \
+         from files f \
+         join unreferenced_files on file_id = f.id \
+         join users u on u.id = f.uploaded_by_user_id \
+         where f.status = 'available' order by \
+           case when $3 = 'created_at' and $4 then f.created_at end asc, \
+           case when $3 = 'created_at' and not $4 then f.created_at end desc, \
+           case when $3 = 'size' and $4 then f.size end asc, \
+           case when $3 = 'size' and not $4 then f.size end desc, \
+           case when $3 = 'width' and $4 then f.width end asc, \
+           case when $3 = 'width' and not $4 then f.width end desc, \
+           case when $3 = 'height' and $4 then f.height end asc, \
+           case when $3 = 'height' and not $4 then f.height end desc, \
+           case when $3 = 'original_hash' and $4 then f.original_hash end asc, \
+           case when $3 = 'original_hash' and not $4 then f.original_hash end desc, \
+           case when $3 = 'views' and $4 then f.views end asc, \
+           case when $3 = 'views' and not $4 then f.views end desc, \
+           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc, \
+           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc, \
+           f.id desc \
+         offset $1 limit $2",
+        offset,
+        limit,
+        sort_by.as_sql(),
+        matches!(order, SortOrder::Asc),
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Number of the last unreferenced images scan's images still available; the
+/// count for an out-of-range page, where `unreferenced_page` returns no rows.
+pub async fn unreferenced_count(pool: &PgPool) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        "select count(*) as \"count!\" from files \
+         join unreferenced_files on file_id = id where status = 'available'"
+    )
+    .fetch_one(pool)
+    .await?)
+}
+
+/// Replace the unreferenced images scan result with the available files
+/// uploaded before `before` (unix seconds) whose id is not in `referenced`.
+/// Returns how many there are.
+pub async fn replace_unreferenced(
+    pool: &PgPool,
+    referenced: &[String],
+    before: f64,
+) -> Result<u64> {
+    let mut transaction = pool.begin().await?;
+    sqlx::query!("delete from unreferenced_files")
+        .execute(&mut *transaction)
+        .await?;
+    // `not in` a subquery is hashed, `<> all(array)` scans the array per row.
+    let inserted = sqlx::query!(
+        "insert into unreferenced_files (file_id, scanned_at) \
+         select id, to_timestamp($2) from files where status = 'available' \
+           and created_at < to_timestamp($2) and id not in (select unnest($1::text[]))",
+        referenced,
+        before
+    )
+    .execute(&mut *transaction)
+    .await?
+    .rows_affected();
+    transaction.commit().await?;
+    Ok(inserted)
+}
+
+/// When the last unreferenced images scan started.
+pub struct UnreferencedScanRow {
+    /// RFC 3339, UTC.
+    pub scanned_at: String,
+    /// Whether it started less than `max_age_hours` ago.
+    pub recent: bool,
+}
+
+/// The last unreferenced images scan, None when it found nothing.
+pub async fn unreferenced_scan(
+    pool: &PgPool,
+    max_age_hours: i32,
+) -> Result<Option<UnreferencedScanRow>> {
+    Ok(sqlx::query_as!(
+        UnreferencedScanRow,
+        "select to_char(min(scanned_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                  as \"scanned_at!\", \
+                min(scanned_at) > now() - make_interval(hours => $1) as \"recent!\" \
+         from unreferenced_files having count(*) > 0",
+        max_age_hours
+    )
+    .fetch_optional(pool)
+    .await?)
+}
+
+/// Ids of the last scan's unreferenced images that are still available.
+pub async fn unreferenced_ids(pool: &PgPool) -> Result<Vec<String>> {
+    Ok(sqlx::query_scalar!(
+        "select id from files join unreferenced_files on file_id = id \
+         where status = 'available' order by id"
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
 /// Number of files with the given status, limited to `uploader`'s when set; the
 /// count for an out-of-range page, where the window count in `list_page` returns no rows.
 pub async fn count(pool: &PgPool, status: ImagesStatus, uploader: Option<Uuid>) -> Result<i64> {

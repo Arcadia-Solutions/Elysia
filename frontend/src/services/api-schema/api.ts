@@ -455,6 +455,20 @@ export interface ResizeAction {
     'from': Array<number>;
     'to': Array<number>;
 }
+export interface ScanParams {
+    /**
+     * `postgres://`, `postgresql://`, `mysql://` or `mariadb://` url of the database holding the image links.
+     */
+    'database_url': string;
+    /**
+     * Skip these: `table` for all its text-like columns, or `table.column`. Empty scans every text-like column.
+     */
+    'exclude'?: Array<string>;
+    /**
+     * Hosts the links use, with an optional path prefix, e.g. `img.example.com` or `example.com/elysia`. A scheme and trailing slash are ignored.
+     */
+    'hosts': Array<string>;
+}
 export interface SetUserBannedRequest {
     'banned': boolean;
 }
@@ -566,6 +580,87 @@ export interface UnauthElysiaSettings {
      */
     'sso_provider_name'?: string | null;
 }
+/**
+ * One unreferenced image.
+ */
+export interface UnreferencedImage {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    /**
+     * Stored extension.
+     */
+    'ext': string;
+    'height': number;
+    'id': string;
+    'original_name'?: string | null;
+    /**
+     * Bytes on disk.
+     */
+    'size': number;
+    'thumbnail_url': string;
+    'uploader_username': string;
+    'views': number;
+    'width': number;
+}
+/**
+ * A page of the unreferenced images list.
+ */
+export interface UnreferencedImagesPage {
+    'images': Array<UnreferencedImage>;
+    'per_page': number;
+    /**
+     * `server.public_url` without its scheme, the host links use by default. Empty when it is not set and links are relative to the frontend.
+     */
+    'public_host': string;
+    /**
+     * When the scan started, RFC 3339, UTC. None when it found nothing.
+     */
+    'scanned_at'?: string | null;
+    'total': number;
+}
+/**
+ * State of the current or last scan or trash run.
+ */
+export interface UnreferencedProgress {
+    /**
+     * Tables scanned, or images trashed, so far.
+     */
+    'done': number;
+    /**
+     * Why the last run stopped early, if it did.
+     */
+    'error'?: string | null;
+    /**
+     * Distinct image ids linked from the database by the last finished scan.
+     */
+    'referenced_images': number;
+    'running': boolean;
+    /**
+     * Text-like columns read by the last finished scan.
+     */
+    'scanned_columns': number;
+    'task': UnreferencedTask;
+    /**
+     * Tables to scan, or images to trash.
+     */
+    'total': number;
+}
+
+
+/**
+ * What a maintenance run does.
+ */
+
+export const UnreferencedTask = {
+    Scan: 'scan',
+    Trash: 'trash'
+} as const;
+
+export type UnreferencedTask = typeof UnreferencedTask[keyof typeof UnreferencedTask];
+
+
 /**
  * Per-upload processing options (query string, shared by both upload routes).
  */
@@ -949,6 +1044,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Progress of the current or last unreferenced images scan or trash run.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUnreferencedProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/unreferenced-images/progress`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * One user\'s profile. Admin only.
          * @param {string} id User id
          * @param {*} [options] Override http request option.
@@ -1060,6 +1184,56 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * A page of the last scan\'s unreferenced images that are still available.
+         * @param {number} page 1-based page number.
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listUnreferencedImages: async (page: number, sortBy: ImagesSortBy, order: SortOrder, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listUnreferencedImages', 'page', page)
+            // verify required parameter 'sortBy' is not null or undefined
+            assertParamExists('listUnreferencedImages', 'sortBy', sortBy)
+            // verify required parameter 'order' is not null or undefined
+            assertParamExists('listUnreferencedImages', 'order', order)
+            const localVarPath = `/api/maintenance/unreferenced-images`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (sortBy !== undefined) {
+                localVarQueryParameter['sort_by'] = sortBy;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
 
 
     
@@ -1321,6 +1495,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {ScanParams} scanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        scanUnreferencedImages: async (scanParams: ScanParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'scanParams' is not null or undefined
+            assertParamExists('scanUnreferencedImages', 'scanParams', scanParams)
+            const localVarPath = `/api/maintenance/unreferenced-images/scan`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(scanParams, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1608,6 +1817,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashUnreferencedImages: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/unreferenced-images/trash`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {File} file 
          * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
@@ -1813,6 +2051,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Progress of the current or last unreferenced images scan or trash run.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getUnreferencedProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getUnreferencedProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getUnreferencedProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * One user\'s profile. Admin only.
          * @param {string} id User id
          * @param {*} [options] Override http request option.
@@ -1849,6 +2098,20 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.listApiKeys(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listApiKeys']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * A page of the last scan\'s unreferenced images that are still available.
+         * @param {number} page 1-based page number.
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listUnreferencedImages(page: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listUnreferencedImages(page, sortBy, order, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listUnreferencedImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -1935,6 +2198,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.revokeApiKey(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.revokeApiKey']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {ScanParams} scanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.scanUnreferencedImages(scanParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.scanUnreferencedImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2032,6 +2307,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(trashImagesRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.trashImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async trashUnreferencedImages(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.trashUnreferencedImages(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.trashUnreferencedImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2141,6 +2427,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.getPublicElysiaSettings(options).then((request) => request(axios, basePath));
         },
         /**
+         * Progress of the current or last unreferenced images scan or trash run.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUnreferencedProgress(options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedProgress> {
+            return localVarFp.getUnreferencedProgress(options).then((request) => request(axios, basePath));
+        },
+        /**
          * One user\'s profile. Admin only.
          * @param {string} id User id
          * @param {*} [options] Override http request option.
@@ -2169,6 +2463,17 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         listApiKeys(options?: RawAxiosRequestConfig): AxiosPromise<Array<ApiKeySummary>> {
             return localVarFp.listApiKeys(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * A page of the last scan\'s unreferenced images that are still available.
+         * @param {number} page 1-based page number.
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listUnreferencedImages(page: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedImagesPage> {
+            return localVarFp.listUnreferencedImages(page, sortBy, order, options).then((request) => request(axios, basePath));
         },
         /**
          * Users, local and SSO, optionally searched by username or email. Admin only.
@@ -2234,6 +2539,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         revokeApiKey(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.revokeApiKey(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {ScanParams} scanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.scanUnreferencedImages(scanParams, options).then((request) => request(axios, basePath));
         },
         /**
          * Served straight from disk, without a database lookup.
@@ -2307,6 +2621,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.trashImages(trashImagesRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashUnreferencedImages(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.trashUnreferencedImages(options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2415,6 +2737,15 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * Progress of the current or last unreferenced images scan or trash run.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getUnreferencedProgress(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getUnreferencedProgress(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * One user\'s profile. Admin only.
      * @param {string} id User id
      * @param {*} [options] Override http request option.
@@ -2445,6 +2776,18 @@ export class ElysiaApi extends BaseAPI {
      */
     public listApiKeys(options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).listApiKeys(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * A page of the last scan\'s unreferenced images that are still available.
+     * @param {number} page 1-based page number.
+     * @param {ImagesSortBy} sortBy 
+     * @param {SortOrder} order 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listUnreferencedImages(page: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).listUnreferencedImages(page, sortBy, order, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2517,6 +2860,16 @@ export class ElysiaApi extends BaseAPI {
      */
     public revokeApiKey(id: string, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).revokeApiKey(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * @param {ScanParams} scanParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).scanUnreferencedImages(scanParams, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2598,6 +2951,15 @@ export class ElysiaApi extends BaseAPI {
      */
     public trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).trashImages(trashImagesRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public trashUnreferencedImages(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).trashUnreferencedImages(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select to_char(min(scanned_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"scanned_at!\", min(scanned_at) > now() - make_interval(hours => $1) as \"recent!\" from unreferenced_files having count(*) > 0",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "scanned_at!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "recent!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "2a863571c637d14afa8a0ae19e9910aa0a0c1dedd8eab64ed1e5cc387dc03879"
+}
