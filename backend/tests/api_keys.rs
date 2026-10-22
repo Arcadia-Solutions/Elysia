@@ -232,7 +232,7 @@ async fn admin_keys_reach_neither_admin_routes_nor_password_change(pool: PgPool)
     .await;
     let list_users_request = |token: &str| {
         actix_test::TestRequest::get()
-            .uri("/api/users?page=1&sort_by=username&order=asc")
+            .uri("/api/users?page=1&page_size=50&sort_by=username&order=asc")
             .insert_header(("Authorization", format!("Bearer {token}")))
             .to_request()
     };

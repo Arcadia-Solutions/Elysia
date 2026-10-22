@@ -262,6 +262,9 @@ pub struct ImagesQuery {
     /// 1-based page number.
     #[param(value_type = i64, minimum = 1)]
     pub page: NonZeroU32,
+    #[serde(deserialize_with = "crate::repository::page_size")]
+    #[param(minimum = 1, maximum = 500)]
+    pub page_size: u32,
     pub sort_by: ImagesSortBy,
     pub order: SortOrder,
     /// Available or trashed images.

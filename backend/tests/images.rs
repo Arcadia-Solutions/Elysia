@@ -7,12 +7,12 @@ use sqlx::PgPool;
 use common::page;
 use elysia::handlers::images::parse_filename;
 use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder};
-use elysia::services::files::{IMAGES_PER_PAGE, list_images};
+use elysia::services::files::list_images;
 use elysia::services::views::ViewCounter;
 
 #[sqlx::test(migrations = "./migrations")]
 async fn paginates_with_total(pool: PgPool) {
-    let per_page = IMAGES_PER_PAGE as usize;
+    let per_page = page(1).page_size as usize;
     let uploader = common::test_user(&pool, "browser").await.0.id;
     common::seed_files(&pool, uploader, "id", per_page + 1, 1).await;
 

@@ -432,13 +432,14 @@ pub async fn start_trash(pool: PgPool, storage: Data<Storage>, admin_id: Uuid) -
 pub async fn list_unreferenced(
     pool: &PgPool,
     page: NonZeroU32,
+    page_size: u32,
     sort_by: ImagesSortBy,
     order: SortOrder,
 ) -> Result<(Vec<UnreferencedImageRow>, i64, Option<String>)> {
     let (rows, total) = paginate(
         page,
-        UNREFERENCED_PER_PAGE,
-        |offset| files::unreferenced_page(pool, offset, UNREFERENCED_PER_PAGE, sort_by, order),
+        page_size,
+        |offset, limit| files::unreferenced_page(pool, offset, limit, sort_by, order),
         files::unreferenced_count(pool),
         |row| row.total,
     )

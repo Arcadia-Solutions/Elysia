@@ -10,8 +10,8 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::middlewares::AuthUser;
 use crate::repository::files::{ImagesQuery, ImagesStatus};
-use crate::repository::users;
-use crate::services::files::{self, IMAGES_PER_PAGE};
+use crate::repository::{PaginatedResults, users};
+use crate::services::files;
 
 /// One image in a browse page.
 #[derive(Serialize, ToSchema)]
@@ -22,14 +22,6 @@ pub struct ImageSummary {
     pub thumbnail_url: String,
 }
 
-/// A page of stored images in the requested order.
-#[derive(Serialize, ToSchema)]
-pub struct ImagesPage {
-    pub images: Vec<ImageSummary>,
-    pub per_page: i64,
-    pub total: i64,
-}
-
 #[utoipa::path(
     tag = "elysia",
     get,
@@ -38,7 +30,7 @@ pub struct ImagesPage {
     params(ImagesQuery),
     security(("bearer" = [])),
     responses(
-        (status = 200, description = "A page of stored images", body = ImagesPage),
+        (status = 200, description = "A page of stored images", body = PaginatedResults<ImageSummary>),
         (status = 401, description = "Missing or invalid session"),
         (status = 403, description = "Not an admin, and asked for trashed images or filtered by username"),
     )
@@ -57,11 +49,14 @@ pub async fn images(
                 Some(id) => Some(id),
                 // No such user: nothing uploaded.
                 None => {
-                    return Ok(HttpResponse::Ok().json(ImagesPage {
-                        images: Vec::new(),
-                        per_page: IMAGES_PER_PAGE,
-                        total: 0,
-                    }));
+                    return Ok(
+                        HttpResponse::Ok().json(PaginatedResults::<ImageSummary>::new(
+                            Vec::new(),
+                            query.page,
+                            query.page_size,
+                            0,
+                        )),
+                    );
                 }
             }
         }
@@ -84,9 +79,10 @@ pub async fn images(
             id: row.id,
         })
         .collect();
-    Ok(HttpResponse::Ok().json(ImagesPage {
+    Ok(HttpResponse::Ok().json(PaginatedResults::new(
         images,
-        per_page: IMAGES_PER_PAGE,
+        query.page,
+        query.page_size,
         total,
-    }))
+    )))
 }

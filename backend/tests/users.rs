@@ -8,7 +8,7 @@ use actix_web::test as actix_test;
 use actix_web::web::Data;
 use sqlx::PgPool;
 
-use elysia::repository::users;
+use elysia::repository::{MAX_PAGE_SIZE, users};
 use elysia::routes;
 use elysia::services::auth as auth_service;
 
@@ -44,15 +44,15 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
     // Sorted by upload count, and searched by username or email ignoring case.
     for (query, expected) in [
         (
-            "page=1&sort_by=uploads&order=desc",
+            "page=1&page_size=50&sort_by=uploads&order=desc",
             vec!["local", "sso", "admin"],
         ),
         (
-            "page=1&sort_by=username&order=asc&search=L",
+            "page=1&page_size=50&sort_by=username&order=asc&search=L",
             vec!["admin", "local"],
         ),
         (
-            "page=1&sort_by=username&order=asc&search=EXAMPLE.com",
+            "page=1&page_size=50&sort_by=username&order=asc&search=EXAMPLE.com",
             vec!["admin", "local"],
         ),
     ] {
@@ -66,8 +66,8 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
         )
         .await;
         let listed: serde_json::Value = actix_test::read_body_json(response).await;
-        assert_eq!(listed["total"], expected.len(), "{query}");
-        let usernames: Vec<&str> = listed["users"]
+        assert_eq!(listed["total_items"], expected.len(), "{query}");
+        let usernames: Vec<&str> = listed["results"]
             .as_array()
             .unwrap()
             .iter()
@@ -75,8 +75,22 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
             .collect();
         assert_eq!(usernames, expected, "{query}");
         if query.contains("sort_by=uploads") {
-            assert_eq!(listed["users"][0]["uploads"], 2);
+            assert_eq!(listed["results"][0]["uploads"], 2);
         }
+    }
+
+    // Page sizes outside 1..=MAX_PAGE_SIZE are refused.
+    for page_size in [0, MAX_PAGE_SIZE + 1] {
+        let response = actix_test::call_service(
+            &app,
+            call(
+                actix_test::TestRequest::get(),
+                format!("/api/users?page=1&page_size={page_size}&sort_by=username&order=asc"),
+                &admin_token,
+            ),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{page_size}");
     }
 
     // Authenticated requests stamp `last_seen`.
@@ -132,7 +146,7 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
     // The username filter shows one user's uploads, to admins only.
     let browse = |username: &str| {
         format!(
-            "/api/images?page=1&sort_by=created_at&order=desc&status=available&username={username}"
+            "/api/images?page=1&page_size=50&sort_by=created_at&order=desc&status=available&username={username}"
         )
     };
     for (username, total) in [("local", 2), ("sso", 1), ("nobody", 0)] {
@@ -146,7 +160,7 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
         )
         .await;
         let page: serde_json::Value = actix_test::read_body_json(response).await;
-        assert_eq!(page["total"], total, "{username}");
+        assert_eq!(page["total_items"], total, "{username}");
     }
 
     // A banned user's session is refused; a regular user gets no admin routes.
@@ -158,7 +172,7 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     users::set_banned(&pool, local.id, false).await.unwrap();
     for uri in [
-        "/api/users?page=1&sort_by=username&order=asc".to_string(),
+        "/api/users?page=1&page_size=50&sort_by=username&order=asc".to_string(),
         browse("sso"),
     ] {
         let response = actix_test::call_service(

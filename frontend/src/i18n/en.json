@@ -340,5 +340,14 @@
       "format": "Format",
       "views": "Views"
     }
+  },
+  "pagination": {
+    "label": "Pagination",
+    "first": "First page",
+    "prev": "Previous page",
+    "next": "Next page",
+    "last": "Last page",
+    "page_size": "Page size",
+    "per_page": "{count} per page"
   }
 }

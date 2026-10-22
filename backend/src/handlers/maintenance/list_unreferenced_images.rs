@@ -11,9 +11,10 @@ use utoipa::{IntoParams, ToSchema};
 use crate::config::Config;
 use crate::error::Result;
 use crate::middlewares::AuthUser;
+use crate::repository::PaginatedResults;
 use crate::repository::files::{ImagesSortBy, SortOrder};
 use crate::services::files;
-use crate::services::maintenance::{self, UNREFERENCED_PER_PAGE};
+use crate::services::maintenance;
 
 /// Unreferenced images page query.
 #[derive(Deserialize, IntoParams)]
@@ -22,6 +23,9 @@ pub struct UnreferencedImagesQuery {
     /// 1-based page number.
     #[param(value_type = i64, minimum = 1)]
     pub page: NonZeroU32,
+    #[serde(deserialize_with = "crate::repository::page_size")]
+    #[param(minimum = 1, maximum = 500)]
+    pub page_size: u32,
     pub sort_by: ImagesSortBy,
     pub order: SortOrder,
 }
@@ -47,9 +51,8 @@ pub struct UnreferencedImage {
 /// A page of the unreferenced images list.
 #[derive(Serialize, ToSchema)]
 pub struct UnreferencedImagesPage {
-    pub images: Vec<UnreferencedImage>,
-    pub per_page: i64,
-    pub total: i64,
+    #[serde(flatten)]
+    pub page: PaginatedResults<UnreferencedImage>,
     /// When the scan started, RFC 3339, UTC. None when it found nothing.
     pub scanned_at: Option<String>,
     /// `server.public_url` without its scheme, the host links use by default.
@@ -77,33 +80,40 @@ pub async fn list_unreferenced_images(
     query: Query<UnreferencedImagesQuery>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
-    let (rows, total, scanned_at) =
-        maintenance::list_unreferenced(pool.get_ref(), query.page, query.sort_by, query.order)
-            .await?;
+    let (rows, total, scanned_at) = maintenance::list_unreferenced(
+        pool.get_ref(),
+        query.page,
+        query.page_size,
+        query.sort_by,
+        query.order,
+    )
+    .await?;
     let public_url = &config.server.public_url;
     Ok(HttpResponse::Ok().json(UnreferencedImagesPage {
-        images: rows
-            .into_iter()
-            .map(|row| UnreferencedImage {
-                thumbnail_url: files::thumbnail_url(
-                    public_url,
-                    &row.id,
-                    &row.ext,
-                    row.has_thumbnail,
-                ),
-                id: row.id,
-                original_name: row.original_name,
-                ext: row.ext,
-                size: row.size,
-                width: row.width,
-                height: row.height,
-                views: row.views,
-                uploader_username: row.uploader_username,
-                created_at: row.created_at,
-            })
-            .collect(),
-        per_page: UNREFERENCED_PER_PAGE,
-        total,
+        page: PaginatedResults::new(
+            rows.into_iter()
+                .map(|row| UnreferencedImage {
+                    thumbnail_url: files::thumbnail_url(
+                        public_url,
+                        &row.id,
+                        &row.ext,
+                        row.has_thumbnail,
+                    ),
+                    id: row.id,
+                    original_name: row.original_name,
+                    ext: row.ext,
+                    size: row.size,
+                    width: row.width,
+                    height: row.height,
+                    views: row.views,
+                    uploader_username: row.uploader_username,
+                    created_at: row.created_at,
+                })
+                .collect(),
+            query.page,
+            query.page_size,
+            total,
+        ),
         scanned_at,
         public_host: public_url
             .split_once("://")

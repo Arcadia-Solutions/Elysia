@@ -59,9 +59,6 @@ pub fn image_url(public_url: &str, id: &str, ext: &str) -> String {
     format!("{public_url}/i/{id}.{ext}")
 }
 
-/// Images returned per browse page.
-pub const IMAGES_PER_PAGE: i64 = 100;
-
 /// Thumbnail URL for a trashed file, served admin-only from the trash.
 pub fn trashed_thumbnail_url(public_url: &str, id: &str, ext: &str) -> String {
     format!("{public_url}/api/images/trash/{id}.{ext}")
@@ -84,8 +81,8 @@ pub async fn list_images(
 ) -> Result<(Vec<files::ImageListRow>, i64)> {
     paginate(
         query.page,
-        IMAGES_PER_PAGE,
-        |offset| files::list_page(pool, offset, IMAGES_PER_PAGE, query, uploader),
+        query.page_size,
+        |offset, limit| files::list_page(pool, offset, limit, query, uploader),
         files::count(pool, query.status, uploader),
         |row| row.total,
     )

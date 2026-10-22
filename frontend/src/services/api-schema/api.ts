@@ -251,14 +251,6 @@ export interface ImageSummary {
     'thumbnail_url': string;
 }
 /**
- * A page of stored images in the requested order.
- */
-export interface ImagesPage {
-    'images': Array<ImageSummary>;
-    'per_page': number;
-    'total': number;
-}
-/**
  * Column the browse page is sorted by.
  */
 
@@ -353,6 +345,93 @@ export interface MetadataResponse {
      */
     'views': number;
     'width': number;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
+export interface PaginatedResultsImageSummary {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsImageSummaryResultsInner>;
+    'total_items': number;
+}
+/**
+ * One image in a browse page.
+ */
+export interface PaginatedResultsImageSummaryResultsInner {
+    'id': string;
+    /**
+     * Thumbnail URL: from `/t/`, or for a trashed image from the admin-only trash, fetched with the session token.
+     */
+    'thumbnail_url': string;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
+export interface PaginatedResultsUnreferencedImage {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsUnreferencedImageResultsInner>;
+    'total_items': number;
+}
+/**
+ * One unreferenced image.
+ */
+export interface PaginatedResultsUnreferencedImageResultsInner {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    /**
+     * Stored extension.
+     */
+    'ext': string;
+    'height': number;
+    'id': string;
+    'original_name'?: string | null;
+    /**
+     * Bytes on disk.
+     */
+    'size': number;
+    'thumbnail_url': string;
+    'uploader_username': string;
+    'views': number;
+    'width': number;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
+export interface PaginatedResultsUserSummary {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsUserSummaryResultsInner>;
+    'total_items': number;
+}
+/**
+ * A user as the admin user list and profile page show it.
+ */
+export interface PaginatedResultsUserSummaryResultsInner {
+    'banned': boolean;
+    /**
+     * Account creation time as a UTC ISO-8601 string.
+     */
+    'created_at': string;
+    'email'?: string | null;
+    'id': string;
+    'is_admin': boolean;
+    /**
+     * Last authenticated API request as a UTC ISO-8601 string; null if never.
+     */
+    'last_seen'?: string | null;
+    /**
+     * `local` or `sso`.
+     */
+    'provider': string;
+    /**
+     * Available (not trashed) files the user uploaded.
+     */
+    'uploads': number;
+    'username': string;
 }
 /**
  * Totals for one step of the stats series.
@@ -581,35 +660,13 @@ export interface UnauthElysiaSettings {
     'sso_provider_name'?: string | null;
 }
 /**
- * One unreferenced image.
- */
-export interface UnreferencedImage {
-    /**
-     * RFC 3339, UTC.
-     */
-    'created_at': string;
-    /**
-     * Stored extension.
-     */
-    'ext': string;
-    'height': number;
-    'id': string;
-    'original_name'?: string | null;
-    /**
-     * Bytes on disk.
-     */
-    'size': number;
-    'thumbnail_url': string;
-    'uploader_username': string;
-    'views': number;
-    'width': number;
-}
-/**
  * A page of the unreferenced images list.
  */
 export interface UnreferencedImagesPage {
-    'images': Array<UnreferencedImage>;
-    'per_page': number;
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsUnreferencedImageResultsInner>;
+    'total_items': number;
     /**
      * `server.public_url` without its scheme, the host links use by default. Empty when it is not set and links are relative to the frontend.
      */
@@ -618,7 +675,6 @@ export interface UnreferencedImagesPage {
      * When the scan started, RFC 3339, UTC. None when it found nothing.
      */
     'scanned_at'?: string | null;
-    'total': number;
 }
 /**
  * State of the current or last scan or trash run.
@@ -740,17 +796,6 @@ export interface UserSummary {
      */
     'uploads': number;
     'username': string;
-}
-/**
- * A page of users in the requested order.
- */
-export interface UsersPage {
-    'per_page': number;
-    /**
-     * Users matching the search, across all pages.
-     */
-    'total': number;
-    'users': Array<UserSummary>;
 }
 /**
  * Column the user list is sorted by.
@@ -1108,6 +1153,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
@@ -1115,9 +1161,11 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images: async (page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        images: async (page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'page' is not null or undefined
             assertParamExists('images', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('images', 'pageSize', pageSize)
             // verify required parameter 'sortBy' is not null or undefined
             assertParamExists('images', 'sortBy', sortBy)
             // verify required parameter 'order' is not null or undefined
@@ -1138,6 +1186,10 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (page !== undefined) {
                 localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
             }
 
             if (sortBy !== undefined) {
@@ -1199,14 +1251,17 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listUnreferencedImages: async (page: number, sortBy: ImagesSortBy, order: SortOrder, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listUnreferencedImages: async (page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'page' is not null or undefined
             assertParamExists('listUnreferencedImages', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listUnreferencedImages', 'pageSize', pageSize)
             // verify required parameter 'sortBy' is not null or undefined
             assertParamExists('listUnreferencedImages', 'sortBy', sortBy)
             // verify required parameter 'order' is not null or undefined
@@ -1225,6 +1280,10 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (page !== undefined) {
                 localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
             }
 
             if (sortBy !== undefined) {
@@ -1249,15 +1308,18 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * Users, local and SSO, optionally searched by username or email. Admin only.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {UsersSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {string} [search] Only users whose username or email contains this, ignoring case.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listUsers: async (page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listUsers: async (page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'page' is not null or undefined
             assertParamExists('listUsers', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listUsers', 'pageSize', pageSize)
             // verify required parameter 'sortBy' is not null or undefined
             assertParamExists('listUsers', 'sortBy', sortBy)
             // verify required parameter 'order' is not null or undefined
@@ -1276,6 +1338,10 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (page !== undefined) {
                 localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
             }
 
             if (search !== undefined) {
@@ -1502,7 +1568,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2076,6 +2142,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         /**
          * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
@@ -2083,8 +2150,8 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ImagesPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, sortBy, order, status, username, options);
+        async images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsImageSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, pageSize, sortBy, order, status, username, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -2103,13 +2170,14 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listUnreferencedImages(page: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedImagesPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listUnreferencedImages(page, sortBy, order, options);
+        async listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listUnreferencedImages(page, pageSize, sortBy, order, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listUnreferencedImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -2117,14 +2185,15 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         /**
          * Users, local and SSO, optionally searched by username or email. Admin only.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {UsersSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {string} [search] Only users whose username or email contains this, ignoring case.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listUsers(page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UsersPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listUsers(page, sortBy, order, search, options);
+        async listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsUserSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listUsers(page, pageSize, sortBy, order, search, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listUsers']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -2201,7 +2270,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2446,6 +2515,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         /**
          * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
@@ -2453,8 +2523,8 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<ImagesPage> {
-            return localVarFp.images(page, sortBy, order, status, username, options).then((request) => request(axios, basePath));
+        images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsImageSummary> {
+            return localVarFp.images(page, pageSize, sortBy, order, status, username, options).then((request) => request(axios, basePath));
         },
         /**
          * The caller\'s API keys, revoked and expired ones included, newest first.
@@ -2467,25 +2537,27 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listUnreferencedImages(page: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedImagesPage> {
-            return localVarFp.listUnreferencedImages(page, sortBy, order, options).then((request) => request(axios, basePath));
+        listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedImagesPage> {
+            return localVarFp.listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(axios, basePath));
         },
         /**
          * Users, local and SSO, optionally searched by username or email. Admin only.
          * @param {number} page 1-based page number.
+         * @param {number} pageSize 
          * @param {UsersSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {string} [search] Only users whose username or email contains this, ignoring case.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listUsers(page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): AxiosPromise<UsersPage> {
-            return localVarFp.listUsers(page, sortBy, order, search, options).then((request) => request(axios, basePath));
+        listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsUserSummary> {
+            return localVarFp.listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2541,7 +2613,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.revokeApiKey(id, options).then((request) => request(axios, basePath));
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2758,6 +2830,7 @@ export class ElysiaApi extends BaseAPI {
     /**
      * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
      * @param {number} page 1-based page number.
+     * @param {number} pageSize 
      * @param {ImagesSortBy} sortBy 
      * @param {SortOrder} order 
      * @param {ImagesStatus} status Available or trashed images.
@@ -2765,8 +2838,8 @@ export class ElysiaApi extends BaseAPI {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public images(page: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).images(page, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
+    public images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).images(page, pageSize, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2781,26 +2854,28 @@ export class ElysiaApi extends BaseAPI {
     /**
      * A page of the last scan\'s unreferenced images that are still available.
      * @param {number} page 1-based page number.
+     * @param {number} pageSize 
      * @param {ImagesSortBy} sortBy 
      * @param {SortOrder} order 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public listUnreferencedImages(page: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).listUnreferencedImages(page, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+    public listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * Users, local and SSO, optionally searched by username or email. Admin only.
      * @param {number} page 1-based page number.
+     * @param {number} pageSize 
      * @param {UsersSortBy} sortBy 
      * @param {SortOrder} order 
      * @param {string} [search] Only users whose username or email contains this, ignoring case.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public listUsers(page: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).listUsers(page, sortBy, order, search, options).then((request) => request(this.axios, this.basePath));
+    public listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2863,7 +2938,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under `server.public_url` (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
      * @param {ScanParams} scanParams 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

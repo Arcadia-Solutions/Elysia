@@ -345,6 +345,7 @@ pub fn page(page: u32) -> elysia::repository::files::ImagesQuery {
     use elysia::repository::files::{ImagesQuery, ImagesSortBy, ImagesStatus, SortOrder};
     ImagesQuery {
         page: std::num::NonZeroU32::new(page).unwrap(),
+        page_size: 100,
         sort_by: ImagesSortBy::CreatedAt,
         order: SortOrder::Desc,
         status: ImagesStatus::Available,

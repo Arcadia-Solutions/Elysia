@@ -376,9 +376,6 @@ impl UsersSortBy {
     }
 }
 
-/// Users returned per list page.
-pub const USERS_PER_PAGE: i64 = 50;
-
 /// User list query.
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
@@ -386,6 +383,9 @@ pub struct UsersQuery {
     /// 1-based page number.
     #[param(value_type = i64, minimum = 1)]
     pub page: NonZeroU32,
+    #[serde(deserialize_with = "crate::repository::page_size")]
+    #[param(minimum = 1, maximum = 500)]
+    pub page_size: u32,
     /// Only users whose username or email contains this, ignoring case.
     pub search: Option<String>,
     pub sort_by: UsersSortBy,
@@ -433,8 +433,8 @@ pub async fn list(pool: &PgPool, query: &UsersQuery) -> Result<Vec<UserSummary>>
         query.search(),
         query.sort_by.as_sql(),
         matches!(query.order, SortOrder::Asc),
-        (i64::from(query.page.get()) - 1) * USERS_PER_PAGE,
-        USERS_PER_PAGE,
+        (i64::from(query.page.get()) - 1) * i64::from(query.page_size),
+        i64::from(query.page_size),
     )
     .fetch_all(pool)
     .await?)

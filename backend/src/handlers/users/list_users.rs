@@ -2,22 +2,12 @@ use actix_web::{
     HttpResponse,
     web::{Data, Query},
 };
-use serde::Serialize;
 use sqlx::PgPool;
-use utoipa::ToSchema;
 
 use crate::error::Result;
 use crate::middlewares::AuthUser;
-use crate::repository::users::{self, USERS_PER_PAGE, UserSummary, UsersQuery};
-
-/// A page of users in the requested order.
-#[derive(Serialize, ToSchema)]
-pub struct UsersPage {
-    pub users: Vec<UserSummary>,
-    pub per_page: i64,
-    /// Users matching the search, across all pages.
-    pub total: i64,
-}
+use crate::repository::PaginatedResults;
+use crate::repository::users::{self, UserSummary, UsersQuery};
 
 #[utoipa::path(
     tag = "elysia",
@@ -27,7 +17,7 @@ pub struct UsersPage {
     params(UsersQuery),
     security(("bearer" = [])),
     responses(
-        (status = 200, description = "A page of matching users", body = UsersPage),
+        (status = 200, description = "A page of matching users", body = PaginatedResults<UserSummary>),
         (status = 401, description = "Missing or invalid session"),
         (status = 403, description = "Not an admin"),
     )
@@ -42,9 +32,10 @@ pub async fn list_users(
         users::list(pool.get_ref(), &query),
         users::count_users(pool.get_ref(), query.search()),
     )?;
-    Ok(HttpResponse::Ok().json(UsersPage {
+    Ok(HttpResponse::Ok().json(PaginatedResults::new(
         users,
-        per_page: USERS_PER_PAGE,
+        query.page,
+        query.page_size,
         total,
-    }))
+    )))
 }

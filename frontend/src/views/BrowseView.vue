@@ -41,6 +41,10 @@
         :aria-label="$t(`browse.order.${order}`)"
         @click="setSort(sortBy, order === SortOrder.Asc ? SortOrder.Desc : SortOrder.Asc)"
       />
+      <PageSizeSelect
+        :modelValue="pageSize"
+        @update:modelValue="(size: number) => router.push({ query: { ...route.query, page: undefined, page_size: size } })"
+      />
       <template v-if="selected.size > 0">
         <Button :label="$t('trash.delete', { count: selected.size }, selected.size)" icon="pi pi-trash" size="small" severity="danger" @click="trashSelected" />
         <Button :label="$t('browse.clear_selection')" icon="pi pi-times" size="small" severity="secondary" @click="selected.clear()" />
@@ -57,7 +61,7 @@
     </div>
     <FixturesDialog v-if="isAdmin()" v-model:visible="fixturesVisible" @done="load(1)" />
     <p v-if="total === 0" class="empty">{{ $t(`browse.empty.${status}`) }}</p>
-    <template v-else>
+    <PaginatedResults v-else :page :pageSize :totalItems="total" @changePage="(page: number) => router.push({ query: { ...route.query, page } })">
       <div class="grid" :class="{ selecting: selected.size > 0 }">
         <div v-for="image in images" :key="image.id" class="cell" :class="{ selected: selected.has(image.id) }">
           <img v-if="status === ImagesStatus.Trashed" :src="trashedThumbnails[image.id]" :alt="image.id" />
@@ -80,8 +84,7 @@
           </button>
         </div>
       </div>
-      <Paginator :rows="perPage" :totalRecords="total" :first="(page - 1) * perPage" @page="onPage" />
-    </template>
+    </PaginatedResults>
   </div>
 </template>
 
@@ -89,24 +92,24 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import Paginator, { type PageState } from 'primevue/paginator'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
 import AutoComplete, { type AutoCompleteCompleteEvent, type AutoCompleteOptionSelectEvent } from 'primevue/autocomplete'
 import FixturesDialog from '@/components/FixturesDialog.vue'
+import PageSizeSelect from '@/components/PageSizeSelect.vue'
+import PaginatedResults from '@/components/PaginatedResults.vue'
 import http, { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
-import { ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy, type ImageSummary } from '@/services/api-schema'
+import { ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
-const images = ref<ImageSummary[]>([])
+const images = ref<PaginatedResultsImageSummaryResultsInner[]>([])
 const page = ref(1)
-const perPage = ref(100)
 const total = ref(0)
 const fixturesVisible = ref(false)
 // Selection survives page changes, so images from several pages can go at once.
@@ -119,6 +122,7 @@ const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) 
 const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)
 const status = computed(() => (route.query.status as ImagesStatus | undefined) ?? ImagesStatus.Available)
 const username = computed(() => route.query.username as string | undefined)
+const pageSize = computed(() => Number(route.query.page_size) || 100)
 const usernameInput = ref(username.value ?? '')
 const usernameSuggestions = ref<string[]>([])
 const usernamesLoading = ref(false)
@@ -127,9 +131,9 @@ watch(username, (value) => (usernameInput.value = value ?? ''))
 const suggestUsernames = (search: string) => {
   usernamesLoading.value = true
   api
-    .listUsers(1, UsersSortBy.Username, SortOrder.Asc, search.trim())
+    .listUsers(1, 10, UsersSortBy.Username, SortOrder.Asc, search.trim())
     .then((response) => {
-      usernameSuggestions.value = response.data.users.slice(0, 10).map((user) => user.username)
+      usernameSuggestions.value = response.data.results.map((user) => user.username)
     })
     .finally(() => {
       usernamesLoading.value = false
@@ -151,12 +155,11 @@ const loadTrashedThumbnails = () => {
 
 const load = (target: number) => {
   api
-    .images(target, sortBy.value, order.value, status.value, username.value)
+    .images(target, pageSize.value, sortBy.value, order.value, status.value, username.value)
     .then((response) => {
-      images.value = response.data.images
-      page.value = target
-      perPage.value = response.data.per_page
-      total.value = response.data.total
+      images.value = response.data.results
+      page.value = response.data.page
+      total.value = response.data.total_items
       loadTrashedThumbnails()
     })
     .catch(() => {
@@ -166,7 +169,7 @@ const load = (target: number) => {
 
 // A new order starts back at the first page.
 const setSort = (sort_by: ImagesSortBy, order: SortOrder) =>
-  router.push({ query: { status: route.query.status, username: route.query.username, sort_by, order } })
+  router.push({ query: { status: route.query.status, username: route.query.username, page_size: route.query.page_size, sort_by, order } })
 
 const toggleSelected = (id: string) => {
   if (!selected.value.delete(id)) selected.value.add(id)
@@ -189,8 +192,6 @@ const emptyTrash = () => {
     load(1)
   })
 }
-
-const onPage = (event: PageState) => router.push({ query: { ...route.query, page: event.page + 1 } })
 
 watch(
   () => route.query,

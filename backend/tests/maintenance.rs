@@ -52,7 +52,7 @@ async fn finished() -> UnreferencedProgress {
 
 async fn unreferenced_ids(pool: &PgPool) -> Vec<String> {
     let page = NonZeroU32::new(1).unwrap();
-    let (rows, _, _) = list_unreferenced(pool, page, ImagesSortBy::CreatedAt, SortOrder::Desc)
+    let (rows, _, _) = list_unreferenced(pool, page, 50, ImagesSortBy::CreatedAt, SortOrder::Desc)
         .await
         .unwrap();
     rows.into_iter().map(|row| row.id).collect()
