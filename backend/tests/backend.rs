@@ -189,6 +189,16 @@ async fn upload_rejects_image_over_height_limit(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
+    let mut settings = test_settings();
+    settings.uploads_enabled = false;
+    assert_eq!(
+        upload_status(pool, settings, tiny_png(2, 2)).await,
+        StatusCode::FORBIDDEN
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn upload_within_limits_succeeds(pool: PgPool) {
     // Under both limits: validation passes, the row inserts, and the file is
     // stored, so the endpoint returns 200.

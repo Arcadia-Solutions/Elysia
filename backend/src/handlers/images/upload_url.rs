@@ -31,6 +31,7 @@ pub struct UploadUrlRequest {
         (status = 200, description = "Image rehosted", body = UploadResponse),
         (status = 400, description = "Could not fetch the url, url not http(s) or not pointing to a public address, or file too large"),
         (status = 401, description = "Missing or invalid session, or invalid SSO client credentials. The SSO provider may upload on behalf of its users with its client credentials as Basic auth and the user subject in the On-Behalf-Of-Sub header (On-Behalf-Of-Username names the account on first upload)"),
+        (status = 403, description = "Uploads are disabled"),
         (status = 415, description = "Link does not point to a supported image"),
     )
 )]

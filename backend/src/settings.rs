@@ -73,9 +73,16 @@ pub struct ElysiaSettings {
     /// own host is always allowed so the web UI keeps showing images.
     #[serde(default)]
     pub allowed_referrers: Vec<String>,
+    /// When false, every upload (file or URL) is rejected, admins included.
+    #[serde(default = "default_uploads_enabled")]
+    pub uploads_enabled: bool,
 }
 
 fn default_allow_registration() -> bool {
+    true
+}
+
+fn default_uploads_enabled() -> bool {
     true
 }
 
@@ -103,6 +110,8 @@ pub struct PublicElysiaSettings {
     pub target_file_size_bytes: u64,
     /// Whether open registration is allowed; lets the login page offer signup.
     pub allow_registration: bool,
+    /// Whether uploads are accepted; lets the upload page say they are paused.
+    pub uploads_enabled: bool,
 }
 
 impl From<ElysiaSettings> for PublicElysiaSettings {
@@ -120,6 +129,7 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             strip_exif_by_default: s.strip_exif_by_default,
             target_file_size_bytes: s.target_file_size_bytes,
             allow_registration: s.allow_registration,
+            uploads_enabled: s.uploads_enabled,
         }
     }
 }

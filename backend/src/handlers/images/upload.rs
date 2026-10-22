@@ -63,10 +63,14 @@ pub struct UploadOptionsQuery {
 }
 
 impl UploadOptionsQuery {
-    /// Convert to service options: reject a client-supplied quality when
+    /// Convert to service options: reject everything while uploads are
+    /// disabled, reject a client-supplied quality when
     /// overriding is disabled, fall back to the configured default, then reject
     /// compression when processing is off or the quality is out of range.
     pub fn into_options(self, settings: &ElysiaSettings) -> Result<UploadOptions> {
+        if !settings.uploads_enabled {
+            return Err(Error::Forbidden);
+        }
         if self.lossy_compression_value.is_some() && !settings.allow_overriding_compression {
             return Err(Error::BadRequest(
                 "overriding compression is disabled".into(),
@@ -121,6 +125,7 @@ impl UploadOptionsQuery {
         (status = 200, description = "Image uploaded", body = UploadResponse),
         (status = 400, description = "File too large"),
         (status = 401, description = "Missing or invalid session, or invalid SSO client credentials. The SSO provider may upload on behalf of its users with its client credentials as Basic auth and the user subject in the On-Behalf-Of-Sub header (On-Behalf-Of-Username names the account on first upload)"),
+        (status = 403, description = "Uploads are disabled"),
         (status = 415, description = "Not a supported image"),
     )
 )]

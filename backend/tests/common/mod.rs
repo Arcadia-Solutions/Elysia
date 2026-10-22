@@ -85,6 +85,7 @@ pub fn test_settings() -> ElysiaSettings {
         thumbnail_quality: 80,
         allow_registration: true,
         allowed_referrers: Vec::new(),
+        uploads_enabled: true,
     }
 }
 

@@ -196,6 +196,10 @@ export interface ElysiaSettings {
      * Thumbnail box width; 0 on both axes disables thumbnails. Not overridable per upload.
      */
     'thumbnail_width_pixels'?: number;
+    /**
+     * When false, every upload (file or URL) is rejected, admins included.
+     */
+    'uploads_enabled'?: boolean;
 }
 
 
@@ -507,6 +511,10 @@ export interface PublicElysiaSettings {
     'target_file_size_bytes': number;
     'target_height_pixels': number;
     'target_width_pixels': number;
+    /**
+     * Whether uploads are accepted; lets the upload page say they are paused.
+     */
+    'uploads_enabled': boolean;
 }
 
 

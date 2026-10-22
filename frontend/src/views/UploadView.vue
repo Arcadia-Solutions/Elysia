@@ -1,97 +1,100 @@
 <template>
   <div class="upload-wrap">
-    <section class="card">
-      <header class="card-head">
-        <h2>{{ $t('upload.step.image') }}</h2>
-      </header>
+    <Message v-if="settings && !settings.uploads_enabled" severity="warn" size="small">{{ $t('upload.disabled') }}</Message>
+    <template v-else>
+      <section class="card">
+        <header class="card-head">
+          <h2>{{ $t('upload.step.image') }}</h2>
+        </header>
 
-      <div
-        v-if="!urlInput"
-        class="dropzone"
-        :class="{ dragging }"
-        @dragover.prevent
-        @dragenter.prevent="dragging = true"
-        @dragleave.prevent="dragging = false"
-        @drop.prevent="onDrop"
-      >
-        <FileUpload mode="basic" accept="image/*" :auto="false" customUpload :chooseLabel="$t('upload.choose')" @select="onSelect" :disabled="uploading" />
-        <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
-      </div>
+        <div
+          v-if="!urlInput"
+          class="dropzone"
+          :class="{ dragging }"
+          @dragover.prevent
+          @dragenter.prevent="dragging = true"
+          @dragleave.prevent="dragging = false"
+          @drop.prevent="onDrop"
+        >
+          <FileUpload mode="basic" accept="image/*" :auto="false" customUpload :chooseLabel="$t('upload.choose')" @select="onSelect" :disabled="uploading" />
+          <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
+        </div>
 
-      <div v-if="selectedPreview" class="preview-wrap">
-        <img :src="selectedPreview" :alt="$t('upload.preview_alt')" class="preview" />
-        <Button
-          icon="pi pi-times"
+        <div v-if="selectedPreview" class="preview-wrap">
+          <img :src="selectedPreview" :alt="$t('upload.preview_alt')" class="preview" />
+          <Button
+            icon="pi pi-times"
+            size="small"
+            rounded
+            severity="secondary"
+            class="clear-btn"
+            :title="$t('upload.clear')"
+            :aria-label="$t('upload.clear')"
+            :disabled="uploading"
+            @click="clearSelection"
+          />
+        </div>
+
+        <InputText
+          v-if="!selectedFile"
+          v-model="urlInput"
           size="small"
-          rounded
-          severity="secondary"
-          class="clear-btn"
-          :title="$t('upload.clear')"
-          :aria-label="$t('upload.clear')"
-          :disabled="uploading"
-          @click="clearSelection"
-        />
-      </div>
-
-      <InputText
-        v-if="!selectedFile"
-        v-model="urlInput"
-        size="small"
-        :placeholder="$t('upload.url_placeholder')"
-        fluid
-        @keyup.enter="submit"
-        :disabled="uploading"
-      />
-    </section>
-
-    <section v-if="hasOptions" class="card">
-      <header class="card-head">
-        <h2>{{ $t('upload.step.options') }}</h2>
-      </header>
-
-      <div v-if="settings?.allow_overriding_file_format" class="format-row">
-        <label>{{ $t('upload.format_override.label') }}</label>
-        <Select
-          v-model="formatOverride"
-          size="small"
+          :placeholder="$t('upload.url_placeholder')"
           fluid
+          @keyup.enter="submit"
           :disabled="uploading"
-          :options="[
-            { label: $t('upload.format_override.keep_default'), value: 'default' },
-            ...Object.values(TargetFormat).map((f) => ({ label: formatLabels[f], value: f })),
-          ]"
-          option-label="label"
-          option-value="value"
         />
-      </div>
+      </section>
 
-      <div v-if="showLosslessToggle" class="toggle-row">
-        <label>{{ $t('upload.lossless.label') }}</label>
-        <ToggleSwitch v-model="lossless" :disabled="uploading" />
-      </div>
+      <section v-if="hasOptions" class="card">
+        <header class="card-head">
+          <h2>{{ $t('upload.step.options') }}</h2>
+        </header>
 
-      <div v-if="showCompression && !losslessSelected" class="quality-row">
-        <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
-        <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
-      </div>
+        <div v-if="settings?.allow_overriding_file_format" class="format-row">
+          <label>{{ $t('upload.format_override.label') }}</label>
+          <Select
+            v-model="formatOverride"
+            size="small"
+            fluid
+            :disabled="uploading"
+            :options="[
+              { label: $t('upload.format_override.keep_default'), value: 'default' },
+              ...Object.values(TargetFormat).map((f) => ({ label: formatLabels[f], value: f })),
+            ]"
+            option-label="label"
+            option-value="value"
+          />
+        </div>
 
-      <div v-if="settings?.allow_overriding_strip_exif" class="toggle-row">
-        <label>{{ $t('upload.strip_exif.label') }}</label>
-        <ToggleSwitch v-model="stripExif" :disabled="uploading" />
-      </div>
-    </section>
+        <div v-if="showLosslessToggle" class="toggle-row">
+          <label>{{ $t('upload.lossless.label') }}</label>
+          <ToggleSwitch v-model="lossless" :disabled="uploading" />
+        </div>
 
-    <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selectedFile && !urlInput)" />
+        <div v-if="showCompression && !losslessSelected" class="quality-row">
+          <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
+          <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
+        </div>
 
-    <Transition name="fade">
-      <div v-if="uploading" class="progress">
-        <ProgressBar v-if="phase === 'uploading'" :value="progress" :showValue="false" style="height: 6px" />
-        <ProgressBar v-else mode="indeterminate" style="height: 6px" />
-        <span class="progress-label">
-          {{ phase === 'uploading' ? $t('upload.uploading', { pct: progress }) : $t('upload.processing') }}
-        </span>
-      </div>
-    </Transition>
+        <div v-if="settings?.allow_overriding_strip_exif" class="toggle-row">
+          <label>{{ $t('upload.strip_exif.label') }}</label>
+          <ToggleSwitch v-model="stripExif" :disabled="uploading" />
+        </div>
+      </section>
+
+      <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selectedFile && !urlInput)" />
+
+      <Transition name="fade">
+        <div v-if="uploading" class="progress">
+          <ProgressBar v-if="phase === 'uploading'" :value="progress" :showValue="false" style="height: 6px" />
+          <ProgressBar v-else mode="indeterminate" style="height: 6px" />
+          <span class="progress-label">
+            {{ phase === 'uploading' ? $t('upload.uploading', { pct: progress }) : $t('upload.processing') }}
+          </span>
+        </div>
+      </Transition>
+    </template>
   </div>
 </template>
 
@@ -101,6 +104,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
@@ -256,7 +260,7 @@ const onDrop = (event: DragEvent) => {
 // Page-wide paste: grab a pasted image file, leave text pastes (e.g. into the URL field) alone.
 const onPaste = (event: ClipboardEvent) => {
   const file = event.clipboardData?.files?.[0]
-  if (uploading.value || !file?.type.startsWith('image/')) return
+  if (uploading.value || settings.value?.uploads_enabled === false || !file?.type.startsWith('image/')) return
   event.preventDefault()
   urlInput.value = ''
   pick(file)

@@ -142,6 +142,14 @@
 
     <hr />
 
+    <div class="field">
+      <label>{{ $t('settings.uploads_enabled.label') }}</label>
+      <small>{{ $t('settings.uploads_enabled.help') }}</small>
+      <ToggleSwitch v-model="form.uploads_enabled" />
+    </div>
+
+    <hr />
+
     <p class="intro">{{ $t('settings.accounts_intro') }}</p>
 
     <div class="field">
@@ -231,6 +239,7 @@ const form = reactive<Required<ElysiaSettings>>({
   thumbnail_quality: 80,
   allow_registration: true,
   allowed_referrers: [],
+  uploads_enabled: true,
 })
 
 // Thumbnails are on when a box is set on either axis.

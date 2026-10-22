@@ -57,6 +57,7 @@
     "choose": "Choose image",
     "drop_hint": "or drop or paste an image here",
     "url_placeholder": "Paste an image link to rehost",
+    "disabled": "Uploads are temporarily disabled.",
     "upload": "Upload",
     "clear": "Remove image",
     "invalid_url": "Please enter a valid URL",
@@ -259,6 +260,10 @@
     "thumbnail_quality": {
       "label": "Thumbnail quality (1-100)",
       "help": "Lossy WebP quality for generated thumbnails."
+    },
+    "uploads_enabled": {
+      "label": "Enable uploads",
+      "help": "When off, nobody can upload or rehost images, admins included. Existing images stay online."
     },
     "accounts_intro": "Who may create an account on this instance.",
     "allow_registration": {
