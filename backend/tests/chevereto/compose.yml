@@ -1,6 +1,7 @@
 # Throwaway stack for test.sh: Chevereto with its MariaDB, and a Postgres
 # holding both the Elysia database and a fake backend database. Ports are
-# unusual so they do not collide with a dev setup.
+# unusual so they do not collide with a dev setup, and below the Linux
+# ephemeral range (32768+) so an outbound socket cannot already hold them.
 services:
   db:
     image: postgres:18
@@ -9,7 +10,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: elysia
     ports:
-      - "55432:5432"
+      - "25432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U elysia"]
       interval: 2s
@@ -23,7 +24,7 @@ services:
       MYSQL_PASSWORD: password
       MYSQL_DATABASE: chevereto
     ports:
-      - "53306:3306"
+      - "23306:3306"
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect"]
       interval: 2s
@@ -35,7 +36,7 @@ services:
       chevereto_database:
         condition: service_healthy
     ports:
-      - "58083:80"
+      - "28083:80"
     environment:
       CHEVERETO_DB_HOST: chevereto_database
       CHEVERETO_DB_PORT: 3306
@@ -43,6 +44,6 @@ services:
       CHEVERETO_DB_PASS: password
       CHEVERETO_DB_NAME: chevereto
       # Must match the host port: the links Chevereto returns are built from it.
-      CHEVERETO_HOSTNAME: localhost:58083
+      CHEVERETO_HOSTNAME: localhost:28083
       CHEVERETO_HOSTNAME_PATH: /
       CHEVERETO_HTTPS: 0

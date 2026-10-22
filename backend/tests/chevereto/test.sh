@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-CHEVERETO=localhost:58083
+CHEVERETO=localhost:28083
 ELYSIA=http://elysia.test
 dc() { docker compose -p elysia-chevereto-test "$@"; }
 sql() { local db=$1; shift; dc exec -T db psql -U elysia -d "$db" -v ON_ERROR_STOP=1 -qtA "$@"; }
@@ -75,7 +75,7 @@ backend_texts="select concat_ws(' ', avatar, description) as text from users
 
 cat > "$TEMP_DIR/elysia.yml" <<EOF
 server: { host: 127.0.0.1, port: 8090, public_url: $ELYSIA }
-database: { host: localhost, port: 55432, user: elysia, password: password, name: elysia }
+database: { host: localhost, port: 25432, user: elysia, password: password, name: elysia }
 storage: { upload_dir: $TEMP_DIR/uploads }
 auth:
   jwt_secret: chevereto-import-test-secret-of-enough-length
@@ -88,10 +88,10 @@ auth:
 EOF
 cat > "$TEMP_DIR/import.yml" <<EOF
 chevereto:
-  database_url: mysql://chevereto:password@localhost:53306/chevereto
+  database_url: mysql://chevereto:password@localhost:23306/chevereto
   public_url: http://$CHEVERETO
 backend:
-  database_url: postgres://elysia:password@localhost:55432/backend
+  database_url: postgres://elysia:password@localhost:25432/backend
   users: { table: users, username_column: username, subject_column: id, email_column: email }
 elysia: { public_url: $ELYSIA }
 fallback_username: chevereto-import
