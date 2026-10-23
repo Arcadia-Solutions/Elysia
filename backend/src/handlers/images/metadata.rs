@@ -9,6 +9,7 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::error::Result;
 use crate::middlewares::AuthUser;
+use crate::repository::files::{ReferrerViews, find_referrer_views};
 use crate::services::files::{self, image_url, thumbnail_url};
 
 /// Display metadata for the `/i/<id>` viewer page.
@@ -33,6 +34,8 @@ pub struct MetadataResponse {
     pub views: i64,
     /// Times the thumbnail was served from `/t/`.
     pub thumbnail_views: i64,
+    /// Views split by `Referer` host, most image views first.
+    pub referrers: Vec<ReferrerViews>,
     pub uploader_username: String,
     /// Upload time as a UTC ISO-8601 string.
     pub created_at: String,
@@ -73,6 +76,7 @@ pub async fn metadata(
     id: Path<String>,
 ) -> Result<HttpResponse> {
     let row = files::get_metadata(pool.get_ref(), &id.into_inner(), user.is_admin).await?;
+    let referrers = find_referrer_views(pool.get_ref(), &row.id).await?;
     let public_url = &config.server.public_url;
     let trashed = row.trashed_at.is_some();
     Ok(HttpResponse::Ok().json(MetadataResponse {
@@ -102,6 +106,7 @@ pub async fn metadata(
         applied_quality: row.applied_quality,
         views: row.views,
         thumbnail_views: row.thumbnail_views,
+        referrers,
         uploader_username: row.uploader_username,
         created_at: row.created_at,
     }))

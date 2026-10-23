@@ -29,6 +29,13 @@ only requests whose `Referer` host is in the list (or is Elysia itself) get
 them, which also blocks requests without a `Referer`. Entries are bare
 hostnames like `example.com`.
 
+### Views per referrer
+
+Off by default: every view is counted as "no referrer". When on, views are
+split by `Referer` host, one row per file and host. Without allowed referrers
+anyone can send arbitrary `Referer` values and grow that table without bound,
+so only turn it on together with an allowlist.
+
 ## Users
 
 The Users page lists local and single sign-on accounts. From a user's page an

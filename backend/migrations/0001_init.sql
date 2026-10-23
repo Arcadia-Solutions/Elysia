@@ -130,6 +130,19 @@ create unique index files_hash_idx on files (hash) where status = 'available';
 -- The trash wipe looks up old trashed files.
 create index files_trashed_at_idx on files (trashed_at) where status = 'trashed';
 
+create table file_referrer_views (
+  file_id text not null references files(id) on delete cascade,
+  referrer text not null,
+  views bigint not null default 0,
+  thumbnail_views bigint not null default 0,
+  primary key (file_id, referrer)
+);
+
+comment on table file_referrer_views is 'Views of a file split by the Referer host they came from; files.views and files.thumbnail_views hold the totals';
+comment on column file_referrer_views.referrer is 'Lowercased Referer host; empty for requests without a Referer';
+comment on column file_referrer_views.views is 'Times the image was served from /i/ to this referrer';
+comment on column file_referrer_views.thumbnail_views is 'Times the thumbnail was served from /t/ to this referrer';
+
 create table unreferenced_files (
   file_id text primary key references files(id) on delete cascade,
   scanned_at timestamptz not null
@@ -199,7 +212,8 @@ create table elysia_settings (
    allow_registration boolean not null default true,
    allowed_referrers text[] not null default '{}',
    uploads_enabled boolean not null default true,
-   default_storage_quota_bytes bigint not null default 0 check (default_storage_quota_bytes >= 0)
+   default_storage_quota_bytes bigint not null default 0 check (default_storage_quota_bytes >= 0),
+   record_referrer_views boolean not null default false
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -222,6 +236,7 @@ comment on column elysia_settings.allow_registration is 'When true, anyone may c
 comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/ and /t/; empty allows any (including no Referer)';
 comment on column elysia_settings.uploads_enabled is 'When false, every upload is rejected, admins included';
 comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of available and trashed files each non-admin user may hold, unless overridden per user; 0 is unlimited';
+comment on column elysia_settings.record_referrer_views is 'When true, views are split per Referer host in file_referrer_views; when false, every view is counted under no referrer';
 
 -- Default row: processing off, 10 MiB upload ceiling (valid against the same
 -- rules the API enforces on every save).

@@ -46,6 +46,10 @@
         <!-- Remounted per interval: the point count changes, which an in-place update draws without animation. -->
         <Chart :key="statsInterval" class="chart" :options="chart.options" />
       </section>
+      <section v-if="stats.referrers.length">
+        <h3>{{ $t('dashboard.referrers') }}</h3>
+        <Chart class="chart" :options="referrersChart" />
+      </section>
     </div>
 
     <div class="tables">
@@ -253,6 +257,31 @@ const formatsChart = computed(
         const format = stats.value?.formats[this.index]
         if (!format) return false
         return `<b>${format.mime}</b><br/>${t('dashboard.size')}: ${formatBytes(format.bytes)} (${(this.percentage ?? 0).toFixed(1)}%)<br/>${t('dashboard.files')}: ${formatCount(format.files)}`
+      },
+    },
+  }),
+)
+
+// Share of the views (image and thumbnail) per referrer, the split in the tooltip.
+const referrerName = (referrer: string | null | undefined) => (referrer == null ? t('dashboard.other_referrers') : referrer || t('image.no_referrer'))
+const referrersChart = computed(
+  (): Highcharts.Options => ({
+    chart: { type: 'pie', backgroundColor: 'transparent' },
+    title: { text: undefined },
+    credits: { enabled: false },
+    series: [
+      {
+        type: 'pie',
+        name: t('dashboard.views'),
+        data: (stats.value?.referrers ?? []).map((row) => ({ name: referrerName(row.referrer), y: row.views + row.thumbnail_views })),
+        dataLabels: { style: { color: themeColors.value.muted, textOutline: 'none' } },
+      },
+    ],
+    tooltip: {
+      formatter() {
+        const row = stats.value?.referrers[this.index]
+        if (!row) return false
+        return `<b>${referrerName(row.referrer)}</b> (${(this.percentage ?? 0).toFixed(1)}%)<br/>${t('dashboard.views')}: ${formatCount(row.views)}<br/>${t('dashboard.thumbnail_views')}: ${formatCount(row.thumbnail_views)}`
       },
     },
   }),

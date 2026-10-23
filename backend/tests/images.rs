@@ -103,16 +103,38 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
     let id = "seen000000";
 
     let views = ViewCounter::default();
-    for thumbnail in [false, false, true] {
-        views.count(id, thumbnail);
+    for (referrer, thumbnail) in [
+        ("a.com", false),
+        ("a.com", false),
+        ("", true),
+        ("b.com", false),
+    ] {
+        views.count(id, referrer, thumbnail);
     }
-    views.count("missing0", false);
+    views.count("missing0", "a.com", false);
     views.flush(&pool).await;
     // Flushed counts are cleared, so a second flush adds nothing.
     views.flush(&pool).await;
 
     let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
-    assert_eq!((metadata.views, metadata.thumbnail_views), (2, 1));
+    assert_eq!((metadata.views, metadata.thumbnail_views), (3, 1));
+    // A second batch adds onto the existing referrer rows.
+    views.count(id, "b.com", false);
+    views.flush(&pool).await;
+    let referrers: Vec<_> = files::find_referrer_views(&pool, id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| (row.referrer, row.views, row.thumbnail_views))
+        .collect();
+    assert_eq!(
+        referrers,
+        [
+            ("a.com".into(), 2, 0),
+            ("b.com".into(), 2, 0),
+            (String::new(), 0, 1)
+        ]
+    );
 
     for sort_by in [ImagesSortBy::Views, ImagesSortBy::ThumbnailViews] {
         let rows = list_images(

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select referrer, views, thumbnail_views from file_referrer_views where file_id = $1 order by views desc, thumbnail_views desc, referrer",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "referrer",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file_referrer_views",
+            "name": "referrer"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "views",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "file_referrer_views",
+            "name": "views"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "thumbnail_views",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "file_referrer_views",
+            "name": "thumbnail_views"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6e52d72c65d0391c320d7e477c98fae5c29c7320eba034eeca5538cb16fa796a"
+}

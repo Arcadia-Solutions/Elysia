@@ -92,3 +92,65 @@ async fn aggregates_uploads(pool: PgPool) {
         [("big", 1, 100), ("small", 3, 30)]
     );
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn groups_referrers_past_the_top_ones(pool: PgPool) {
+    let uploader = common::test_user(&pool, "viewer").await.0.id;
+    common::seed_files(&pool, uploader, "seen", 2, 1).await;
+    common::seed_files(&pool, uploader, "old", 1, 1).await;
+    sqlx::query("update files set created_at = now() - interval '30 days' where id like 'old%'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let views = elysia::services::views::ViewCounter::default();
+    // Host n gets n + 1 views, split over both files and the thumbnail.
+    for host in 0..12 {
+        for view in 0..=host {
+            let id = if view % 2 == 0 {
+                "seen000000"
+            } else {
+                "seen000001"
+            };
+            views.count(id, &format!("h{host:02}.com"), view == 0);
+        }
+    }
+    views.flush(&pool).await;
+    // Views of a file uploaded a month ago: all time only.
+    elysia::repository::files::add_views(
+        &pool,
+        &["old000000".into()],
+        &["old.com".into()],
+        &[100],
+        &[0],
+    )
+    .await
+    .unwrap();
+    let top_referrer = |referrers: &[stats::ReferrerTotal]| referrers[0].referrer.clone();
+    let all_time = stats::referrer_totals(&pool, StatsPeriod::AllTime)
+        .await
+        .unwrap();
+    assert_eq!(top_referrer(&all_time).as_deref(), Some("old.com"));
+
+    let referrers = stats::referrer_totals(&pool, StatsPeriod::LastWeek)
+        .await
+        .unwrap();
+    assert_eq!(referrers.len(), 10);
+    assert_eq!(
+        (
+            referrers[0].referrer.as_deref(),
+            referrers[0].views,
+            referrers[0].thumbnail_views
+        ),
+        (Some("h11.com"), 11, 1)
+    );
+    // h00 to h02 (1 + 2 + 3 views) are summed last, though their 6 views beat h03.
+    let others = &referrers[9];
+    assert_eq!(
+        (
+            others.referrer.as_deref(),
+            others.views,
+            others.thumbnail_views
+        ),
+        (None, 3, 3)
+    );
+}

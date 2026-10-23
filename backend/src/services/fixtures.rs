@@ -15,7 +15,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
-use crate::repository::users;
+use crate::repository::{files as files_repository, users};
 use crate::services::auth as auth_service;
 use crate::services::files::{self, UploadOptions};
 use crate::services::image::TargetFormat;
@@ -25,6 +25,22 @@ use crate::storage::Storage;
 const USERNAMES: [&str; 12] = [
     "alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi", "ivan", "judy", "mallory",
     "oscar",
+];
+/// `Referer` hosts the fixture views come from, most popular first; empty is
+/// no `Referer`. More than the dashboard lists on their own, so it shows others.
+const REFERRERS: [&str; 12] = [
+    "",
+    "forum.example.com",
+    "reddit.com",
+    "discord.com",
+    "blog.example.org",
+    "news.ycombinator.com",
+    "mastodon.social",
+    "github.com",
+    "lemmy.world",
+    "wiki.example.net",
+    "shop.example.com",
+    "mirror.example.org",
 ];
 const MAX_IMAGE_COUNT: u32 = 10_000;
 const MAX_HISTORY_DAYS: u32 = 10 * 365;
@@ -218,6 +234,9 @@ async fn run(
         .as_nanos() as u64;
     let mut random = Random(seed | 1);
     let history_seconds = f64::from(params.history_days) * 86400.0;
+    // Views of every stored image, one entry per (id, referrer), added at the end.
+    let (mut view_ids, mut view_referrers, mut views, mut thumbnail_views) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new());
 
     for index in 0..params.image_count {
         // Encoding is CPU bound, keep it off the server's async workers.
@@ -266,11 +285,21 @@ async fn run(
                 )
                 .execute(pool)
                 .await?;
+                // Up to 3 distinct consecutive referrers from a squared draw, so
+                // the first ones get most of the traffic, with heavy-tailed counts.
+                let first = (random.unit().powi(2) * REFERRERS.len() as f64) as usize;
+                for offset in 0..random.range(0, 4) as usize {
+                    view_ids.push(stored.id.clone());
+                    view_referrers.push(REFERRERS[(first + offset) % REFERRERS.len()].to_owned());
+                    views.push((random.unit().powi(3) * 5000.0) as i64);
+                    thumbnail_views.push((random.unit().powi(3) * 1000.0) as i64);
+                }
             }
             Err(error) => tracing::warn!("fixture image {index} rejected: {error}"),
         }
         update(|progress| progress.done = index + 1);
     }
+    files_repository::add_views(pool, &view_ids, &view_referrers, &views, &thumbnail_views).await?;
     // Users were created now; move each sign-up back to their first upload so
     // the new users count matches the upload history.
     sqlx::query!(

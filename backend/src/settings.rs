@@ -80,6 +80,13 @@ pub struct ElysiaSettings {
     /// overridden per user; 0 is unlimited. Admins are exempt without an override.
     #[serde(default)]
     pub default_storage_quota_bytes: u64,
+    /// When true, views are counted per `Referer` host; when false, every view
+    /// is counted under no referrer. Without `allowed_referrers`, any site (or
+    /// anyone forging a `Referer`) adds a row per file and host, so the
+    /// referrer views table can grow indefinitely: keep this off unless the
+    /// allowlist bounds the hosts.
+    #[serde(default)]
+    pub record_referrer_views: bool,
 }
 
 fn default_allow_registration() -> bool {

@@ -34,10 +34,17 @@
         <dt>{{ $t('image.format') }}</dt>
         <dd>{{ meta.mime }}</dd>
         <dt>{{ $t('image.views') }}</dt>
-        <dd>{{ $t('image.views_value', { views: meta.views, thumbnail_views: meta.thumbnail_views }) }}</dd>
+        <dd>
+          {{ $t('image.views_value', { views: meta.views, thumbnail_views: meta.thumbnail_views }) }}
+          <ul v-if="meta.referrers.length" class="list">
+            <li v-for="row in meta.referrers" :key="row.referrer">
+              {{ row.referrer || $t('image.no_referrer') }}: {{ $t('image.views_value', { views: row.views, thumbnail_views: row.thumbnail_views }) }}
+            </li>
+          </ul>
+        </dd>
         <dt>{{ $t('image.processing.title') }}</dt>
         <dd>
-          <ul v-if="processing.length" class="processing">
+          <ul v-if="processing.length" class="list">
             <li v-for="step in processing" :key="step">{{ step }}</li>
           </ul>
           <template v-else>{{ $t('image.processing.none') }}</template>
@@ -169,7 +176,7 @@ load()
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }
-.processing {
+.list {
   margin: 0;
   padding-left: 18px;
 }

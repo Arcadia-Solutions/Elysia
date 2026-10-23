@@ -143,6 +143,12 @@
       <AutoComplete v-model="form.allowed_referrers" size="small" multiple :typeahead="false" fluid placeholder="example.com" />
     </div>
 
+    <div class="field">
+      <label>{{ $t('settings.record_referrer_views.label') }}</label>
+      <small>{{ $t('settings.record_referrer_views.help') }}</small>
+      <ToggleSwitch v-model="form.record_referrer_views" />
+    </div>
+
     <hr />
 
     <p class="intro">{{ $t('settings.thumbnails_intro') }}</p>
@@ -219,6 +225,7 @@ const form = reactive<Required<ElysiaSettings>>({
   allowed_referrers: [],
   uploads_enabled: true,
   default_storage_quota_bytes: 0,
+  record_referrer_views: false,
 })
 
 // Thumbnails are on when a box is set on either axis.

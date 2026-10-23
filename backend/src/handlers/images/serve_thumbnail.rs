@@ -45,7 +45,7 @@ pub async fn serve_thumbnail(
         },
     };
     if !decision.from_own_page {
-        views.count(id, true);
+        views.count(id, &decision.referrer, true);
     }
     Ok(file_response(&req, file, decision.cache_control))
 }

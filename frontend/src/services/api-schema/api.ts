@@ -288,6 +288,10 @@ export interface ElysiaSettings {
      */
     'max_width_pixels'?: number;
     /**
+     * When true, views are counted per `Referer` host; when false, every view is counted under no referrer. Without `allowed_referrers`, any site (or anyone forging a `Referer`) adds a row per file and host, so the referrer views table can grow indefinitely: keep this off unless the allowlist bounds the hosts.
+     */
+    'record_referrer_views'?: boolean;
+    /**
      * When true, EXIF is stripped from an upload that does not request otherwise.
      */
     'strip_exif_by_default'?: boolean;
@@ -490,6 +494,10 @@ export interface MetadataResponse {
      * Source dimensions before processing; differ from the stored ones when resized.
      */
     'original_width': number;
+    /**
+     * Views split by `Referer` host, most image views first.
+     */
+    'referrers': Array<ReferrerViews>;
     'size': number;
     /**
      * Public URL for the thumbnail. Trashed, it is only served to Elysia\'s own pages.
@@ -711,6 +719,28 @@ export interface PublicElysiaSettings {
 
 
 /**
+ * Image and thumbnail views from one `Referer` host within the period.
+ */
+export interface ReferrerTotal {
+    /**
+     * Lowercased `Referer` host; empty for requests without a `Referer`, null for the hosts past the top ones, summed together.
+     */
+    'referrer'?: string | null;
+    'thumbnail_views': number;
+    'views': number;
+}
+/**
+ * Views of a file from one `Referer` host.
+ */
+export interface ReferrerViews {
+    /**
+     * Lowercased `Referer` host; empty for requests without a `Referer`.
+     */
+    'referrer': string;
+    'thumbnail_views': number;
+    'views': number;
+}
+/**
  * Registration details for a new local account.
  */
 export interface RegisterRequest {
@@ -825,6 +855,10 @@ export interface StatsResponse {
      * Totals per `interval` step, from the step holding the start of `period` to now.
      */
     'periods': Array<PeriodTotal>;
+    /**
+     * Views per `Referer` host within `period`, most viewed first, the rest summed into a last null row.
+     */
+    'referrers': Array<ReferrerTotal>;
     /**
      * Users who uploaded within `period`, by uploaded bytes descending.
      */

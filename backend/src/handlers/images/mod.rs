@@ -57,6 +57,9 @@ pub(crate) struct ServeDecision {
     /// browsing the app does not inflate the view counters, and still shows
     /// trashed images.
     pub from_own_page: bool,
+    /// `Referer` host the view is counted under; empty without a `Referer` or
+    /// when referrer views are not recorded.
+    pub referrer: String,
 }
 
 /// Refuse an image request whose `Referer` is not in the allowed referrers.
@@ -73,13 +76,21 @@ pub(crate) fn check_referrer(
     if !settings.referrer_allowed(referer, &own_host) {
         return Err(Error::Forbidden);
     }
+    let cache_control = if settings.allowed_referrers.is_empty() {
+        "public, max-age=31536000, immutable"
+    } else {
+        "private, max-age=31536000, immutable"
+    };
+    let (from_own_page, referrer) = match referer_host(referer, &own_host) {
+        Some(RefererHost::Own) => (true, String::new()),
+        Some(RefererHost::Other(host)) if settings.record_referrer_views => (false, host),
+        Some(RefererHost::Other(_)) => (false, String::new()),
+        None => (false, String::new()),
+    };
     Ok(ServeDecision {
-        cache_control: if settings.allowed_referrers.is_empty() {
-            "public, max-age=31536000, immutable"
-        } else {
-            "private, max-age=31536000, immutable"
-        },
-        from_own_page: matches!(referer_host(referer, &own_host), Some(RefererHost::Own)),
+        cache_control,
+        from_own_page,
+        referrer,
     })
 }
 
@@ -112,4 +123,31 @@ pub(crate) fn file_response(
         actix_web::http::header::HeaderValue::from_static(cache_control),
     );
     res
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::ElysiaSettings;
+
+    fn referrer_for(record_referrer_views: bool) -> String {
+        let settings: ElysiaSettings = serde_json::from_str("{}").unwrap();
+        let settings = actix_web::web::Data::new(std::sync::RwLock::new(ElysiaSettings {
+            record_referrer_views,
+            ..settings
+        }));
+        let req = actix_web::test::TestRequest::default()
+            .insert_header((
+                actix_web::http::header::REFERER,
+                "https://Forum.Example/t/1",
+            ))
+            .to_http_request();
+        check_referrer(&req, &settings).unwrap().referrer
+    }
+
+    #[test]
+    fn referrer_is_recorded_only_when_enabled() {
+        assert_eq!(referrer_for(true), "forum.example");
+        assert_eq!(referrer_for(false), "");
+    }
 }

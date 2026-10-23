@@ -84,22 +84,39 @@ pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     .await?)
 }
 
-/// Add pending view counts, one entry per id across the three slices. Ids
-/// with no row (never inserted) are skipped.
+/// Add pending view counts, one `(id, referrer)` entry per index across the
+/// slices, to the file totals and the per-file referrer counts. Ids with no row
+/// (never inserted) are skipped.
 pub async fn add_views(
     pool: &PgPool,
     ids: &[String],
+    referrers: &[String],
     views: &[i64],
     thumbnail_views: &[i64],
 ) -> Result<()> {
     sqlx::query!(
-        "update files set \
-           views = files.views + pending.views, \
-           thumbnail_views = files.thumbnail_views + pending.thumbnail_views \
-         from unnest($1::text[], $2::bigint[], $3::bigint[]) \
-           as pending(id, views, thumbnail_views) \
-         where files.id = pending.id",
+        "with pending as ( \
+           select pending.* \
+           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[]) \
+             as pending(id, referrer, views, thumbnail_views) \
+           join files on files.id = pending.id \
+         ), totals as ( \
+           update files set \
+             views = files.views + per_file.views, \
+             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views \
+           from (select id, sum(views)::bigint as views, \
+                        sum(thumbnail_views)::bigint as thumbnail_views \
+                 from pending group by id) as per_file \
+           where files.id = per_file.id \
+         ) \
+         insert into file_referrer_views (file_id, referrer, views, thumbnail_views) \
+         select id, referrer, sum(views)::bigint, sum(thumbnail_views)::bigint \
+         from pending group by 1, 2 \
+         on conflict (file_id, referrer) do update set \
+           views = file_referrer_views.views + excluded.views, \
+           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views",
         ids,
+        referrers,
         views,
         thumbnail_views,
     )
@@ -201,6 +218,27 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
         TRASH_RETENTION_DAYS
     )
     .fetch_optional(pool)
+    .await?)
+}
+
+/// Views of a file from one `Referer` host.
+#[derive(serde::Serialize, ToSchema)]
+pub struct ReferrerViews {
+    /// Lowercased `Referer` host; empty for requests without a `Referer`.
+    pub referrer: String,
+    pub views: i64,
+    pub thumbnail_views: i64,
+}
+
+/// A file's views per referrer, most image views first.
+pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<ReferrerViews>> {
+    Ok(sqlx::query_as!(
+        ReferrerViews,
+        "select referrer, views, thumbnail_views from file_referrer_views \
+         where file_id = $1 order by views desc, thumbnail_views desc, referrer",
+        id
+    )
+    .fetch_all(pool)
     .await?)
 }
 

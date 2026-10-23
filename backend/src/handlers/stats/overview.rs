@@ -9,7 +9,8 @@ use utoipa::{IntoParams, ToSchema};
 use crate::error::Result;
 use crate::middlewares::AuthUser;
 use crate::repository::stats::{
-    self, FormatTotal, PeriodTotal, StatsInterval, StatsPeriod, Uploader, WindowTotals,
+    self, FormatTotal, PeriodTotal, ReferrerTotal, StatsInterval, StatsPeriod, Uploader,
+    WindowTotals,
 };
 
 /// Storage overview for the admin dashboard.
@@ -23,6 +24,9 @@ pub struct StatsResponse {
     pub formats: Vec<FormatTotal>,
     /// Users who uploaded within `period`, by uploaded bytes descending.
     pub uploaders: Vec<Uploader>,
+    /// Views per `Referer` host of the files uploaded within `period`, most
+    /// viewed first, the rest summed into a last null row.
+    pub referrers: Vec<ReferrerTotal>,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -51,16 +55,18 @@ pub async fn stats_overview(
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
     let pool = pool.get_ref();
-    let (window, periods, formats, uploaders) = tokio::try_join!(
+    let (window, periods, formats, uploaders, referrers) = tokio::try_join!(
         stats::window_totals(pool, query.period),
         stats::period_totals(pool, query.period, query.interval),
         stats::format_totals(pool),
         stats::uploaders(pool, query.period),
+        stats::referrer_totals(pool, query.period),
     )?;
     Ok(HttpResponse::Ok().json(StatsResponse {
         window,
         periods,
         formats,
         uploaders,
+        referrers,
     }))
 }

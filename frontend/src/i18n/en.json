@@ -110,6 +110,7 @@
     "uploaded_by": "Uploaded by",
     "views": "Views",
     "views_value": "{views} image, {thumbnail_views} thumbnail",
+    "no_referrer": "No referrer",
     "trashed_at": "Deleted at",
     "trashed_by": "Deleted by",
     "days_until_deletion": "Will be deleted today | Will be deleted in {days} day | Will be deleted in {days} days",
@@ -214,7 +215,11 @@
     "new_users": "New users",
     "active_uploaders": "Active uploaders",
     "deletions_per": "Deletions per {interval}",
-    "deletions": "Deletions"
+    "deletions": "Deletions",
+    "referrers": "Views per referrer",
+    "views": "Views",
+    "thumbnail_views": "Thumbnail views",
+    "other_referrers": "Others"
   },
   "settings": {
     "title": "Elysia settings",
@@ -306,6 +311,10 @@
     "allowed_referrers": {
       "label": "Allowed referrers",
       "help": "Hostnames allowed to embed images (/i/ and /t/), checked against the Referer header. Press Enter after each one. Empty allows any site and direct links. Elysia's own host is always allowed."
+    },
+    "record_referrer_views": {
+      "label": "Record views per referrer",
+      "help": "When on, views are split by the site they came from. When off, every view is counted as \"no referrer\". WARNING: without allowed referrers, any site (or a forged Referer header) adds new rows, so storage can grow without bound."
     }
   },
   "users": {

@@ -44,8 +44,8 @@ URL uploads refuse private and reserved addresses.
 `/i/<id>.<ext>` (image) and `/t/<id>.<ext>` (thumbnail) are served straight
 from disk without touching the database. `storage.rs` owns the on-disk layout:
 files are sharded by the first two characters of their id, and trashed files
-move to a separate directory. View counts are kept in memory and flushed to the
-database every 10 seconds.
+move to a separate directory. View counts are kept in memory per file and
+`Referer` host, and flushed to the database every 10 seconds.
 
 `/i/<id>` without an extension is the frontend's image page, which is why the
 proxies route on the presence of an extension.

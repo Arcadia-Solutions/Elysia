@@ -43,6 +43,20 @@ async fn generates_images_and_reports_progress(pool: PgPool) {
         (progress.done, progress.total, progress.error),
         (3, 3, None)
     );
-    let (_, total) = list_images(&pool, &common::page(1), None).await.unwrap();
+    let (images, total) = list_images(&pool, &common::page(1), None).await.unwrap();
     assert_eq!(total, 3);
+    // Fixture views land per referrer too, matching the file totals.
+    let referrer_views: i64 = elysia::repository::stats::referrer_totals(
+        &pool,
+        elysia::repository::stats::StatsPeriod::AllTime,
+    )
+    .await
+    .unwrap()
+    .iter()
+    .map(|row| row.views)
+    .sum();
+    assert_eq!(
+        referrer_views,
+        images.iter().map(|row| row.views).sum::<i64>()
+    );
 }
