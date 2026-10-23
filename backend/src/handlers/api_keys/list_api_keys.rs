@@ -6,7 +6,7 @@ use crate::middlewares::AuthUser;
 use crate::repository::api_keys::{self, ApiKeySummary};
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "API Keys",
     get,
     path = "/api/api-keys",
     description = "The caller's API keys, revoked and expired ones included, newest first.",

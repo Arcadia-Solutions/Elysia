@@ -6,7 +6,7 @@ use crate::middlewares::AuthUser;
 use crate::services::chevereto_import::{self, CheveretoImportProgress};
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     get,
     path = "/api/maintenance/chevereto-import/progress",
     description = "Progress of the current or last Chevereto import.",

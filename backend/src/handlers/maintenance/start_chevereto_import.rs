@@ -12,7 +12,7 @@ use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     post,
     path = "/api/maintenance/chevereto-import",
     description = "Start copying every image of a Chevereto v4 instance into Elysia in the \

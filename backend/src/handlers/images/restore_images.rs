@@ -11,7 +11,7 @@ use crate::services::files;
 use crate::storage::Storage;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     post,
     path = "/api/images/trash/restore",
     description = "Move trashed images back out of the trash, so they are served again. \

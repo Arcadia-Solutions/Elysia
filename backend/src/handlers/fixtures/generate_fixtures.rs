@@ -11,7 +11,7 @@ use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Fixtures",
     post,
     path = "/api/fixtures",
     description = "Start generating fixture users and images in the background, through the \

@@ -24,7 +24,7 @@ pub struct SsoCallbackRequest {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Auth",
     post,
     path = "/api/auth/sso/callback",
     request_body = SsoCallbackRequest,

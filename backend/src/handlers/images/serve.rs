@@ -10,7 +10,7 @@ use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     get,
     path = "/i/{filename}",
     description = "Served straight from disk, without a database lookup. A trashed image \

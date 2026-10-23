@@ -7,7 +7,7 @@ use crate::services::files;
 use crate::storage::Storage;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     post,
     path = "/api/images/trash/empty",
     description = "Wipe every trashed image from disk now, without waiting for its 30 days.",

@@ -19,7 +19,7 @@ pub struct ChangePasswordRequest {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Auth",
     put,
     path = "/api/auth/password",
     request_body = ChangePasswordRequest,

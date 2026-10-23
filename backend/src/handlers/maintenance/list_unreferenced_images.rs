@@ -61,7 +61,7 @@ pub struct UnreferencedImagesPage {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     get,
     path = "/api/maintenance/unreferenced-images",
     description = "A page of the last scan's unreferenced images that are still available.",

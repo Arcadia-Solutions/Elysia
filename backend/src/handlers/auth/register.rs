@@ -29,7 +29,7 @@ pub struct RegisterResponse {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Auth",
     post,
     path = "/api/auth/register",
     request_body = RegisterRequest,

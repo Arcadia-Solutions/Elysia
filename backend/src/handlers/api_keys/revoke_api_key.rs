@@ -10,7 +10,7 @@ use crate::middlewares::AuthUser;
 use crate::repository::api_keys;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "API Keys",
     post,
     path = "/api/api-keys/{id}/revoke",
     description = "Revoke one of the caller's active API keys: it is refused from now on. The key \

@@ -11,7 +11,7 @@ use crate::repository::users::{self, UserSummary};
 use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Users",
     get,
     path = "/api/users/{id}",
     description = "One user's profile. Admin only.",

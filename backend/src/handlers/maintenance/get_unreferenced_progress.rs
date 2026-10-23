@@ -5,7 +5,7 @@ use crate::middlewares::AuthUser;
 use crate::services::maintenance::{self, UnreferencedProgress};
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     get,
     path = "/api/maintenance/unreferenced-images/progress",
     description = "Progress of the current or last unreferenced images scan or trash run.",

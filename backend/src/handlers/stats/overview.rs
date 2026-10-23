@@ -33,7 +33,7 @@ pub struct StatsQuery {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Stats",
     get,
     path = "/api/stats/overview",
     params(StatsQuery),

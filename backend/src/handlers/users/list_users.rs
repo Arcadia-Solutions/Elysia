@@ -11,7 +11,7 @@ use crate::repository::users::{self, UserSummary, UsersQuery};
 use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Users",
     get,
     path = "/api/users",
     description = "Users, local and SSO, optionally searched by username or email. Admin only.",

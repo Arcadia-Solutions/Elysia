@@ -17,7 +17,7 @@ pub struct SetUserBannedRequest {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Users",
     put,
     path = "/api/users/{id}/banned",
     description = "Ban or unban a user, local or SSO. A banned user's sessions, logins and \

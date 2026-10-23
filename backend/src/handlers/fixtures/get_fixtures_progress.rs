@@ -5,7 +5,7 @@ use crate::middlewares::AuthUser;
 use crate::services::fixtures::{self, FixturesProgress};
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Fixtures",
     get,
     path = "/api/fixtures",
     description = "Progress of the current or last fixtures generation.",

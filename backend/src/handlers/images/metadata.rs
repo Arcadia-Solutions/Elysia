@@ -55,7 +55,7 @@ pub struct MetadataResponse {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     get,
     path = "/api/i/{id}",
     security(("bearer" = [])),

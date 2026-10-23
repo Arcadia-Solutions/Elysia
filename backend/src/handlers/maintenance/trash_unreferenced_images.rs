@@ -7,7 +7,7 @@ use crate::services::maintenance;
 use crate::storage::Storage;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     post,
     path = "/api/maintenance/unreferenced-images/trash",
     description = "Start moving every image of the unreferenced images list to the trash in \

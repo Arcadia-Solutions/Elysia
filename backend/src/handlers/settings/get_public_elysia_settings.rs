@@ -6,7 +6,7 @@ use crate::settings::PublicElysiaSettings;
 use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Settings",
     get,
     path = "/api/public-elysia-settings",
     security(("bearer" = [])),

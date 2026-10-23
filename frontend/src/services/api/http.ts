@@ -1,7 +1,16 @@
 import { config } from '@/config'
 import { showToast } from '@/services/toast'
 import { clearSession, getToken } from '@/services/session'
-import { ElysiaApiFactory } from '@/services/api-schema'
+import {
+  APIKeysApiFactory,
+  AuthApiFactory,
+  FixturesApiFactory,
+  ImagesApiFactory,
+  MaintenanceApiFactory,
+  SettingsApiFactory,
+  StatsApiFactory,
+  UsersApiFactory,
+} from '@/services/api-schema'
 import axios from 'axios'
 
 // No default Content-Type: axios sets application/json for object bodies and
@@ -47,8 +56,18 @@ http.interceptors.response.use(
 
 export default http
 
-// The generated client, bound to our auth-aware axios instance. Every handler
-// shares the `elysia` utoipa tag, so the generator emits a single factory and
-// views call methods directly (api.login, api.upload).
+// The generated client, bound to our auth-aware axios instance. The generator
+// emits one factory per utoipa tag; merge them so views call methods directly
+// (api.login, api.upload). Operation ids are unique, so nothing collides.
 // basePath is config.api_base_url so request URLs stay relative (vite proxy).
-export const api = ElysiaApiFactory(undefined, config.api_base_url, http)
+const factoryArgs = [undefined, config.api_base_url, http] as const
+export const api = {
+  ...APIKeysApiFactory(...factoryArgs),
+  ...AuthApiFactory(...factoryArgs),
+  ...FixturesApiFactory(...factoryArgs),
+  ...ImagesApiFactory(...factoryArgs),
+  ...MaintenanceApiFactory(...factoryArgs),
+  ...SettingsApiFactory(...factoryArgs),
+  ...StatsApiFactory(...factoryArgs),
+  ...UsersApiFactory(...factoryArgs),
+}

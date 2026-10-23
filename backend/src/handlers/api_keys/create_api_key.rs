@@ -32,7 +32,7 @@ pub struct CreatedApiKey {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "API Keys",
     post,
     path = "/api/api-keys",
     description = "Create an API key for the caller. The token is returned only in this response.",

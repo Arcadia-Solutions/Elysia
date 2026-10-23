@@ -18,7 +18,7 @@ pub struct ImageIdsRequest {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     post,
     path = "/api/images/trash",
     description = "Move images to the trash: they stop being served to other sites at once \

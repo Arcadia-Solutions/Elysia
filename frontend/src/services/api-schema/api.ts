@@ -1059,9 +1059,229 @@ export interface WindowTotals {
 }
 
 /**
- * ElysiaApi - axios parameter creator
+ * APIKeysApi - axios parameter creator
  */
-export const ElysiaApiAxiosParamCreator = function (configuration?: Configuration) {
+export const APIKeysApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Create an API key for the caller. The token is returned only in this response.
+         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createApiKey: async (createApiKeyRequest: CreateApiKeyRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'createApiKeyRequest' is not null or undefined
+            assertParamExists('createApiKey', 'createApiKeyRequest', createApiKeyRequest)
+            const localVarPath = `/api/api-keys`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createApiKeyRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listApiKeys: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/api-keys`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * @param {string} id API key id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        revokeApiKey: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('revokeApiKey', 'id', id)
+            const localVarPath = `/api/api-keys/{id}/revoke`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * APIKeysApi - functional programming interface
+ */
+export const APIKeysApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = APIKeysApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Create an API key for the caller. The token is returned only in this response.
+         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreatedApiKey>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createApiKey(createApiKeyRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['APIKeysApi.createApiKey']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listApiKeys(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ApiKeySummary>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listApiKeys(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['APIKeysApi.listApiKeys']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * @param {string} id API key id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async revokeApiKey(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.revokeApiKey(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['APIKeysApi.revokeApiKey']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * APIKeysApi - factory interface
+ */
+export const APIKeysApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = APIKeysApiFp(configuration)
+    return {
+        /**
+         * Create an API key for the caller. The token is returned only in this response.
+         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreatedApiKey> {
+            return localVarFp.createApiKey(createApiKeyRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listApiKeys(options?: RawAxiosRequestConfig): AxiosPromise<Array<ApiKeySummary>> {
+            return localVarFp.listApiKeys(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+         * @param {string} id API key id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        revokeApiKey(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.revokeApiKey(id, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * APIKeysApi - object-oriented interface
+ */
+export class APIKeysApi extends BaseAPI {
+    /**
+     * Create an API key for the caller. The token is returned only in this response.
+     * @param {CreateApiKeyRequest} createApiKeyRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig) {
+        return APIKeysApiFp(this.configuration).createApiKey(createApiKeyRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The caller\'s API keys, revoked and expired ones included, newest first.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listApiKeys(options?: RawAxiosRequestConfig) {
+        return APIKeysApiFp(this.configuration).listApiKeys(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
+     * @param {string} id API key id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public revokeApiKey(id: string, options?: RawAxiosRequestConfig) {
+        return APIKeysApiFp(this.configuration).revokeApiKey(id, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * AuthApi - axios parameter creator
+ */
+export const AuthApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
          * 
@@ -1099,15 +1319,15 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Create an API key for the caller. The token is returned only in this response.
-         * @param {CreateApiKeyRequest} createApiKeyRequest 
+         * 
+         * @param {LoginRequest} loginRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        createApiKey: async (createApiKeyRequest: CreateApiKeyRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'createApiKeyRequest' is not null or undefined
-            assertParamExists('createApiKey', 'createApiKeyRequest', createApiKeyRequest)
-            const localVarPath = `/api/api-keys`;
+        login: async (loginRequest: LoginRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'loginRequest' is not null or undefined
+            assertParamExists('login', 'loginRequest', loginRequest)
+            const localVarPath = `/api/auth/login`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1126,7 +1346,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(createApiKeyRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(loginRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1134,12 +1354,12 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        emptyTrash: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/images/trash/empty`;
+        me: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/auth/me`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1147,7 +1367,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -1162,6 +1382,318 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 
+         * @param {RegisterRequest} registerRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        register: async (registerRequest: RegisterRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'registerRequest' is not null or undefined
+            assertParamExists('register', 'registerRequest', registerRequest)
+            const localVarPath = `/api/auth/register`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(registerRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {SsoCallbackRequest} ssoCallbackRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoCallback: async (ssoCallbackRequest: SsoCallbackRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'ssoCallbackRequest' is not null or undefined
+            assertParamExists('ssoCallback', 'ssoCallbackRequest', ssoCallbackRequest)
+            const localVarPath = `/api/auth/sso/callback`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(ssoCallbackRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoLogin: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/auth/sso/login`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * AuthApi - functional programming interface
+ */
+export const AuthApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = AuthApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @param {ChangePasswordRequest} changePasswordRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.changePassword(changePasswordRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.changePassword']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {LoginRequest} loginRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.login(loginRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.login']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async me(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<MeResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.me(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.me']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {RegisterRequest} registerRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RegisterResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.register(registerRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.register']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {SsoCallbackRequest} ssoCallbackRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoCallback(ssoCallbackRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.ssoCallback']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async ssoLogin(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SsoLoginResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoLogin(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.ssoLogin']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * AuthApi - factory interface
+ */
+export const AuthApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = AuthApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {ChangePasswordRequest} changePasswordRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.changePassword(changePasswordRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {LoginRequest} loginRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
+            return localVarFp.login(loginRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        me(options?: RawAxiosRequestConfig): AxiosPromise<MeResponse> {
+            return localVarFp.me(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {RegisterRequest} registerRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): AxiosPromise<RegisterResponse> {
+            return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {SsoCallbackRequest} ssoCallbackRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
+            return localVarFp.ssoCallback(ssoCallbackRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoLogin(options?: RawAxiosRequestConfig): AxiosPromise<SsoLoginResponse> {
+            return localVarFp.ssoLogin(options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * AuthApi - object-oriented interface
+ */
+export class AuthApi extends BaseAPI {
+    /**
+     * 
+     * @param {ChangePasswordRequest} changePasswordRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).changePassword(changePasswordRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {LoginRequest} loginRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).login(loginRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public me(options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).me(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {RegisterRequest} registerRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).register(registerRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {SsoCallbackRequest} ssoCallbackRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).ssoCallback(ssoCallbackRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public ssoLogin(options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).ssoLogin(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * FixturesApi - axios parameter creator
+ */
+export const FixturesApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
         /**
          * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
          * @param {FixturesParams} fixturesParams 
@@ -1198,93 +1730,6 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Progress of the current or last Chevereto import.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getCheveretoImportProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/maintenance/chevereto-import/progress`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/elysia-settings`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getElysiaUnauthSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/elysia-unauth-settings`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
          * Progress of the current or last fixtures generation.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1313,75 +1758,105 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 options: localVarRequestOptions,
             };
         },
+    }
+};
+
+/**
+ * FixturesApi - functional programming interface
+ */
+export const FixturesApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = FixturesApiAxiosParamCreator(configuration)
+    return {
         /**
-         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * @param {FixturesParams} fixturesParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getPublicElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/public-elysia-settings`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
+        async generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.generateFixtures(fixturesParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['FixturesApi.generateFixtures']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Progress of the current or last unreferenced images scan or trash run.
+         * Progress of the current or last fixtures generation.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getUnreferencedProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/maintenance/unreferenced-images/progress`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
+        async getFixturesProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<FixturesProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getFixturesProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['FixturesApi.getFixturesProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
 
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
+/**
+ * FixturesApi - factory interface
+ */
+export const FixturesApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = FixturesApiFp(configuration)
+    return {
+        /**
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * @param {FixturesParams} fixturesParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.generateFixtures(fixturesParams, options).then((request) => request(axios, basePath));
         },
         /**
-         * One user\'s profile. Admin only.
-         * @param {string} id User id
+         * Progress of the current or last fixtures generation.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getUser: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'id' is not null or undefined
-            assertParamExists('getUser', 'id', id)
-            const localVarPath = `/api/users/{id}`
-                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+        getFixturesProgress(options?: RawAxiosRequestConfig): AxiosPromise<FixturesProgress> {
+            return localVarFp.getFixturesProgress(options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * FixturesApi - object-oriented interface
+ */
+export class FixturesApi extends BaseAPI {
+    /**
+     * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+     * @param {FixturesParams} fixturesParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig) {
+        return FixturesApiFp(this.configuration).generateFixtures(fixturesParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Progress of the current or last fixtures generation.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getFixturesProgress(options?: RawAxiosRequestConfig) {
+        return FixturesApiFp(this.configuration).getFixturesProgress(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * ImagesApi - axios parameter creator
+ */
+export const ImagesApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        emptyTrash: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/images/trash/empty`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1389,7 +1864,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -1474,12 +1949,657 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * The caller\'s API keys, revoked and expired ones included, newest first.
+         * 
+         * @param {string} id File id
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listApiKeys: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/api-keys`;
+        metadata: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('metadata', 'id', id)
+            const localVarPath = `/api/i/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'imageIdsRequest' is not null or undefined
+            assertParamExists('restoreImages', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/images/trash/restore`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serve: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serve', 'filename', filename)
+            const localVarPath = `/i/{filename}`
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnail: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveThumbnail', 'filename', filename)
+            const localVarPath = `/t/{filename}`
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'imageIdsRequest' is not null or undefined
+            assertParamExists('trashImages', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/images/trash`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {File} file 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        upload: async (file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'file' is not null or undefined
+            assertParamExists('upload', 'file', file)
+            const localVarPath = `/api/upload`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+            const localVarFormParams = new ((configuration && configuration.formDataCtor) || FormData)();
+
+            if (lossyCompressionValue !== undefined) {
+                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
+            }
+
+            if (targetFileFormat !== undefined) {
+                localVarQueryParameter['target_file_format'] = targetFileFormat;
+            }
+
+            if (stripExif !== undefined) {
+                localVarQueryParameter['strip_exif'] = stripExif;
+            }
+
+
+            if (file !== undefined) { 
+                localVarFormParams.append('file', file as any);
+            }
+    
+    
+            localVarHeaderParameter['Content-Type'] = 'multipart/form-data';
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = localVarFormParams;
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {UploadUrlRequest} uploadUrlRequest 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'uploadUrlRequest' is not null or undefined
+            assertParamExists('uploadUrl', 'uploadUrlRequest', uploadUrlRequest)
+            const localVarPath = `/api/upload-url`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (lossyCompressionValue !== undefined) {
+                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
+            }
+
+            if (targetFileFormat !== undefined) {
+                localVarQueryParameter['target_file_format'] = targetFileFormat;
+            }
+
+            if (stripExif !== undefined) {
+                localVarQueryParameter['strip_exif'] = stripExif;
+            }
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(uploadUrlRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * ImagesApi - functional programming interface
+ */
+export const ImagesApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = ImagesApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async emptyTrash(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.emptyTrash(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.emptyTrash']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {ImagesStatus} status Available or trashed images.
+         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsImageSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, pageSize, sortBy, order, status, username, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.images']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} id File id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async metadata(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<MetadataResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.metadata(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.metadata']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.restoreImages(imageIdsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.restoreImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serve(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serve(filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serve']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveThumbnail(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(imageIdsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.trashImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {File} file 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossyCompressionValue, targetFileFormat, stripExif, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.upload']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {UploadUrlRequest} uploadUrlRequest 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.uploadUrl']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * ImagesApi - factory interface
+ */
+export const ImagesApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = ImagesApiFp(configuration)
+    return {
+        /**
+         * Wipe every trashed image from disk now, without waiting for its 30 days.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        emptyTrash(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.emptyTrash(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {ImagesStatus} status Available or trashed images.
+         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsImageSummary> {
+            return localVarFp.images(page, pageSize, sortBy, order, status, username, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} id File id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        metadata(id: string, options?: RawAxiosRequestConfig): AxiosPromise<MetadataResponse> {
+            return localVarFp.metadata(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.restoreImages(imageIdsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serve(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serve(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.trashImages(imageIdsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {File} file 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.upload(file, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {UploadUrlRequest} uploadUrlRequest 
+         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * ImagesApi - object-oriented interface
+ */
+export class ImagesApi extends BaseAPI {
+    /**
+     * Wipe every trashed image from disk now, without waiting for its 30 days.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public emptyTrash(options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).emptyTrash(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize 
+     * @param {ImagesSortBy} sortBy 
+     * @param {SortOrder} order 
+     * @param {ImagesStatus} status Available or trashed images.
+     * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).images(page, pageSize, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} id File id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public metadata(id: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).metadata(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+     * @param {ImageIdsRequest} imageIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).restoreImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serve(filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serve(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+     * @param {ImageIdsRequest} imageIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).trashImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {File} file 
+     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+     * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+     * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).upload(file, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {UploadUrlRequest} uploadUrlRequest 
+     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+     * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+     * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * MaintenanceApi - axios parameter creator
+ */
+export const MaintenanceApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Progress of the current or last Chevereto import.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getCheveretoImportProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/chevereto-import/progress`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Progress of the current or last unreferenced images scan or trash run.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUnreferencedProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/unreferenced-images/progress`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1603,77 +2723,15 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Users, local and SSO, optionally searched by username or email. Admin only.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {UsersSortBy} sortBy 
-         * @param {SortOrder} order 
-         * @param {string} [search] Only users whose username or email contains this, ignoring case.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listUsers: async (page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'page' is not null or undefined
-            assertParamExists('listUsers', 'page', page)
-            // verify required parameter 'pageSize' is not null or undefined
-            assertParamExists('listUsers', 'pageSize', pageSize)
-            // verify required parameter 'sortBy' is not null or undefined
-            assertParamExists('listUsers', 'sortBy', sortBy)
-            // verify required parameter 'order' is not null or undefined
-            assertParamExists('listUsers', 'order', order)
-            const localVarPath = `/api/users`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-            if (page !== undefined) {
-                localVarQueryParameter['page'] = page;
-            }
-
-            if (pageSize !== undefined) {
-                localVarQueryParameter['page_size'] = pageSize;
-            }
-
-            if (search !== undefined) {
-                localVarQueryParameter['search'] = search;
-            }
-
-            if (sortBy !== undefined) {
-                localVarQueryParameter['sort_by'] = sortBy;
-            }
-
-            if (order !== undefined) {
-                localVarQueryParameter['order'] = order;
-            }
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {LoginRequest} loginRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        login: async (loginRequest: LoginRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'loginRequest' is not null or undefined
-            assertParamExists('login', 'loginRequest', loginRequest)
-            const localVarPath = `/api/auth/login`;
+        scanUnreferencedImages: async (scanParams: ScanParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'scanParams' is not null or undefined
+            assertParamExists('scanUnreferencedImages', 'scanParams', scanParams)
+            const localVarPath = `/api/maintenance/unreferenced-images/scan`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1692,7 +2750,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(loginRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(scanParams, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1700,12 +2758,386 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+         * @param {CheveretoImportParams} cheveretoImportParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        startCheveretoImport: async (cheveretoImportParams: CheveretoImportParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'cheveretoImportParams' is not null or undefined
+            assertParamExists('startCheveretoImport', 'cheveretoImportParams', cheveretoImportParams)
+            const localVarPath = `/api/maintenance/chevereto-import`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(cheveretoImportParams, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        stopCheveretoImport: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/chevereto-import/stop`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashUnreferencedImages: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/unreferenced-images/trash`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * MaintenanceApi - functional programming interface
+ */
+export const MaintenanceApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = MaintenanceApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Progress of the current or last Chevereto import.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getCheveretoImportProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CheveretoImportProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getCheveretoImportProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.getCheveretoImportProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Progress of the current or last unreferenced images scan or trash run.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getUnreferencedProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getUnreferencedProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.getUnreferencedProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsCheveretoImportFailure>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listCheveretoImportFailures(page, pageSize, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.listCheveretoImportFailures']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * A page of the last scan\'s unreferenced images that are still available.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedImagesPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listUnreferencedImages(page, pageSize, sortBy, order, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.listUnreferencedImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {ScanParams} scanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.scanUnreferencedImages(scanParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.scanUnreferencedImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+         * @param {CheveretoImportParams} cheveretoImportParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.startCheveretoImport(cheveretoImportParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.startCheveretoImport']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async stopCheveretoImport(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.stopCheveretoImport(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.stopCheveretoImport']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async trashUnreferencedImages(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.trashUnreferencedImages(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.trashUnreferencedImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * MaintenanceApi - factory interface
+ */
+export const MaintenanceApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = MaintenanceApiFp(configuration)
+    return {
+        /**
+         * Progress of the current or last Chevereto import.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getCheveretoImportProgress(options?: RawAxiosRequestConfig): AxiosPromise<CheveretoImportProgress> {
+            return localVarFp.getCheveretoImportProgress(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Progress of the current or last unreferenced images scan or trash run.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUnreferencedProgress(options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedProgress> {
+            return localVarFp.getUnreferencedProgress(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsCheveretoImportFailure> {
+            return localVarFp.listCheveretoImportFailures(page, pageSize, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * A page of the last scan\'s unreferenced images that are still available.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {ImagesSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedImagesPage> {
+            return localVarFp.listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {ScanParams} scanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.scanUnreferencedImages(scanParams, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+         * @param {CheveretoImportParams} cheveretoImportParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.startCheveretoImport(cheveretoImportParams, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        stopCheveretoImport(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.stopCheveretoImport(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        trashUnreferencedImages(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.trashUnreferencedImages(options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * MaintenanceApi - object-oriented interface
+ */
+export class MaintenanceApi extends BaseAPI {
+    /**
+     * Progress of the current or last Chevereto import.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getCheveretoImportProgress(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).getCheveretoImportProgress(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Progress of the current or last unreferenced images scan or trash run.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getUnreferencedProgress(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).getUnreferencedProgress(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).listCheveretoImportFailures(page, pageSize, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * A page of the last scan\'s unreferenced images that are still available.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize 
+     * @param {ImagesSortBy} sortBy 
+     * @param {SortOrder} order 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * @param {ScanParams} scanParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).scanUnreferencedImages(scanParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+     * @param {CheveretoImportParams} cheveretoImportParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).startCheveretoImport(cheveretoImportParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public stopCheveretoImport(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).stopCheveretoImport(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public trashUnreferencedImages(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).trashUnreferencedImages(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * SettingsApi - axios parameter creator
+ */
+export const SettingsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        me: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/auth/me`;
+        getElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/elysia-settings`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1729,16 +3161,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * 
-         * @param {string} id File id
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        metadata: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'id' is not null or undefined
-            assertParamExists('metadata', 'id', id)
-            const localVarPath = `/api/i/{id}`
-                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+        getElysiaUnauthSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/elysia-unauth-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getPublicElysiaSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/public-elysia-settings`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1796,16 +3253,167 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 options: localVarRequestOptions,
             };
         },
+    }
+};
+
+/**
+ * SettingsApi - functional programming interface
+ */
+export const SettingsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = SettingsApiAxiosParamCreator(configuration)
+    return {
         /**
          * 
-         * @param {RegisterRequest} registerRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        register: async (registerRequest: RegisterRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'registerRequest' is not null or undefined
-            assertParamExists('register', 'registerRequest', registerRequest)
-            const localVarPath = `/api/auth/register`;
+        async getElysiaSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SettingsApi.getElysiaSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getElysiaUnauthSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnauthElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaUnauthSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SettingsApi.getElysiaUnauthSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getPublicElysiaSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PublicElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getPublicElysiaSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SettingsApi.getPublicElysiaSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {ElysiaSettings} elysiaSettings 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ElysiaSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.putElysiaSettings(elysiaSettings, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SettingsApi.putElysiaSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * SettingsApi - factory interface
+ */
+export const SettingsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = SettingsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getElysiaSettings(options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
+            return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getElysiaUnauthSettings(options?: RawAxiosRequestConfig): AxiosPromise<UnauthElysiaSettings> {
+            return localVarFp.getElysiaUnauthSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getPublicElysiaSettings(options?: RawAxiosRequestConfig): AxiosPromise<PublicElysiaSettings> {
+            return localVarFp.getPublicElysiaSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {ElysiaSettings} elysiaSettings 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
+            return localVarFp.putElysiaSettings(elysiaSettings, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * SettingsApi - object-oriented interface
+ */
+export class SettingsApi extends BaseAPI {
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getElysiaSettings(options?: RawAxiosRequestConfig) {
+        return SettingsApiFp(this.configuration).getElysiaSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getElysiaUnauthSettings(options?: RawAxiosRequestConfig) {
+        return SettingsApiFp(this.configuration).getElysiaUnauthSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getPublicElysiaSettings(options?: RawAxiosRequestConfig) {
+        return SettingsApiFp(this.configuration).getPublicElysiaSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {ElysiaSettings} elysiaSettings 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig) {
+        return SettingsApiFp(this.configuration).putElysiaSettings(elysiaSettings, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * StatsApi - axios parameter creator
+ */
+export const StatsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @param {StatsPeriod} period 
+         * @param {StatsInterval} interval 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        statsOverview: async (period: StatsPeriod, interval: StatsInterval, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'period' is not null or undefined
+            assertParamExists('statsOverview', 'period', period)
+            // verify required parameter 'interval' is not null or undefined
+            assertParamExists('statsOverview', 'interval', interval)
+            const localVarPath = `/api/stats/overview`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1813,69 +3421,106 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(registerRequest, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        restoreImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'imageIdsRequest' is not null or undefined
-            assertParamExists('restoreImages', 'imageIdsRequest', imageIdsRequest)
-            const localVarPath = `/api/images/trash/restore`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
+            if (period !== undefined) {
+                localVarQueryParameter['period'] = period;
             }
 
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
+            if (interval !== undefined) {
+                localVarQueryParameter['interval'] = interval;
+            }
 
 
     
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
                 options: localVarRequestOptions,
             };
         },
+    }
+};
+
+/**
+ * StatsApi - functional programming interface
+ */
+export const StatsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = StatsApiAxiosParamCreator(configuration)
+    return {
         /**
-         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
-         * @param {string} id API key id
+         * 
+         * @param {StatsPeriod} period 
+         * @param {StatsInterval} interval 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        revokeApiKey: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        async statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<StatsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.statsOverview(period, interval, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['StatsApi.statsOverview']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * StatsApi - factory interface
+ */
+export const StatsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = StatsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {StatsPeriod} period 
+         * @param {StatsInterval} interval 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): AxiosPromise<StatsResponse> {
+            return localVarFp.statsOverview(period, interval, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * StatsApi - object-oriented interface
+ */
+export class StatsApi extends BaseAPI {
+    /**
+     * 
+     * @param {StatsPeriod} period 
+     * @param {StatsInterval} interval 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig) {
+        return StatsApiFp(this.configuration).statsOverview(period, interval, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * UsersApi - axios parameter creator
+ */
+export const UsersApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * One user\'s profile. Admin only.
+         * @param {string} id User id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUser: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('revokeApiKey', 'id', id)
-            const localVarPath = `/api/api-keys/{id}/revoke`
+            assertParamExists('getUser', 'id', id)
+            const localVarPath = `/api/users/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -1884,74 +3529,6 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-         * @param {ScanParams} scanParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        scanUnreferencedImages: async (scanParams: ScanParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'scanParams' is not null or undefined
-            assertParamExists('scanUnreferencedImages', 'scanParams', scanParams)
-            const localVarPath = `/api/maintenance/unreferenced-images/scan`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(scanParams, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        serve: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'filename' is not null or undefined
-            assertParamExists('serve', 'filename', filename)
-            const localVarPath = `/i/{filename}`
-                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
@@ -1968,16 +3545,25 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * Users, local and SSO, optionally searched by username or email. Admin only.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {UsersSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [search] Only users whose username or email contains this, ignoring case.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        serveThumbnail: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'filename' is not null or undefined
-            assertParamExists('serveThumbnail', 'filename', filename)
-            const localVarPath = `/t/{filename}`
-                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+        listUsers: async (page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listUsers', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listUsers', 'pageSize', pageSize)
+            // verify required parameter 'sortBy' is not null or undefined
+            assertParamExists('listUsers', 'sortBy', sortBy)
+            // verify required parameter 'order' is not null or undefined
+            assertParamExists('listUsers', 'order', order)
+            const localVarPath = `/api/users`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1988,6 +3574,26 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
+            }
+
+            if (search !== undefined) {
+                localVarQueryParameter['search'] = search;
+            }
+
+            if (sortBy !== undefined) {
+                localVarQueryParameter['sort_by'] = sortBy;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
 
 
     
@@ -2078,468 +3684,15 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
                 options: localVarRequestOptions,
             };
         },
-        /**
-         * 
-         * @param {SsoCallbackRequest} ssoCallbackRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        ssoCallback: async (ssoCallbackRequest: SsoCallbackRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'ssoCallbackRequest' is not null or undefined
-            assertParamExists('ssoCallback', 'ssoCallbackRequest', ssoCallbackRequest)
-            const localVarPath = `/api/auth/sso/callback`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(ssoCallbackRequest, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        ssoLogin: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/auth/sso/login`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
-         * @param {CheveretoImportParams} cheveretoImportParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        startCheveretoImport: async (cheveretoImportParams: CheveretoImportParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'cheveretoImportParams' is not null or undefined
-            assertParamExists('startCheveretoImport', 'cheveretoImportParams', cheveretoImportParams)
-            const localVarPath = `/api/maintenance/chevereto-import`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(cheveretoImportParams, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {StatsPeriod} period 
-         * @param {StatsInterval} interval 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        statsOverview: async (period: StatsPeriod, interval: StatsInterval, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'period' is not null or undefined
-            assertParamExists('statsOverview', 'period', period)
-            // verify required parameter 'interval' is not null or undefined
-            assertParamExists('statsOverview', 'interval', interval)
-            const localVarPath = `/api/stats/overview`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-            if (period !== undefined) {
-                localVarQueryParameter['period'] = period;
-            }
-
-            if (interval !== undefined) {
-                localVarQueryParameter['interval'] = interval;
-            }
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        stopCheveretoImport: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/maintenance/chevereto-import/stop`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        trashImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'imageIdsRequest' is not null or undefined
-            assertParamExists('trashImages', 'imageIdsRequest', imageIdsRequest)
-            const localVarPath = `/api/images/trash`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        trashUnreferencedImages: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/api/maintenance/unreferenced-images/trash`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        upload: async (file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'file' is not null or undefined
-            assertParamExists('upload', 'file', file)
-            const localVarPath = `/api/upload`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-            const localVarFormParams = new ((configuration && configuration.formDataCtor) || FormData)();
-
-            if (lossyCompressionValue !== undefined) {
-                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
-            }
-
-            if (targetFileFormat !== undefined) {
-                localVarQueryParameter['target_file_format'] = targetFileFormat;
-            }
-
-            if (stripExif !== undefined) {
-                localVarQueryParameter['strip_exif'] = stripExif;
-            }
-
-
-            if (file !== undefined) { 
-                localVarFormParams.append('file', file as any);
-            }
-    
-    
-            localVarHeaderParameter['Content-Type'] = 'multipart/form-data';
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = localVarFormParams;
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'uploadUrlRequest' is not null or undefined
-            assertParamExists('uploadUrl', 'uploadUrlRequest', uploadUrlRequest)
-            const localVarPath = `/api/upload-url`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-            if (lossyCompressionValue !== undefined) {
-                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
-            }
-
-            if (targetFileFormat !== undefined) {
-                localVarQueryParameter['target_file_format'] = targetFileFormat;
-            }
-
-            if (stripExif !== undefined) {
-                localVarQueryParameter['strip_exif'] = stripExif;
-            }
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(uploadUrlRequest, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
     }
 };
 
 /**
- * ElysiaApi - functional programming interface
+ * UsersApi - functional programming interface
  */
-export const ElysiaApiFp = function(configuration?: Configuration) {
-    const localVarAxiosParamCreator = ElysiaApiAxiosParamCreator(configuration)
+export const UsersApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = UsersApiAxiosParamCreator(configuration)
     return {
-        /**
-         * 
-         * @param {ChangePasswordRequest} changePasswordRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.changePassword(changePasswordRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.changePassword']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Create an API key for the caller. The token is returned only in this response.
-         * @param {CreateApiKeyRequest} createApiKeyRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreatedApiKey>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.createApiKey(createApiKeyRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.createApiKey']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Wipe every trashed image from disk now, without waiting for its 30 days.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async emptyTrash(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.emptyTrash(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.emptyTrash']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
-         * @param {FixturesParams} fixturesParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.generateFixtures(fixturesParams, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.generateFixtures']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Progress of the current or last Chevereto import.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getCheveretoImportProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CheveretoImportProgress>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getCheveretoImportProgress(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getCheveretoImportProgress']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getElysiaSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ElysiaSettings>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaSettings(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getElysiaSettings']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getElysiaUnauthSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnauthElysiaSettings>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getElysiaUnauthSettings(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getElysiaUnauthSettings']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Progress of the current or last fixtures generation.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getFixturesProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<FixturesProgress>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getFixturesProgress(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getFixturesProgress']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getPublicElysiaSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PublicElysiaSettings>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getPublicElysiaSettings(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getPublicElysiaSettings']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Progress of the current or last unreferenced images scan or trash run.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getUnreferencedProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedProgress>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getUnreferencedProgress(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getUnreferencedProgress']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
         /**
          * One user\'s profile. Admin only.
          * @param {string} id User id
@@ -2549,63 +3702,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         async getUser(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UserSummary>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.getUser(id, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getUser']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {ImagesSortBy} sortBy 
-         * @param {SortOrder} order 
-         * @param {ImagesStatus} status Available or trashed images.
-         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsImageSummary>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, pageSize, sortBy, order, status, username, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.images']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * The caller\'s API keys, revoked and expired ones included, newest first.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async listApiKeys(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ApiKeySummary>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listApiKeys(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listApiKeys']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsCheveretoImportFailure>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listCheveretoImportFailures(page, pageSize, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listCheveretoImportFailures']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * A page of the last scan\'s unreferenced images that are still available.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {ImagesSortBy} sortBy 
-         * @param {SortOrder} order 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnreferencedImagesPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listUnreferencedImages(page, pageSize, sortBy, order, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listUnreferencedImages']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['UsersApi.getUser']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2621,126 +3718,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         async listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsUserSummary>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.listUsers(page, pageSize, sortBy, order, search, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listUsers']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {LoginRequest} loginRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.login(loginRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.login']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async me(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<MeResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.me(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.me']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {string} id File id
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async metadata(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<MetadataResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.metadata(id, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.metadata']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {ElysiaSettings} elysiaSettings 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ElysiaSettings>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.putElysiaSettings(elysiaSettings, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.putElysiaSettings']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {RegisterRequest} registerRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RegisterResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.register(registerRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.register']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.restoreImages(imageIdsRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.restoreImages']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
-         * @param {string} id API key id
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async revokeApiKey(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.revokeApiKey(id, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.revokeApiKey']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-         * @param {ScanParams} scanParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.scanUnreferencedImages(scanParams, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.scanUnreferencedImages']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async serve(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.serve(filename, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serve']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async serveThumbnail(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['UsersApi.listUsers']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2753,7 +3731,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         async setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.setUserBanned(id, setUserBannedRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.setUserBanned']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['UsersApi.setUserBanned']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2766,213 +3744,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
         async setUserStorageQuota(id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.setUserStorageQuota(id, setUserStorageQuotaRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.setUserStorageQuota']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {SsoCallbackRequest} ssoCallbackRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoCallback(ssoCallbackRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.ssoCallback']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async ssoLogin(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SsoLoginResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoLogin(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.ssoLogin']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
-         * @param {CheveretoImportParams} cheveretoImportParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.startCheveretoImport(cheveretoImportParams, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.startCheveretoImport']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {StatsPeriod} period 
-         * @param {StatsInterval} interval 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<StatsResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.statsOverview(period, interval, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.statsOverview']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async stopCheveretoImport(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.stopCheveretoImport(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.stopCheveretoImport']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(imageIdsRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.trashImages']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async trashUnreferencedImages(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.trashUnreferencedImages(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.trashUnreferencedImages']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossyCompressionValue, targetFileFormat, stripExif, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.upload']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.uploadUrl']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['UsersApi.setUserStorageQuota']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
 };
 
 /**
- * ElysiaApi - factory interface
+ * UsersApi - factory interface
  */
-export const ElysiaApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
-    const localVarFp = ElysiaApiFp(configuration)
+export const UsersApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = UsersApiFp(configuration)
     return {
-        /**
-         * 
-         * @param {ChangePasswordRequest} changePasswordRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.changePassword(changePasswordRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Create an API key for the caller. The token is returned only in this response.
-         * @param {CreateApiKeyRequest} createApiKeyRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreatedApiKey> {
-            return localVarFp.createApiKey(createApiKeyRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Wipe every trashed image from disk now, without waiting for its 30 days.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        emptyTrash(options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.emptyTrash(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
-         * @param {FixturesParams} fixturesParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.generateFixtures(fixturesParams, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Progress of the current or last Chevereto import.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getCheveretoImportProgress(options?: RawAxiosRequestConfig): AxiosPromise<CheveretoImportProgress> {
-            return localVarFp.getCheveretoImportProgress(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getElysiaSettings(options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
-            return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getElysiaUnauthSettings(options?: RawAxiosRequestConfig): AxiosPromise<UnauthElysiaSettings> {
-            return localVarFp.getElysiaUnauthSettings(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Progress of the current or last fixtures generation.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getFixturesProgress(options?: RawAxiosRequestConfig): AxiosPromise<FixturesProgress> {
-            return localVarFp.getFixturesProgress(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getPublicElysiaSettings(options?: RawAxiosRequestConfig): AxiosPromise<PublicElysiaSettings> {
-            return localVarFp.getPublicElysiaSettings(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Progress of the current or last unreferenced images scan or trash run.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getUnreferencedProgress(options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedProgress> {
-            return localVarFp.getUnreferencedProgress(options).then((request) => request(axios, basePath));
-        },
         /**
          * One user\'s profile. Admin only.
          * @param {string} id User id
@@ -2981,50 +3764,6 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         getUser(id: string, options?: RawAxiosRequestConfig): AxiosPromise<UserSummary> {
             return localVarFp.getUser(id, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {ImagesSortBy} sortBy 
-         * @param {SortOrder} order 
-         * @param {ImagesStatus} status Available or trashed images.
-         * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsImageSummary> {
-            return localVarFp.images(page, pageSize, sortBy, order, status, username, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * The caller\'s API keys, revoked and expired ones included, newest first.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        listApiKeys(options?: RawAxiosRequestConfig): AxiosPromise<Array<ApiKeySummary>> {
-            return localVarFp.listApiKeys(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsCheveretoImportFailure> {
-            return localVarFp.listCheveretoImportFailures(page, pageSize, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * A page of the last scan\'s unreferenced images that are still available.
-         * @param {number} page 1-based page number.
-         * @param {number} pageSize 
-         * @param {ImagesSortBy} sortBy 
-         * @param {SortOrder} order 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedImagesPage> {
-            return localVarFp.listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(axios, basePath));
         },
         /**
          * Users, local and SSO, optionally searched by username or email. Admin only.
@@ -3038,95 +3777,6 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsUserSummary> {
             return localVarFp.listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {LoginRequest} loginRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
-            return localVarFp.login(loginRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        me(options?: RawAxiosRequestConfig): AxiosPromise<MeResponse> {
-            return localVarFp.me(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {string} id File id
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        metadata(id: string, options?: RawAxiosRequestConfig): AxiosPromise<MetadataResponse> {
-            return localVarFp.metadata(id, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {ElysiaSettings} elysiaSettings 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig): AxiosPromise<ElysiaSettings> {
-            return localVarFp.putElysiaSettings(elysiaSettings, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {RegisterRequest} registerRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig): AxiosPromise<RegisterResponse> {
-            return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.restoreImages(imageIdsRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
-         * @param {string} id API key id
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        revokeApiKey(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.revokeApiKey(id, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-         * @param {ScanParams} scanParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.scanUnreferencedImages(scanParams, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        serve(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.serve(filename, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
         },
         /**
          * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
@@ -3148,191 +3798,13 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
         setUserStorageQuota(id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.setUserStorageQuota(id, setUserStorageQuotaRequest, options).then((request) => request(axios, basePath));
         },
-        /**
-         * 
-         * @param {SsoCallbackRequest} ssoCallbackRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
-            return localVarFp.ssoCallback(ssoCallbackRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        ssoLogin(options?: RawAxiosRequestConfig): AxiosPromise<SsoLoginResponse> {
-            return localVarFp.ssoLogin(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
-         * @param {CheveretoImportParams} cheveretoImportParams 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.startCheveretoImport(cheveretoImportParams, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {StatsPeriod} period 
-         * @param {StatsInterval} interval 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig): AxiosPromise<StatsResponse> {
-            return localVarFp.statsOverview(period, interval, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        stopCheveretoImport(options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.stopCheveretoImport(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.trashImages(imageIdsRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        trashUnreferencedImages(options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.trashUnreferencedImages(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.upload(file, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-         * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(axios, basePath));
-        },
     };
 };
 
 /**
- * ElysiaApi - object-oriented interface
+ * UsersApi - object-oriented interface
  */
-export class ElysiaApi extends BaseAPI {
-    /**
-     * 
-     * @param {ChangePasswordRequest} changePasswordRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public changePassword(changePasswordRequest: ChangePasswordRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).changePassword(changePasswordRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Create an API key for the caller. The token is returned only in this response.
-     * @param {CreateApiKeyRequest} createApiKeyRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public createApiKey(createApiKeyRequest: CreateApiKeyRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).createApiKey(createApiKeyRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Wipe every trashed image from disk now, without waiting for its 30 days.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public emptyTrash(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).emptyTrash(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
-     * @param {FixturesParams} fixturesParams 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).generateFixtures(fixturesParams, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Progress of the current or last Chevereto import.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public getCheveretoImportProgress(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getCheveretoImportProgress(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public getElysiaSettings(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getElysiaSettings(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public getElysiaUnauthSettings(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getElysiaUnauthSettings(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Progress of the current or last fixtures generation.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public getFixturesProgress(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getFixturesProgress(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public getPublicElysiaSettings(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getPublicElysiaSettings(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Progress of the current or last unreferenced images scan or trash run.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public getUnreferencedProgress(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getUnreferencedProgress(options).then((request) => request(this.axios, this.basePath));
-    }
-
+export class UsersApi extends BaseAPI {
     /**
      * One user\'s profile. Admin only.
      * @param {string} id User id
@@ -3340,55 +3812,7 @@ export class ElysiaApi extends BaseAPI {
      * @throws {RequiredError}
      */
     public getUser(id: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).getUser(id, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
-     * @param {number} page 1-based page number.
-     * @param {number} pageSize 
-     * @param {ImagesSortBy} sortBy 
-     * @param {SortOrder} order 
-     * @param {ImagesStatus} status Available or trashed images.
-     * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).images(page, pageSize, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * The caller\'s API keys, revoked and expired ones included, newest first.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public listApiKeys(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).listApiKeys(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
-     * @param {number} page 1-based page number.
-     * @param {number} pageSize 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).listCheveretoImportFailures(page, pageSize, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * A page of the last scan\'s unreferenced images that are still available.
-     * @param {number} page 1-based page number.
-     * @param {number} pageSize 
-     * @param {ImagesSortBy} sortBy 
-     * @param {SortOrder} order 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+        return UsersApiFp(this.configuration).getUser(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3402,106 +3826,7 @@ export class ElysiaApi extends BaseAPI {
      * @throws {RequiredError}
      */
     public listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {LoginRequest} loginRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public login(loginRequest: LoginRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).login(loginRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public me(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).me(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {string} id File id
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public metadata(id: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).metadata(id, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {ElysiaSettings} elysiaSettings 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public putElysiaSettings(elysiaSettings: ElysiaSettings, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).putElysiaSettings(elysiaSettings, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {RegisterRequest} registerRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public register(registerRequest: RegisterRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).register(registerRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-     * @param {ImageIdsRequest} imageIdsRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).restoreImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
-     * @param {string} id API key id
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public revokeApiKey(id: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).revokeApiKey(id, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-     * @param {ScanParams} scanParams 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public scanUnreferencedImages(scanParams: ScanParams, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).scanUnreferencedImages(scanParams, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public serve(filename: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).serve(filename, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
-     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+        return UsersApiFp(this.configuration).listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3512,7 +3837,7 @@ export class ElysiaApi extends BaseAPI {
      * @throws {RequiredError}
      */
     public setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).setUserBanned(id, setUserBannedRequest, options).then((request) => request(this.axios, this.basePath));
+        return UsersApiFp(this.configuration).setUserBanned(id, setUserBannedRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3523,101 +3848,7 @@ export class ElysiaApi extends BaseAPI {
      * @throws {RequiredError}
      */
     public setUserStorageQuota(id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).setUserStorageQuota(id, setUserStorageQuotaRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {SsoCallbackRequest} ssoCallbackRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).ssoCallback(ssoCallbackRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public ssoLogin(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).ssoLogin(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
-     * @param {CheveretoImportParams} cheveretoImportParams 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).startCheveretoImport(cheveretoImportParams, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {StatsPeriod} period 
-     * @param {StatsInterval} interval 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public statsOverview(period: StatsPeriod, interval: StatsInterval, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).statsOverview(period, interval, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public stopCheveretoImport(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).stopCheveretoImport(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-     * @param {ImageIdsRequest} imageIdsRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).trashImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public trashUnreferencedImages(options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).trashUnreferencedImages(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {File} file 
-     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-     * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-     * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).upload(file, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {UploadUrlRequest} uploadUrlRequest 
-     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-     * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-     * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, options).then((request) => request(this.axios, this.basePath));
+        return UsersApiFp(this.configuration).setUserStorageQuota(id, setUserStorageQuotaRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

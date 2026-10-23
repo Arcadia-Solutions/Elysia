@@ -19,7 +19,7 @@ pub struct SetUserStorageQuotaRequest {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Users",
     put,
     path = "/api/users/{id}/storage-quota",
     description = "Override a user's storage quota, or clear the override to follow the global \

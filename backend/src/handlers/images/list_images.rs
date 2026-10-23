@@ -22,7 +22,7 @@ pub struct ImageSummary {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     get,
     path = "/api/images",
     description = "Admins browse all images, or one user's with `username`, other users only their own uploads.",

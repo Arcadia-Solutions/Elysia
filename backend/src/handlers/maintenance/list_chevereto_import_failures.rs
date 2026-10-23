@@ -26,7 +26,7 @@ pub struct CheveretoImportFailuresQuery {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     get,
     path = "/api/maintenance/chevereto-import/failures",
     description = "A page of the Chevereto images that could not be imported, by image id. \

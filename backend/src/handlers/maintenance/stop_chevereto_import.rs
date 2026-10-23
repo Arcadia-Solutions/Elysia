@@ -5,7 +5,7 @@ use crate::middlewares::AuthUser;
 use crate::services::chevereto_import;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     post,
     path = "/api/maintenance/chevereto-import/stop",
     description = "Stop the running Chevereto import once its current chunk is saved. Start it \

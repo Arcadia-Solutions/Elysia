@@ -9,7 +9,7 @@ use crate::middlewares::AuthUser;
 use crate::services::maintenance::{self, ScanParams};
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Maintenance",
     post,
     path = "/api/maintenance/unreferenced-images/scan",
     description = "Start scanning the text-like columns of a Postgres or MySQL database in the \

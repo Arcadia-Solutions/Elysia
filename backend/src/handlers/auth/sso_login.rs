@@ -18,7 +18,7 @@ pub struct SsoLoginResponse {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Auth",
     get,
     path = "/api/auth/sso/login",
     responses(

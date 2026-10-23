@@ -40,7 +40,7 @@ pub struct MeResponse {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Auth",
     get,
     path = "/api/auth/me",
     security(("bearer" = [])),

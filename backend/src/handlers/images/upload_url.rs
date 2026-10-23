@@ -21,7 +21,7 @@ pub struct UploadUrlRequest {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     post,
     path = "/api/upload-url",
     request_body = UploadUrlRequest,

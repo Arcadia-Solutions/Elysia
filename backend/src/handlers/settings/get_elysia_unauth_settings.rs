@@ -6,7 +6,7 @@ use crate::settings::SharedElysiaSettings;
 use crate::settings::UnauthElysiaSettings;
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Settings",
     get,
     path = "/api/elysia-unauth-settings",
     description = "Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.",

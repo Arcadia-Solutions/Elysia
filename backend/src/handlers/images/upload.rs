@@ -116,7 +116,7 @@ impl UploadOptionsQuery {
 }
 
 #[utoipa::path(
-    tag = "elysia",
+    tag = "Images",
     post,
     path = "/api/upload",
     request_body(content = UploadForm, content_type = "multipart/form-data"),

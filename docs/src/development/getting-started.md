@@ -13,7 +13,7 @@
 From the repository root:
 
 ```sh
-cp config.example.yml config.yml        # set auth.jwt_secret
+cp config.example.yml config.yml        # edit what's needed in this file
 docker compose up -d db
 cargo run --manifest-path backend/Cargo.toml
 ```
@@ -46,7 +46,7 @@ already there.
 ## Database changes
 
 The schema lives in a single migration, `backend/migrations/0001_init.sql`,
-edited in place (there are no deployed instances to migrate). Queries are
+edited in place. Queries are
 checked at compile time against the cache in `backend/.sqlx`, so after changing
 a query or the schema, with the database running:
 
