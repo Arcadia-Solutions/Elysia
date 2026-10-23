@@ -5,3 +5,4 @@ import.yml
 node_modules
 .env
 CLAUDE.md
+docs/book

@@ -1,0 +1,69 @@
+# Architecture
+
+## Repository layout
+
+| Path | Content |
+| --- | --- |
+| `backend/` | Rust API and image server |
+| `frontend/` | Vue 3 + TypeScript single page app (PrimeVue, vue-i18n) |
+| `opentelemetry/` | Grafana dashboard and host metrics collector config |
+| `compose.yml` | PostgreSQL, the app and the telemetry stack |
+| `docs/` | This book |
+
+## Backend
+
+Requests flow through `routes.rs` to `handlers/` (one file per route, grouped by
+domain), which call `services/` for the logic and `repository/` for the SQL.
+Every route is documented with utoipa and registered in `api_doc.rs`, which
+produces the OpenAPI description the frontend client is generated from.
+
+### Configuration and settings
+
+There are two separate sources of configuration:
+
+- `config.rs`: boot-time infrastructure read from `config.yml` (address,
+  database, upload directory, secrets, SSO, telemetry). Changing it needs a
+  restart.
+- `settings.rs`: everything an admin edits from the UI, stored as the single
+  `elysia_settings` row and held in memory behind a lock. A save validates and
+  swaps the whole value, so uploads see the change at once.
+
+New options belong in settings unless the server cannot start without them.
+
+### Uploads
+
+An upload, whether a file, a URL or an import, goes through the same pipeline
+in `services/files.rs`: the body is streamed to disk under the size cap, the
+image is deduplicated by hash, then optionally re-encoded, stripped of its
+metadata and thumbnailed. Processing jobs are limited to one per CPU.
+
+URL uploads refuse private and reserved addresses.
+
+### Serving
+
+`/i/<id>.<ext>` (image) and `/t/<id>.<ext>` (thumbnail) are served straight
+from disk without touching the database. `storage.rs` owns the on-disk layout:
+files are sharded by the first two characters of their id, and trashed files
+move to a separate directory. View counts are kept in memory and flushed to the
+database every 10 seconds.
+
+`/i/<id>` without an extension is the frontend's image page, which is why the
+proxies route on the presence of an extension.
+
+### Background tasks
+
+`scheduler.rs` runs next to the HTTP server: it flushes view counts and wipes
+expired trash every hour. Long admin jobs (fixtures, unreferenced image scan,
+Chevereto import) run as background tasks and expose a progress endpoint the UI
+polls.
+
+### Authentication
+
+A bearer token is either a session JWT or an API key. Admin rights and bans are
+re-read from the database on every request, so they apply immediately.
+
+## Frontend
+
+Pages live in `src/views`, reusable components in `src/components`, and every
+API call goes through the generated client in `src/services/api-schema`. Text
+is translated with vue-i18n (`src/i18n`).

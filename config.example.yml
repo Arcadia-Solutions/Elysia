@@ -43,6 +43,6 @@ auth:
 # Optional OpenTelemetry export of traces, metrics and logs (OTLP gRPC). Logs
 # always go to stdout; RUST_LOG overrides the default `info` level. The
 # `telemetry` compose profile runs a collector with Grafana on
-# http://localhost:3001, see backend/README.md.
+# http://localhost:3001, see the Telemetry chapter of the docs.
 # telemetry:
 #   otlp_endpoint: http://localhost:4317
