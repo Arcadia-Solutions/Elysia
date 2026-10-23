@@ -18,7 +18,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
-use crate::repository::files::{self, ImagesSortBy, SortOrder, UnreferencedImageRow};
+use crate::repository::files::{self, ImageListRow, ImagesSortBy, SortOrder};
 use crate::services::{files as files_service, paginate};
 use crate::storage::Storage;
 
@@ -435,7 +435,7 @@ pub async fn list_unreferenced(
     page_size: u32,
     sort_by: ImagesSortBy,
     order: SortOrder,
-) -> Result<(Vec<UnreferencedImageRow>, i64, Option<String>)> {
+) -> Result<(Vec<ImageListRow>, i64, Option<String>)> {
     let (rows, total) = paginate(
         page,
         page_size,

@@ -25,26 +25,6 @@
         @keydown.enter="setUsername(usernameInput)"
         @clear="setUsername('')"
       />
-      <Select
-        :modelValue="sortBy"
-        size="small"
-        :options="Object.values(ImagesSortBy).map((value) => ({ label: $t(`browse.sort.${value}`), value }))"
-        option-label="label"
-        option-value="value"
-        @update:modelValue="(value: ImagesSortBy) => setSort(value, order)"
-      />
-      <Button
-        :icon="order === SortOrder.Asc ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"
-        size="small"
-        severity="secondary"
-        :title="$t(`browse.order.${order}`)"
-        :aria-label="$t(`browse.order.${order}`)"
-        @click="setSort(sortBy, order === SortOrder.Asc ? SortOrder.Desc : SortOrder.Asc)"
-      />
-      <PageSizeSelect
-        :modelValue="pageSize"
-        @update:modelValue="(size: number) => router.push({ query: { ...route.query, page: undefined, page_size: size } })"
-      />
       <template v-if="selected.size > 0">
         <Button
           v-if="status === ImagesStatus.Trashed"
@@ -75,28 +55,19 @@
     </div>
     <FixturesDialog v-if="isAdmin()" v-model:visible="fixturesVisible" @done="load(1)" />
     <p v-if="total === 0" class="empty">{{ $t(`browse.empty.${status}`) }}</p>
-    <PaginatedResults v-else :page :pageSize :totalItems="total" @changePage="(page: number) => router.push({ query: { ...route.query, page } })">
-      <div class="grid" :class="{ selecting: selected.size > 0 }">
-        <div v-for="image in images" :key="image.id" class="cell" :class="{ selected: selected.has(image.id) }">
-          <!-- While a selection is in progress, a click on the image selects it too. -->
-          <button v-if="selected.size > 0" type="button" class="thumb" tabindex="-1" @click="toggleSelected(image.id)">
-            <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
-          </button>
-          <router-link v-else :to="{ name: 'Image', params: { id: image.id } }" class="thumb">
-            <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
-          </router-link>
-          <button
-            type="button"
-            class="select-indicator"
-            :aria-pressed="selected.has(image.id)"
-            :aria-label="$t('browse.select')"
-            @click="toggleSelected(image.id)"
-          >
-            <i class="pi pi-check" />
-          </button>
-        </div>
-      </div>
-    </PaginatedResults>
+    <ImageResults
+      v-else
+      v-model:selected="selected"
+      :images
+      :page
+      :pageSize
+      :totalItems="total"
+      :sortBy
+      :order
+      @changePage="(page: number) => router.push({ query: { ...route.query, page } })"
+      @changePageSize="(size: number) => router.push({ query: { ...route.query, page: undefined, page_size: size } })"
+      @sort="setSort"
+    />
   </div>
 </template>
 
@@ -104,13 +75,11 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
 import AutoComplete, { type AutoCompleteCompleteEvent, type AutoCompleteOptionSelectEvent } from 'primevue/autocomplete'
 import FixturesDialog from '@/components/FixturesDialog.vue'
-import PageSizeSelect from '@/components/PageSizeSelect.vue'
-import PaginatedResults from '@/components/PaginatedResults.vue'
+import ImageResults from '@/components/ImageResults.vue'
 import { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
@@ -168,10 +137,6 @@ const load = (target: number) => {
 const setSort = (sort_by: ImagesSortBy, order: SortOrder) =>
   router.push({ query: { status: route.query.status, username: route.query.username, page_size: route.query.page_size, sort_by, order } })
 
-const toggleSelected = (id: string) => {
-  if (!selected.value.delete(id)) selected.value.add(id)
-}
-
 const trashSelected = () => {
   const count = selected.value.size
   if (!confirm(t('trash.delete_confirm', { count }, count))) return
@@ -221,76 +186,5 @@ watch(status, () => selected.value.clear())
 .empty {
   text-align: center;
   color: var(--p-text-muted-color);
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
-}
-.cell {
-  position: relative;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--p-content-border-color, #eee);
-}
-.thumb {
-  display: block;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: none;
-  cursor: pointer;
-}
-.cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.cell.selected {
-  outline: 3px solid var(--p-primary-color);
-  outline-offset: -3px;
-}
-.cell.selected img {
-  opacity: 0.7;
-}
-.select-indicator {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: rgb(0 0 0 / 0.35);
-  color: transparent;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.select-indicator .pi {
-  font-size: 0.75rem;
-}
-/* Shown on hover and keyboard focus, always once a selection is in progress,
-   and always on touch screens, which have no hover. */
-.cell:hover .select-indicator,
-.select-indicator:focus-visible,
-.selecting .select-indicator {
-  opacity: 1;
-}
-@media (hover: none) {
-  .select-indicator {
-    opacity: 1;
-  }
-}
-.cell.selected .select-indicator {
-  background: var(--p-primary-color);
-  border-color: var(--p-primary-color);
-  color: var(--p-primary-contrast-color, #fff);
 }
 </style>

@@ -157,6 +157,21 @@
       "desc": "Descending"
     },
     "select": "Select",
+    "display": {
+      "grid": "Grid",
+      "table": "Table"
+    },
+    "columns": {
+      "image": "Image",
+      "original_name": "Original name",
+      "uploader": "Uploader",
+      "uploaded_at": "Uploaded",
+      "size": "Size",
+      "width": "Width",
+      "height": "Height",
+      "format": "Format",
+      "views": "Views"
+    },
     "status": {
       "available": "Available",
       "trashed": "Trash"
@@ -352,16 +367,7 @@
       "scanned_at": "Scanned {when}",
       "summary": "Last scan: {columns} columns read, {referenced} linked images found",
       "empty": "No unreferenced images from the last scan",
-      "trash_all": "Delete all ({count})",
-      "image": "Image",
-      "original_name": "Original name",
-      "uploader": "Uploader",
-      "uploaded_at": "Uploaded",
-      "size": "Size",
-      "width": "Width",
-      "height": "Height",
-      "format": "Format",
-      "views": "Views"
+      "trash_all": "Delete all ({count})"
     },
     "chevereto_import": {
       "title": "Chevereto import",

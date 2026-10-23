@@ -10,10 +10,10 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::config::Config;
 use crate::error::Result;
+use crate::handlers::images::list_images::ImageSummary;
 use crate::middlewares::AuthUser;
 use crate::repository::PaginatedResults;
 use crate::repository::files::{ImagesSortBy, SortOrder};
-use crate::services::files;
 use crate::services::maintenance;
 
 /// Unreferenced images page query.
@@ -30,29 +30,11 @@ pub struct UnreferencedImagesQuery {
     pub order: SortOrder,
 }
 
-/// One unreferenced image.
-#[derive(Serialize, ToSchema)]
-pub struct UnreferencedImage {
-    pub id: String,
-    pub thumbnail_url: String,
-    pub original_name: Option<String>,
-    /// Stored extension.
-    pub ext: String,
-    /// Bytes on disk.
-    pub size: i64,
-    pub width: i32,
-    pub height: i32,
-    pub views: i64,
-    pub uploader_username: String,
-    /// RFC 3339, UTC.
-    pub created_at: String,
-}
-
 /// A page of the unreferenced images list.
 #[derive(Serialize, ToSchema)]
 pub struct UnreferencedImagesPage {
     #[serde(flatten)]
-    pub page: PaginatedResults<UnreferencedImage>,
+    pub page: PaginatedResults<ImageSummary>,
     /// When the scan started, RFC 3339, UTC. None when it found nothing.
     pub scanned_at: Option<String>,
     /// `server.public_url` without its scheme, the host links use by default.
@@ -92,23 +74,7 @@ pub async fn list_unreferenced_images(
     Ok(HttpResponse::Ok().json(UnreferencedImagesPage {
         page: PaginatedResults::new(
             rows.into_iter()
-                .map(|row| UnreferencedImage {
-                    thumbnail_url: files::thumbnail_url(
-                        public_url,
-                        &row.id,
-                        &row.ext,
-                        row.has_thumbnail,
-                    ),
-                    id: row.id,
-                    original_name: row.original_name,
-                    ext: row.ext,
-                    size: row.size,
-                    width: row.width,
-                    height: row.height,
-                    views: row.views,
-                    uploader_username: row.uploader_username,
-                    created_at: row.created_at,
-                })
+                .map(|row| ImageSummary::from_row(row, public_url))
                 .collect(),
             query.page,
             query.page_size,

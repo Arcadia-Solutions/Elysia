@@ -9,16 +9,45 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::middlewares::AuthUser;
-use crate::repository::files::{ImagesQuery, ImagesStatus};
+use crate::repository::files::{ImageListRow, ImagesQuery, ImagesStatus};
 use crate::repository::{PaginatedResults, users};
 use crate::services::files;
 
-/// One image in a browse page.
+/// One image in a browse or unreferenced images page.
 #[derive(Serialize, ToSchema)]
 pub struct ImageSummary {
     pub id: String,
     /// Thumbnail URL from `/t/`. Trashed, it is only served to Elysia's own pages.
     pub thumbnail_url: String,
+    pub original_name: Option<String>,
+    /// Stored extension.
+    pub ext: String,
+    /// Bytes on disk.
+    pub size: i64,
+    pub width: i32,
+    pub height: i32,
+    pub views: i64,
+    pub uploader_username: String,
+    /// RFC 3339, UTC.
+    pub created_at: String,
+}
+
+impl ImageSummary {
+    /// Build from a listed row, with thumbnail URLs under `public_url`.
+    pub fn from_row(row: ImageListRow, public_url: &str) -> Self {
+        Self {
+            thumbnail_url: files::thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
+            id: row.id,
+            original_name: row.original_name,
+            ext: row.ext,
+            size: row.size,
+            width: row.width,
+            height: row.height,
+            views: row.views,
+            uploader_username: row.uploader_username,
+            created_at: row.created_at,
+        }
+    }
 }
 
 #[utoipa::path(
@@ -63,13 +92,9 @@ pub async fn images(
         (false, _, _) => return Err(Error::Forbidden),
     };
     let (rows, total) = files::list_images(pool.get_ref(), &query, uploader).await?;
-    let public_url = &config.server.public_url;
     let images = rows
         .into_iter()
-        .map(|row| ImageSummary {
-            thumbnail_url: files::thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
-            id: row.id,
-        })
+        .map(|row| ImageSummary::from_row(row, &config.server.public_url))
         .collect();
     Ok(HttpResponse::Ok().json(PaginatedResults::new(
         images,

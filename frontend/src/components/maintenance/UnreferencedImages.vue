@@ -33,11 +33,11 @@
       </small>
       <div class="toolbar">
         <Button
-          :label="$t('trash.delete', { count: selected.length }, selected.length)"
+          :label="$t('trash.delete', { count: selected.size }, selected.size)"
           icon="pi pi-trash"
           size="small"
           severity="danger"
-          :disabled="selected.length === 0 || progress?.running"
+          :disabled="selected.size === 0 || progress?.running"
           @click="trashSelected"
         />
         <Button
@@ -49,45 +49,19 @@
           :disabled="progress?.running"
           @click="trashAll"
         />
-        <PageSizeSelect v-model="pageSize" @update:modelValue="load(1)" />
       </div>
-      <PaginatedResults :page="page.page" :pageSize :totalItems="page.total_items" @changePage="load">
-        <DataTable
-          v-model:selection="selected"
-          :value="page.results"
-          dataKey="id"
-          lazy
-          :sortField="sortBy"
-          :sortOrder="order === SortOrder.Asc ? 1 : -1"
-          size="small"
-          @sort="(event: DataTableSortEvent) => setSort(event)"
-        >
-          <Column selectionMode="multiple" />
-          <Column :header="$t('maintenance.unreferenced_images.image')">
-            <template #body="{ data }">
-              <router-link :to="{ name: 'Image', params: { id: data.id } }">
-                <img :src="data.thumbnail_url" :alt="data.id" class="thumbnail" loading="lazy" />
-              </router-link>
-            </template>
-          </Column>
-          <Column field="original_name" :header="$t('maintenance.unreferenced_images.original_name')">
-            <template #body="{ data }">{{ data.original_name ?? '-' }}</template>
-          </Column>
-          <Column field="uploader_username" :header="$t('maintenance.unreferenced_images.uploader')" />
-          <Column :field="ImagesSortBy.CreatedAt" :header="$t('maintenance.unreferenced_images.uploaded_at')" sortable>
-            <template #body="{ data }">
-              <span :title="new Date(data.created_at).toLocaleString()">{{ timeAgo(new Date(data.created_at)) }}</span>
-            </template>
-          </Column>
-          <Column :field="ImagesSortBy.Size" :header="$t('maintenance.unreferenced_images.size')" sortable>
-            <template #body="{ data }">{{ formatBytes(data.size) }}</template>
-          </Column>
-          <Column :field="ImagesSortBy.Width" :header="$t('maintenance.unreferenced_images.width')" sortable />
-          <Column :field="ImagesSortBy.Height" :header="$t('maintenance.unreferenced_images.height')" sortable />
-          <Column field="ext" :header="$t('maintenance.unreferenced_images.format')" />
-          <Column :field="ImagesSortBy.Views" :header="$t('maintenance.unreferenced_images.views')" sortable />
-        </DataTable>
-      </PaginatedResults>
+      <ImageResults
+        v-model:selected="selected"
+        :images="page.results"
+        :page="page.page"
+        :pageSize
+        :totalItems="page.total_items"
+        :sortBy
+        :order
+        @changePage="load"
+        @changePageSize="(size: number) => ((pageSize = size), load(1))"
+        @sort="setSort"
+      />
     </template>
     <p v-else-if="page && !progress?.running" class="summary">{{ $t('maintenance.unreferenced_images.empty') }}</p>
   </div>
@@ -96,25 +70,15 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
-import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
-import PageSizeSelect from '@/components/PageSizeSelect.vue'
-import PaginatedResults from '@/components/PaginatedResults.vue'
+import ImageResults from '@/components/ImageResults.vue'
 import { api } from '@/services/api/http'
-import { formatBytes, timeAgo } from '@/services/format'
+import { timeAgo } from '@/services/format'
 import { showToast } from '@/services/toast'
-import {
-  ImagesSortBy,
-  SortOrder,
-  UnreferencedTask,
-  type PaginatedResultsUnreferencedImageResultsInner,
-  type UnreferencedImagesPage,
-  type UnreferencedProgress,
-} from '@/services/api-schema'
+import { ImagesSortBy, SortOrder, UnreferencedTask, type UnreferencedImagesPage, type UnreferencedProgress } from '@/services/api-schema'
 
 const { t } = useI18n()
 const databaseUrl = ref('')
@@ -125,7 +89,7 @@ const page = ref<UnreferencedImagesPage>()
 const pageSize = ref(50)
 const sortBy = ref<ImagesSortBy>(ImagesSortBy.CreatedAt)
 const order = ref<SortOrder>(SortOrder.Desc)
-const selected = ref<PaginatedResultsUnreferencedImageResultsInner[]>([])
+const selected = ref(new Set<string>())
 let timer: ReturnType<typeof setTimeout> | undefined
 
 const load = (number: number) =>
@@ -135,12 +99,12 @@ const load = (number: number) =>
     page.value = response.data
     // Prefill with the host this instance's links use, relative links use the frontend's.
     if (!hosts.value) hosts.value = response.data.public_host || window.location.host
-    selected.value = []
+    selected.value = new Set()
   })
 
-const setSort = (event: DataTableSortEvent) => {
-  sortBy.value = event.sortField as ImagesSortBy
-  order.value = event.sortOrder === 1 ? SortOrder.Asc : SortOrder.Desc
+const setSort = (newSortBy: ImagesSortBy, newOrder: SortOrder) => {
+  sortBy.value = newSortBy
+  order.value = newOrder
   load(1)
 }
 
@@ -183,9 +147,9 @@ const scan = () => {
 }
 
 const trashSelected = () => {
-  const count = selected.value.length
+  const count = selected.value.size
   if (!confirm(t('trash.delete_confirm', { count }, count))) return
-  api.trashImages({ ids: selected.value.map((image) => image.id) }).then(() => {
+  api.trashImages({ ids: [...selected.value] }).then(() => {
     showToast(t('trash.deleted', { count }, count), 'success')
     load(page.value?.page ?? 1)
   })
@@ -223,12 +187,5 @@ onUnmounted(() => clearTimeout(timer))
 .field {
   flex: 1;
   min-width: 240px;
-}
-.thumbnail {
-  display: block;
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 4px;
 }
 </style>

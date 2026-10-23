@@ -370,14 +370,31 @@ export interface ImageIdsRequest {
     'ids': Array<string>;
 }
 /**
- * One image in a browse page.
+ * One image in a browse or unreferenced images page.
  */
 export interface ImageSummary {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    /**
+     * Stored extension.
+     */
+    'ext': string;
+    'height': number;
     'id': string;
+    'original_name'?: string | null;
+    /**
+     * Bytes on disk.
+     */
+    'size': number;
     /**
      * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
      */
     'thumbnail_url': string;
+    'uploader_username': string;
+    'views': number;
+    'width': number;
 }
 /**
  * Column the browse page is sorted by.
@@ -535,28 +552,9 @@ export interface PaginatedResultsImageSummary {
     'total_items': number;
 }
 /**
- * One image in a browse page.
+ * One image in a browse or unreferenced images page.
  */
 export interface PaginatedResultsImageSummaryResultsInner {
-    'id': string;
-    /**
-     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
-     */
-    'thumbnail_url': string;
-}
-/**
- * One page of a list, with the total across all pages.
- */
-export interface PaginatedResultsUnreferencedImage {
-    'page': number;
-    'page_size': number;
-    'results': Array<PaginatedResultsUnreferencedImageResultsInner>;
-    'total_items': number;
-}
-/**
- * One unreferenced image.
- */
-export interface PaginatedResultsUnreferencedImageResultsInner {
     /**
      * RFC 3339, UTC.
      */
@@ -572,6 +570,9 @@ export interface PaginatedResultsUnreferencedImageResultsInner {
      * Bytes on disk.
      */
     'size': number;
+    /**
+     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
+     */
     'thumbnail_url': string;
     'uploader_username': string;
     'views': number;
@@ -877,7 +878,7 @@ export interface UnauthElysiaSettings {
 export interface UnreferencedImagesPage {
     'page': number;
     'page_size': number;
-    'results': Array<PaginatedResultsUnreferencedImageResultsInner>;
+    'results': Array<PaginatedResultsImageSummaryResultsInner>;
     'total_items': number;
     /**
      * `server.public_url` without its scheme, the host links use by default. Empty when it is not set and links are relative to the frontend.

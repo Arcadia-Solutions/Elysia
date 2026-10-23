@@ -217,12 +217,20 @@ pub async fn backdate_created_at(pool: &PgPool, id: &str, uploaded_at: i64) -> R
     Ok(())
 }
 
-/// One image in a browse page, plus the total row count (same on every row,
-/// from a window function, so one query returns the page and its total).
+/// One image in a browse or unreferenced images page, plus the total row count
+/// (same on every row, from a window function, so one query returns the page and its total).
 pub struct ImageListRow {
     pub id: String,
     pub ext: String,
+    pub original_name: Option<String>,
+    pub size: i64,
+    pub width: i32,
+    pub height: i32,
     pub has_thumbnail: bool,
+    pub views: i64,
+    pub uploader_username: String,
+    /// RFC 3339, UTC.
+    pub created_at: String,
     pub total: i64,
 }
 
@@ -301,24 +309,29 @@ pub async fn list_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        "select id, ext, has_thumbnail, count(*) over() as \"total!\" \
-         from files where status = $5 \
-           and ($6::uuid is null or uploaded_by_user_id = $6) order by \
-           case when $3 = 'created_at' and $4 then created_at end asc, \
-           case when $3 = 'created_at' and not $4 then created_at end desc, \
-           case when $3 = 'size' and $4 then size end asc, \
-           case when $3 = 'size' and not $4 then size end desc, \
-           case when $3 = 'width' and $4 then width end asc, \
-           case when $3 = 'width' and not $4 then width end desc, \
-           case when $3 = 'height' and $4 then height end asc, \
-           case when $3 = 'height' and not $4 then height end desc, \
-           case when $3 = 'original_hash' and $4 then original_hash end asc, \
-           case when $3 = 'original_hash' and not $4 then original_hash end desc, \
-           case when $3 = 'views' and $4 then views end asc, \
-           case when $3 = 'views' and not $4 then views end desc, \
-           case when $3 = 'thumbnail_views' and $4 then thumbnail_views end asc, \
-           case when $3 = 'thumbnail_views' and not $4 then thumbnail_views end desc, \
-           id desc \
+        "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail, \
+                f.views, u.username as uploader_username, \
+                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                  as \"created_at!\", \
+                count(*) over() as \"total!\" \
+         from files f join users u on u.id = f.uploaded_by_user_id \
+         where f.status = $5 \
+           and ($6::uuid is null or f.uploaded_by_user_id = $6) order by \
+           case when $3 = 'created_at' and $4 then f.created_at end asc, \
+           case when $3 = 'created_at' and not $4 then f.created_at end desc, \
+           case when $3 = 'size' and $4 then f.size end asc, \
+           case when $3 = 'size' and not $4 then f.size end desc, \
+           case when $3 = 'width' and $4 then f.width end asc, \
+           case when $3 = 'width' and not $4 then f.width end desc, \
+           case when $3 = 'height' and $4 then f.height end asc, \
+           case when $3 = 'height' and not $4 then f.height end desc, \
+           case when $3 = 'original_hash' and $4 then f.original_hash end asc, \
+           case when $3 = 'original_hash' and not $4 then f.original_hash end desc, \
+           case when $3 = 'views' and $4 then f.views end asc, \
+           case when $3 = 'views' and not $4 then f.views end desc, \
+           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc, \
+           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc, \
+           f.id desc \
          offset $1 limit $2",
         offset,
         limit,
@@ -331,23 +344,6 @@ pub async fn list_page(
     .await?)
 }
 
-/// One of the last unreferenced images scan's images, plus the total row
-/// count (window function, as in `list_page`).
-pub struct UnreferencedImageRow {
-    pub id: String,
-    pub ext: String,
-    pub original_name: Option<String>,
-    pub size: i64,
-    pub width: i32,
-    pub height: i32,
-    pub has_thumbnail: bool,
-    pub views: i64,
-    pub uploader_username: String,
-    /// RFC 3339, UTC.
-    pub created_at: String,
-    pub total: i64,
-}
-
 /// One page of the last unreferenced images scan's images that are still
 /// available, in the given order, like `list_page`.
 pub async fn unreferenced_page(
@@ -356,9 +352,9 @@ pub async fn unreferenced_page(
     limit: i64,
     sort_by: ImagesSortBy,
     order: SortOrder,
-) -> Result<Vec<UnreferencedImageRow>> {
+) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
-        UnreferencedImageRow,
+        ImageListRow,
         "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail, \
                 f.views, u.username as uploader_username, \
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
