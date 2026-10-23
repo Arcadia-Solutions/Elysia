@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update chevereto_import set finished_at = now(), error = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7d36eb5cb3c04f99fa79163e67319e04935b256cb8938c4f61f1d912ca313169"
+}

@@ -40,50 +40,42 @@ encoders take seconds per image in a debug build.
 
 ## Importing from Chevereto
 
-```sh
-cp backend/src/bin/import_chevereto/import.example.yml import.yml   # then fill it in
-cargo run --release --manifest-path ../../Cargo.toml --bin import_chevereto -- import.yml
-```
+Admins run it from the web UI, Maintenance > Chevereto import, where every field is
+explained. It copies every image of a Chevereto v4 instance (read from its MySQL
+database, downloaded over HTTP) into Elysia through the real upload pipeline, in the
+background, with the size and pixel limits bypassed but processing (thumbnails, EXIF
+stripping, dedup) kept. Each image keeps its upload date and its uploader: when users
+are matched, Chevereto users whose username exists in the backend's users table become
+their SSO account there (`auth.sso` must be configured), everyone else and guest uploads
+go to the fallback user.
 
-Copies every image of a Chevereto v4 instance (read from its MySQL database,
-downloaded over HTTP) into Elysia through the real upload pipeline, with the size and
-pixel limits bypassed but processing (thumbnails, EXIF stripping, dedup) kept. Each
-image keeps its upload date and its uploader: when `backend.users` is set, Chevereto
-users whose username exists in the backend's users table become their SSO account
-there (`auth.sso` must be configured), everyone else and guest uploads go to
-`fallback_username`.
+With a backend database, after each chunk Chevereto links (image, medium, thumbnail and
+viewer page URLs) are rewritten to Elysia URLs built from `server.public_url` in every
+text-like column of the backend's Postgres database (text, varchar, char, citext, domains
+over them, their arrays, json and jsonb), in one transaction. Medium links point to the
+Elysia thumbnail. Only rows whose content changes are updated, once per table, so the
+backend's update triggers fire once per rewritten row. A column too short for the new
+link aborts the chunk: widen it and resume.
 
-When `backend` is set, after each chunk Chevereto links (image, medium, thumbnail and
-viewer page URLs) are rewritten to Elysia URLs in every text-like column of the
-backend's Postgres database (text, varchar,
-char, citext, domains over them, their arrays, json and jsonb), in one transaction.
-Medium links point to the Elysia thumbnail. Only rows whose content changes are updated, once per table, so the backend's update triggers
-fire once per rewritten row. A column too short for the new link aborts the chunk:
-widen it and rerun.
+Progress is saved in the `chevereto_import` table after each chunk, so the import can be
+stopped (or interrupted by a restart) and resumed. Images that could not be imported are
+listed in `chevereto_import_failures` (and in the UI) and do not stop the run; "Retry
+failed" restarts from the lowest failed image (dedup makes the replay safe).
 
-The last finished image id is saved in `state_file`, so the import can be stopped and
-rerun at any time (it resumes after the last finished chunk). Images that could not be
-imported are listed in `failed_file` and do not stop the run. To retry them, set the
-state file to the lowest failed `image_id` minus 1 and rerun (dedup makes the replay
-safe): at startup, entries after the state file's id are dropped from `failed_file`,
-since those images are imported again.
-
-At startup the importer checks Chevereto's `chv_settings` and refuses to run unless
+Before starting, the importer connects to the Chevereto database and site, the backend
+database and its users table (when set), and returns the first failure as the start
+error. It also checks Chevereto's `chv_settings` and refuses to run unless
 `upload_image_path` is `images`, `route_image` is `image` and `root_route` is not
 `image`: the link patterns and download URLs assume these defaults. Chevereto served
-under a URL subpath is not supported for link rewriting (patterns are built from
-`link_hosts` + `/images/` and `/image/`).
+under a URL subpath is not supported for link rewriting (patterns are built from the
+link hosts + `/images/` and `/image/`).
 
 Each chunk scans the backend's text columns with one regex matching any Chevereto link,
-so time one chunk against a production-size copy of the backend before the real run. A bigger
-`batch_size` means fewer full scans.
+so time one chunk against a production-size copy of the backend before the real run. A
+bigger batch size means fewer full scans.
 
-Chevereto users are matched to backend users by exact username when their first image
-is imported. A user without a backend account is logged once and their images go to
-`fallback_username`.
-
-`tests/chevereto/test.sh` runs the importer end to end against a real Chevereto in
-docker (also run in CI).
+`tests/chevereto/test.sh` runs the import end to end against a real Chevereto in docker
+through the API (also run in CI).
 
 ## System dependencies
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# End to end test of import_chevereto: installs a real Chevereto, uploads a few
+# End to end test of the Chevereto import: installs a real Chevereto, uploads a few
 # images, stores their links in a database mirroring Arcadia's schema, imports
 # everything into Elysia and checks files, uploaders and rewritten links.
-# Needs docker and cargo. Usage: backend/tests/chevereto/test.sh
+# Needs docker, cargo and jq. Usage: backend/tests/chevereto/test.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -74,7 +74,7 @@ backend_texts="select concat_ws(' ', avatar, description) as text from users
     union all select concat_ws(' ', array_to_string(covers, ' '), description) from title_groups"
 
 cat > "$TEMP_DIR/elysia.yml" <<EOF
-server: { host: 127.0.0.1, port: 8090, public_url: $ELYSIA }
+server: { host: 127.0.0.1, port: 28090, public_url: $ELYSIA }
 database: { host: localhost, port: 25432, user: elysia, password: password, name: elysia }
 storage: { upload_dir: $TEMP_DIR/uploads }
 auth:
@@ -86,24 +86,35 @@ auth:
     client_secret: secret
     redirect_uri: $ELYSIA/auth/sso/callback
 EOF
-cat > "$TEMP_DIR/import.yml" <<EOF
-chevereto:
-  database_url: mysql://chevereto:password@localhost:23306/chevereto
-  public_url: http://$CHEVERETO
-backend:
-  database_url: postgres://elysia:password@localhost:25432/backend
-  users: { table: users, username_column: username, subject_column: id, email_column: email }
-elysia: { public_url: $ELYSIA }
-fallback_username: chevereto-import
-batch_size: 2
-concurrency: 2
-state_file: $TEMP_DIR/state
-failed_file: $TEMP_DIR/failed.csv
-EOF
+cargo build -q
+ELYSIA_CONFIG="$TEMP_DIR/elysia.yml" ../../target/debug/elysia > "$TEMP_DIR/elysia.log" 2>&1 &
+SERVER_PID=$!
+trap 'kill $SERVER_PID 2>/dev/null; dc down -v; rm -rf "$TEMP_DIR"' EXIT
+API=http://127.0.0.1:28090/api
+for _ in $(seq 60); do curl -sf -o /dev/null "$API/elysia-unauth-settings" && break; sleep 1; done
+TOKEN=$(curl -sf "$API/auth/login" -H 'content-type: application/json' \
+    -d '{"login":"admin","password":"change-me-123"}' | jq -r .token)
+api() { curl -sf -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' "$@"; }
 
-import() { ELYSIA_CONFIG="$TEMP_DIR/elysia.yml" cargo run -q --bin import_chevereto -- "$TEMP_DIR/import.yml"; }
+# Starts an import resuming the saved progress and waits for it to end.
+import() {
+    api "$API/maintenance/chevereto-import" -d "{
+        \"chevereto_database_url\": \"mysql://chevereto:password@localhost:23306/chevereto\",
+        \"chevereto_public_url\": \"http://$CHEVERETO\",
+        \"backend_database_url\": \"postgres://elysia:password@localhost:25432/backend\",
+        \"backend_users\": {\"table\": \"users\", \"username_column\": \"username\",
+                          \"subject_column\": \"id\", \"email_column\": \"email\"},
+        \"fallback_username\": \"chevereto-import\",
+        \"batch_size\": 2, \"concurrency\": 2, \"start\": \"resume\"}"
+    while progress=$(api "$API/maintenance/chevereto-import/progress") &&
+        [ "$(jq .running <<<"$progress")" = true ]; do
+        sleep 1
+    done
+    [ "$(jq -r .error <<<"$progress")" = null ] || fail "import: $(jq -r .error <<<"$progress")"
+    [ "$(jq .failed <<<"$progress")" = 0 ] ||
+        fail "failed images: $(api "$API/maintenance/chevereto-import/failures?page=1&page_size=50")"
+}
 import
-[ ! -s "$TEMP_DIR/failed.csv" ] || fail "failed images: $(cat "$TEMP_DIR/failed.csv")"
 
 expect "imported files" "$(sql elysia -c "select count(*) from files where status = 'available'")" 3
 expect "uploaders" "$(sql elysia -c "
@@ -116,7 +127,7 @@ expect "rewritten links" "$(sql backend -c "
     select count(*) from ($backend_texts) t, regexp_matches(text, '$ELYSIA/[it]/([A-Za-z0-9]+)', 'g') m
     where m[1] ~ '^($file_ids)\$'")" 9
 
-# A rerun resumes after the saved state and imports nothing new.
+# A rerun resumes after the saved progress and imports nothing new.
 import
 expect "files after rerun" "$(sql elysia -c "select count(*) from files")" 3
 

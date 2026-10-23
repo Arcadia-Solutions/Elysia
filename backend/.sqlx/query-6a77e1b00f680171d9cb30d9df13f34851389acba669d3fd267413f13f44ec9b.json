@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select image_id, fetch_url, error, count(*) over() as \"total!\" from chevereto_import_failures order by image_id offset $1 limit $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "chevereto_import_failures",
+            "name": "image_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "fetch_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "chevereto_import_failures",
+            "name": "fetch_url"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "chevereto_import_failures",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "6a77e1b00f680171d9cb30d9df13f34851389acba669d3fd267413f13f44ec9b"
+}

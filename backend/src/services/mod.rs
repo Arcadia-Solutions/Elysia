@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod chevereto_import;
 pub mod files;
 pub mod fixtures;
 pub mod image;

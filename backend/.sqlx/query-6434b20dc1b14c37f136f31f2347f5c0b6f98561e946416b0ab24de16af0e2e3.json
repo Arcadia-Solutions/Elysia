@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select min(image_id) from chevereto_import_failures",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "min",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6434b20dc1b14c37f136f31f2347f5c0b6f98561e946416b0ab24de16af0e2e3"
+}

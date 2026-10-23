@@ -1,4 +1,5 @@
 pub mod api_keys;
+pub mod chevereto_import;
 pub mod files;
 pub mod settings;
 pub mod stats;

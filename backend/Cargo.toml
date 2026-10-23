@@ -2,8 +2,6 @@
 name = "elysia"
 version = "0.1.0"
 edition = "2024"
-# src/bin/ holds the import_chevereto binary; plain `cargo run` stays the server.
-default-run = "elysia"
 
 [dependencies]
 actix-web = "4"

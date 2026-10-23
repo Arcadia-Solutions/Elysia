@@ -1,4 +1,10 @@
-use elysia::chevereto_import::*;
+mod common;
+
+use actix_web::web::Data;
+use sqlx::PgPool;
+
+use elysia::error::Error;
+use elysia::services::chevereto_import::*;
 
 fn image(storage_mode: &str, name: &str, storage_url: Option<&str>) -> CheveretoImage {
     CheveretoImage {
@@ -259,4 +265,53 @@ async fn find_backend_user_uses_configured_columns(pool: sqlx::PgPool) {
             .unwrap(),
         Some(("7".to_string(), None))
     );
+}
+
+fn import_params(backend_users: Option<BackendUsers>) -> CheveretoImportParams {
+    CheveretoImportParams {
+        chevereto_database_url: "mysql://chevereto@localhost:not-a-port/chevereto".to_string(),
+        chevereto_public_url: "https://img.example.com".to_string(),
+        link_hosts: Vec::new(),
+        backend_database_url: None,
+        backend_users,
+        fallback_username: "chevereto-import".to_string(),
+        batch_size: 10,
+        concurrency: 2,
+        start: CheveretoImportStart::Resume,
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn import_checks_params_and_services_before_starting(pool: PgPool) {
+    let (storage, _) = common::temp_storage();
+    let storage = Data::new(storage);
+    let config = common::test_config();
+    let start = |params| {
+        elysia::services::chevereto_import::start(
+            pool.clone(),
+            storage.clone(),
+            &config,
+            common::test_settings(),
+            params,
+        )
+    };
+    let users = BackendUsers {
+        table: "users".to_string(),
+        username_column: "username".to_string(),
+        subject_column: "id".to_string(),
+        email_column: None,
+    };
+    assert!(matches!(
+        start(import_params(Some(users))).await,
+        Err(Error::BadRequest(_))
+    ));
+
+    // An unreachable Chevereto database fails the request and starts nothing.
+    let Err(Error::BadRequest(message)) = start(import_params(None)).await else {
+        panic!("expected a bad request");
+    };
+    assert!(message.starts_with("chevereto database"));
+    let progress = progress(&pool).await.unwrap();
+    assert!(!progress.running);
+    assert!(progress.started_at.is_none());
 }

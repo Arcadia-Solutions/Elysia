@@ -349,6 +349,77 @@
       "height": "Height",
       "format": "Format",
       "views": "Views"
+    },
+    "chevereto_import": {
+      "title": "Chevereto import",
+      "help": "Copies every image of a Chevereto v4 instance into Elysia in the background. Images are read from Chevereto's MySQL database and downloaded over HTTP, then go through the normal upload pipeline (thumbnails, EXIF stripping, dedup) with the size and pixel limits lifted. Each image keeps its upload date and, when uploaders are matched, its uploader. Chevereto must use its default paths (upload_image_path 'images', route_image 'image') or the import refuses to run. Database urls are not stored: fill them in again to resume.",
+      "chevereto": "Chevereto",
+      "chevereto_database_url": {
+        "label": "Chevereto database url",
+        "help": "MySQL or MariaDB connection to the Chevereto database, with the default chv_ table prefix, e.g. mysql://chevereto:password@localhost:3306/chevereto."
+      },
+      "chevereto_public_url": {
+        "label": "Chevereto public url",
+        "help": "Base url of the Chevereto site. Images are downloaded from it (or from their external storage), so Elysia's server must reach it."
+      },
+      "link_hosts": {
+        "label": "Chevereto link hosts",
+        "help": "Comma separated hosts, with the port when not the default one, whose Chevereto links are rewritten in the backend database. Add every alias the links may use. Empty uses the host of the public url."
+      },
+      "backend": "Backend (optional)",
+      "backend_database_url": {
+        "label": "Backend database url",
+        "help": "Postgres connection to the application storing Chevereto links (e.g. arcadia). After each chunk, the Chevereto image, medium, thumbnail and viewer links in every text-like column of every table are rewritten to Elysia links built from server.public_url in config.yml, in one transaction, and only changed rows are updated. A column too short for the new link stops the import without committing that chunk: widen it and resume. Each chunk scans every text column, so time a run against a copy of a production-size database first. Empty imports the images without rewriting any link."
+      },
+      "match_users": {
+        "label": "Match uploaders to backend users",
+        "help": "Chevereto uploaders whose username exists in the backend's users table become that backend's SSO users in Elysia (auth.sso must be configured in config.yml). Off, every image goes to the fallback user."
+      },
+      "users_table": {
+        "label": "Users table",
+        "help": "Table holding the backend's users, optionally schema qualified, e.g. public.users."
+      },
+      "username_column": {
+        "label": "Username column",
+        "help": "Column matched exactly against the Chevereto username."
+      },
+      "subject_column": {
+        "label": "SSO subject column",
+        "help": "Column holding the user's SSO subject, the OIDC sub claim the backend sends Elysia at sign-in."
+      },
+      "email_column": {
+        "label": "Email column",
+        "help": "Column copied as the Elysia account's email. Optional, leave empty to skip it."
+      },
+      "run": "Run",
+      "fallback_username": {
+        "label": "Fallback user",
+        "help": "Elysia user, created if missing, owning guest uploads and images of Chevereto users without a backend account (or every image when uploaders are not matched)."
+      },
+      "batch_size": {
+        "label": "Batch size",
+        "help": "Images read from Chevereto per chunk. Progress is saved and links are rewritten once per chunk, so a stopped run replays at most one chunk. Bigger chunks mean fewer scans of the backend database."
+      },
+      "concurrency": {
+        "label": "Concurrency",
+        "help": "Images downloaded and processed in parallel."
+      },
+      "start": "Start",
+      "resume": "Resume",
+      "retry_failed": "Retry failed ({count})",
+      "restart": "Restart from scratch",
+      "stop": "Stop",
+      "buttons_help": "Resume continues after the last saved chunk. Retry failed restarts from the lowest failed image and replays everything after it. Restart from scratch starts over from the first image and forgets the failures. Replayed images are deduplicated, so no copy is stored twice. Stop ends the run once its current chunk is saved.",
+      "restart_confirm": "Start over from the first Chevereto image? Already imported images are deduplicated, but every image is downloaded again.",
+      "progress": "{done} / {total} images processed, {imported} imported, {failed} failed in total, {rewritten_rows} backend rows rewritten, last saved image id {last_image_id}",
+      "started": "Started {when}",
+      "stopping": "Stopping after the current chunk...",
+      "interrupted": "The last run was interrupted by a server restart. Resume to continue.",
+      "finished": "The last run finished.",
+      "failures": "Failed images",
+      "image_id": "Chevereto image id",
+      "fetch_url": "Download url",
+      "error": "Error"
     }
   },
   "pagination": {

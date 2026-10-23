@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update chevereto_import set last_image_id = $1, rewritten_rows = rewritten_rows + $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d476ac53358ebad34846b20019d52960f0bf6fdf33a64a97f0146454146b28ea"
+}

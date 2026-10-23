@@ -82,12 +82,127 @@ export interface ApiKeySummary {
 
 
 /**
+ * Where the backend keeps its users.
+ */
+export interface BackendUsers {
+    'email_column'?: string | null;
+    /**
+     * Column holding the user\'s SSO subject (the OIDC `sub` claim).
+     */
+    'subject_column': string;
+    /**
+     * Table name, optionally schema qualified (e.g. `public.users`).
+     */
+    'table': string;
+    'username_column': string;
+}
+/**
  * Current plus replacement password for a self-service password change.
  */
 export interface ChangePasswordRequest {
     'current_password': string;
     'new_password': string;
 }
+/**
+ * An image that could not be imported.
+ */
+export interface CheveretoImportFailure {
+    'error': string;
+    /**
+     * None for an unsupported storage mode.
+     */
+    'fetch_url'?: string | null;
+    'image_id': number;
+}
+export interface CheveretoImportParams {
+    /**
+     * Postgres url of the backend database whose Chevereto links get rewritten in every text-like column. None rewrites nothing.
+     */
+    'backend_database_url'?: string | null;
+    /**
+     * Match Chevereto uploaders to backend users by exact username, they become that backend\'s SSO users. Needs `backend_database_url` and `auth.sso`. None gives every image to `fallback_username`.
+     */
+    'backend_users'?: BackendUsers | null;
+    /**
+     * Images read per chunk; progress is saved and links rewritten once per chunk.
+     */
+    'batch_size': number;
+    /**
+     * `mysql://` or `mariadb://` url of the Chevereto database (default `chv_` table prefix).
+     */
+    'chevereto_database_url': string;
+    /**
+     * Public base url of the Chevereto site, images are downloaded from it.
+     */
+    'chevereto_public_url': string;
+    /**
+     * Images downloaded and processed in parallel.
+     */
+    'concurrency': number;
+    /**
+     * Elysia user (created if missing) owning guest uploads and images of Chevereto users without a backend account.
+     */
+    'fallback_username': string;
+    /**
+     * Hosts (with port if not default) whose Chevereto links get rewritten, aliases included. Empty uses the host of `chevereto_public_url`.
+     */
+    'link_hosts'?: Array<string>;
+    'start': CheveretoImportStart;
+}
+
+
+/**
+ * State of the current or last run.
+ */
+export interface CheveretoImportProgress {
+    /**
+     * Images the current or last run processed, failed ones included.
+     */
+    'done': number;
+    /**
+     * Why the last run stopped early, if it did.
+     */
+    'error'?: string | null;
+    /**
+     * Images in the failures list.
+     */
+    'failed': number;
+    /**
+     * RFC 3339, UTC. None while running, or when a restart interrupted the run.
+     */
+    'finished_at'?: string | null;
+    'imported': number;
+    /**
+     * Last Chevereto image id of the last fully processed chunk, where `resume` starts.
+     */
+    'last_image_id': number;
+    /**
+     * Backend rows whose links the current or last run rewrote.
+     */
+    'rewritten_rows': number;
+    'running': boolean;
+    /**
+     * RFC 3339, UTC. None before the first run.
+     */
+    'started_at'?: string | null;
+    /**
+     * Images the current or last run had to process.
+     */
+    'total': number;
+}
+/**
+ * Where a run starts.
+ */
+
+export const CheveretoImportStart = {
+    Resume: 'resume',
+    RetryFailed: 'retry_failed',
+    Restart: 'restart'
+} as const;
+
+export type CheveretoImportStart = typeof CheveretoImportStart[keyof typeof CheveretoImportStart];
+
+
 /**
  * @type CompressionAction
  * `\"lossless\"` or the applied lossy quality.
@@ -244,13 +359,19 @@ export interface FormatTotal {
     'files': number;
     'mime': string;
 }
+export interface ImageIdsRequest {
+    /**
+     * Ids of the images to act on.
+     */
+    'ids': Array<string>;
+}
 /**
  * One image in a browse page.
  */
 export interface ImageSummary {
     'id': string;
     /**
-     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia's own pages.
+     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
      */
     'thumbnail_url': string;
 }
@@ -313,6 +434,10 @@ export interface MetadataResponse {
      * Upload time as a UTC ISO-8601 string.
      */
     'created_at': string;
+    /**
+     * Whole days left before the trashed image is deleted for good, rounded up. Null while available.
+     */
+    'days_until_deletion'?: number | null;
     'ext': string;
     'height': number;
     'id': string;
@@ -332,7 +457,7 @@ export interface MetadataResponse {
     'original_width': number;
     'size': number;
     /**
-     * Public URL for the thumbnail. Trashed, it is only served to Elysia's own pages.
+     * Public URL for the thumbnail. Trashed, it is only served to Elysia\'s own pages.
      */
     'thumbnail_url': string;
     /**
@@ -351,13 +476,9 @@ export interface MetadataResponse {
      * Who trashed the image. Null while available.
      */
     'trashed_by_username'?: string | null;
-    /**
-     * Whole days left before the trashed image is deleted for good, rounded up. Null while available.
-     */
-    'days_until_deletion'?: number | null;
     'uploader_username': string;
     /**
-     * Public URL for the raw image. Trashed, it is only served to Elysia's own pages.
+     * Public URL for the raw image. Trashed, it is only served to Elysia\'s own pages.
      */
     'url': string;
     /**
@@ -365,6 +486,26 @@ export interface MetadataResponse {
      */
     'views': number;
     'width': number;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
+export interface PaginatedResultsCheveretoImportFailure {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsCheveretoImportFailureResultsInner>;
+    'total_items': number;
+}
+/**
+ * An image that could not be imported.
+ */
+export interface PaginatedResultsCheveretoImportFailureResultsInner {
+    'error': string;
+    /**
+     * None for an unsupported storage mode.
+     */
+    'fetch_url'?: string | null;
+    'image_id': number;
 }
 /**
  * One page of a list, with the total across all pages.
@@ -381,7 +522,7 @@ export interface PaginatedResultsImageSummary {
 export interface PaginatedResultsImageSummaryResultsInner {
     'id': string;
     /**
-     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia's own pages.
+     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
      */
     'thumbnail_url': string;
 }
@@ -664,12 +805,6 @@ export const TargetFormat = {
 export type TargetFormat = typeof TargetFormat[keyof typeof TargetFormat];
 
 
-export interface ImageIdsRequest {
-    /**
-     * Ids of the images to act on.
-     */
-    'ids': Array<string>;
-}
 /**
  * The subset of settings exposed without authentication, so the login and register pages can offer signup and single sign-on.
  */
@@ -997,6 +1132,35 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Progress of the current or last Chevereto import.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getCheveretoImportProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/chevereto-import/progress`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1260,6 +1424,49 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listCheveretoImportFailures: async (page: number, pageSize: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listCheveretoImportFailures', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listCheveretoImportFailures', 'pageSize', pageSize)
+            const localVarPath = `/api/maintenance/chevereto-import/failures`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
+            }
 
 
     
@@ -1559,6 +1766,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'imageIdsRequest' is not null or undefined
+            assertParamExists('restoreImages', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/images/trash/restore`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
          * @param {string} id API key id
          * @param {*} [options] Override http request option.
@@ -1627,7 +1869,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Served straight from disk, without a database lookup.
+         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1660,7 +1902,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1796,6 +2038,41 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+         * @param {CheveretoImportParams} cheveretoImportParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        startCheveretoImport: async (cheveretoImportParams: CheveretoImportParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'cheveretoImportParams' is not null or undefined
+            assertParamExists('startCheveretoImport', 'cheveretoImportParams', cheveretoImportParams)
+            const localVarPath = `/api/maintenance/chevereto-import`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(cheveretoImportParams, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {StatsPeriod} period 
          * @param {StatsInterval} interval 
@@ -1839,15 +2116,12 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia's own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
+         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        trashImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'imageIdsRequest' is not null or undefined
-            assertParamExists('trashImages', 'imageIdsRequest', imageIdsRequest)
-            const localVarPath = `/api/images/trash`;
+        stopCheveretoImport: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/chevereto-import/stop`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1861,12 +2135,9 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
 
 
     
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1874,15 +2145,15 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
          * @param {ImageIdsRequest} imageIdsRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        restoreImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        trashImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'imageIdsRequest' is not null or undefined
-            assertParamExists('restoreImages', 'imageIdsRequest', imageIdsRequest)
-            const localVarPath = `/api/images/trash/restore`;
+            assertParamExists('trashImages', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/images/trash`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2099,6 +2370,17 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Progress of the current or last Chevereto import.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getCheveretoImportProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CheveretoImportProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getCheveretoImportProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.getCheveretoImportProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2194,6 +2476,19 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsCheveretoImportFailure>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listCheveretoImportFailures(page, pageSize, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.listCheveretoImportFailures']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
@@ -2284,6 +2579,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.restoreImages(imageIdsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.restoreImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
          * @param {string} id API key id
          * @param {*} [options] Override http request option.
@@ -2308,7 +2615,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Served straight from disk, without a database lookup.
+         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2320,7 +2627,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2368,6 +2675,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+         * @param {CheveretoImportParams} cheveretoImportParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.startCheveretoImport(cheveretoImportParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.startCheveretoImport']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @param {StatsPeriod} period 
          * @param {StatsInterval} interval 
@@ -2381,7 +2700,18 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia's own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async stopCheveretoImport(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.stopCheveretoImport(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.stopCheveretoImport']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
          * @param {ImageIdsRequest} imageIdsRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2390,18 +2720,6 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(imageIdsRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.trashImages']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.restoreImages(imageIdsRequest, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.restoreImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2490,6 +2808,14 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.generateFixtures(fixturesParams, options).then((request) => request(axios, basePath));
         },
         /**
+         * Progress of the current or last Chevereto import.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getCheveretoImportProgress(options?: RawAxiosRequestConfig): AxiosPromise<CheveretoImportProgress> {
+            return localVarFp.getCheveretoImportProgress(options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2561,6 +2887,16 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.listApiKeys(options).then((request) => request(axios, basePath));
         },
         /**
+         * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsCheveretoImportFailure> {
+            return localVarFp.listCheveretoImportFailures(page, pageSize, options).then((request) => request(axios, basePath));
+        },
+        /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
@@ -2630,6 +2966,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
         },
         /**
+         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.restoreImages(imageIdsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
          * @param {string} id API key id
          * @param {*} [options] Override http request option.
@@ -2648,7 +2993,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.scanUnreferencedImages(scanParams, options).then((request) => request(axios, basePath));
         },
         /**
-         * Served straight from disk, without a database lookup.
+         * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2657,7 +3002,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serve(filename, options).then((request) => request(axios, basePath));
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
+         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2693,6 +3038,15 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.ssoLogin(options).then((request) => request(axios, basePath));
         },
         /**
+         * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+         * @param {CheveretoImportParams} cheveretoImportParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.startCheveretoImport(cheveretoImportParams, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @param {StatsPeriod} period 
          * @param {StatsInterval} interval 
@@ -2703,22 +3057,21 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.statsOverview(period, interval, options).then((request) => request(axios, basePath));
         },
         /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia's own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        stopCheveretoImport(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.stopCheveretoImport(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
          * @param {ImageIdsRequest} imageIdsRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.trashImages(imageIdsRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-         * @param {ImageIdsRequest} imageIdsRequest 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.restoreImages(imageIdsRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * Start moving every image of the unreferenced images list to the trash in the background. Refused once the scan is more than 24 hours old, as links added since may point to its images. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
@@ -2796,6 +3149,15 @@ export class ElysiaApi extends BaseAPI {
      */
     public generateFixtures(fixturesParams: FixturesParams, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).generateFixtures(fixturesParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Progress of the current or last Chevereto import.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getCheveretoImportProgress(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).getCheveretoImportProgress(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2878,6 +3240,17 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * A page of the Chevereto images that could not be imported, by image id. Start the import with `retry_failed` to try them again.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listCheveretoImportFailures(page: number, pageSize: number, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).listCheveretoImportFailures(page, pageSize, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * A page of the last scan\'s unreferenced images that are still available.
      * @param {number} page 1-based page number.
      * @param {number} pageSize 
@@ -2954,6 +3327,16 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
+     * @param {ImageIdsRequest} imageIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).restoreImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Revoke one of the caller\'s active API keys: it is refused from now on. The key stays listed, so the files uploaded with it can still be traced to it.
      * @param {string} id API key id
      * @param {*} [options] Override http request option.
@@ -2974,7 +3357,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * Served straight from disk, without a database lookup.
+     * Served straight from disk, without a database lookup. A trashed image is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2984,7 +3367,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension.
+     * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3024,6 +3407,16 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
+     * Start copying every image of a Chevereto v4 instance into Elysia in the background, through the upload pipeline with the size limits lifted, keeping uploaders and upload dates. With a backend database, the Chevereto links in its text-like columns are rewritten to Elysia links after each chunk. Progress is saved per chunk, so a stopped import resumes. Follow it with `GET /api/maintenance/chevereto-import/progress`.
+     * @param {CheveretoImportParams} cheveretoImportParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public startCheveretoImport(cheveretoImportParams: CheveretoImportParams, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).startCheveretoImport(cheveretoImportParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * 
      * @param {StatsPeriod} period 
      * @param {StatsInterval} interval 
@@ -3035,23 +3428,22 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * Move images to the trash: they stop being served to other sites at once (Elysia's own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+     * Stop the running Chevereto import once its current chunk is saved. Start it again with `resume` to continue.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public stopCheveretoImport(options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).stopCheveretoImport(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
      * @param {ImageIdsRequest} imageIdsRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     public trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).trashImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
-     * @param {ImageIdsRequest} imageIdsRequest 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    public restoreImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
-        return ElysiaApiFp(this.configuration).restoreImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

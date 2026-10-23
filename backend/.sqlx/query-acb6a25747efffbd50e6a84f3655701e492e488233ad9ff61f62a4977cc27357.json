@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from chevereto_import_failures where image_id > $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "acb6a25747efffbd50e6a84f3655701e492e488233ad9ff61f62a4977cc27357"
+}

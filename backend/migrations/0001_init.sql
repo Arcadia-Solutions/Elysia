@@ -136,6 +136,40 @@ create table unreferenced_files (
 comment on table unreferenced_files is 'Result of the last unreferenced images scan: available files no column of the scanned database linked to.';
 comment on column unreferenced_files.scanned_at is 'When the scan started';
 
+-- Chevereto import started from the web UI (Maintenance). A single row, seeded
+-- below; only updated afterwards.
+create table chevereto_import (
+  singleton boolean primary key default true check (singleton),
+  last_image_id bigint not null default 0,
+  total bigint not null default 0,
+  done bigint not null default 0,
+  imported bigint not null default 0,
+  rewritten_rows bigint not null default 0,
+  started_at timestamptz,
+  finished_at timestamptz,
+  error text
+);
+
+insert into chevereto_import default values;
+
+comment on table chevereto_import is 'Progress of the current or last Chevereto import run, kept so a stopped import resumes where it left off';
+comment on column chevereto_import.last_image_id is 'Last Chevereto image id of the last fully processed chunk; the next run resumes after it';
+comment on column chevereto_import.total is 'Chevereto images the current or last run had to process';
+comment on column chevereto_import.done is 'Images the current or last run processed, failed ones included';
+comment on column chevereto_import.imported is 'Images the current or last run imported';
+comment on column chevereto_import.rewritten_rows is 'Backend rows whose links the current or last run rewrote';
+comment on column chevereto_import.finished_at is 'When the last run ended; null while running or after a restart interrupted it';
+comment on column chevereto_import.error is 'Why the last run stopped early, if it did';
+
+create table chevereto_import_failures (
+  image_id bigint primary key,
+  fetch_url text,
+  error text not null
+);
+
+comment on table chevereto_import_failures is 'Chevereto images that could not be imported; dropped again when a run replays them';
+comment on column chevereto_import_failures.fetch_url is 'Where the original was downloaded from; null for an unsupported storage mode';
+
 -- Skip-reprocess lookup filters on original_hash (see find_record_by_source).
 create index files_original_hash_idx on files (original_hash);
 
