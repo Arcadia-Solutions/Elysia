@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::error::{Error, Result};
 use crate::middlewares::AuthUser;
 use crate::repository::users::{self, UserSummary};
+use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
     tag = "elysia",
@@ -25,11 +26,16 @@ use crate::repository::users::{self, UserSummary};
 )]
 pub async fn get_user(
     authenticated: AuthUser,
+    settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     id: Path<Uuid>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
-    let user = users::find_summary(pool.get_ref(), *id)
+    let default_quota_bytes = settings
+        .read()
+        .expect("settings lock poisoned")
+        .default_storage_quota_bytes;
+    let user = users::find_summary(pool.get_ref(), *id, default_quota_bytes)
         .await?
         .ok_or(Error::NotFound)?;
     Ok(HttpResponse::Ok().json(user))

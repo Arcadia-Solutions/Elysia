@@ -1,0 +1,135 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select users.id, username, email, provider::text as \"provider!\", is_admin, banned,\n                  to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\",\n                  to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_seen,\n                  count(files.id) filter (where files.status = 'available') as \"uploads!\",\n                  coalesce(sum(files.size), 0)::bigint as \"storage_used_bytes!\", storage_quota_bytes,\n                  nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $6 end), 0) as effective_storage_quota_bytes\n           from users\n           left join files on files.uploaded_by_user_id = users.id and files.status <> 'deleted'\n           where $1::text is null\n              or strpos(lower(username), lower($1)) > 0\n              or strpos(lower(email), lower($1)) > 0\n           group by users.id\n           order by\n             case when $2 = 'username' and $3 then username end asc,\n             case when $2 = 'username' and not $3 then username end desc,\n             case when $2 = 'created_at' and $3 then users.created_at end asc,\n             case when $2 = 'created_at' and not $3 then users.created_at end desc,\n             case when $2 = 'last_seen' and $3 then last_seen end asc nulls last,\n             case when $2 = 'last_seen' and not $3 then last_seen end desc nulls last,\n             case when $2 = 'uploads' and $3 then count(files.id) filter (where files.status = 'available') end asc,\n             case when $2 = 'uploads' and not $3 then count(files.id) filter (where files.status = 'available') end desc,\n             case when $2 = 'storage_used_bytes' and $3 then sum(files.size) end asc nulls first,\n             case when $2 = 'storage_used_bytes' and not $3 then sum(files.size) end desc nulls last,\n             users.id\n           offset $4 limit $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "provider!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_admin",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "is_admin"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "banned",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "banned"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_seen",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "uploads!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "storage_used_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "storage_quota_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "storage_quota_bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "effective_storage_quota_bytes",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool",
+        "Int8",
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      true,
+      null
+    ]
+  },
+  "hash": "42b3f095fe2143c9817ab833a82784707c3ac02421a7f57c15818a03a7263908"
+}

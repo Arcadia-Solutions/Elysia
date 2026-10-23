@@ -149,6 +149,7 @@ macro_rules! sso_app {
                 .app_data(Data::new($config))
                 .app_data(Data::new($pool))
                 .app_data(Data::new(SsoState::default()))
+                .app_data(Data::new(std::sync::RwLock::new(common::test_settings())))
                 .configure(routes::init),
         )
         .await

@@ -297,6 +297,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
             lossy_compression_value: Some(quality),
             target_file_format: Some(TargetFormat::Webp),
             strip_exif: false,
+            ..Default::default()
         };
         let stored = store_from_url(
             &pool,
@@ -418,6 +419,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
             lossy_compression_value: None,
             target_file_format: None,
             strip_exif: true,
+            ..Default::default()
         },
         uploader,
         None,
@@ -444,6 +446,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
             lossy_compression_value: None,
             target_file_format: None,
             strip_exif: false,
+            ..Default::default()
         },
         uploader,
         None,
@@ -493,6 +496,7 @@ async fn exif_orientation_is_applied(pool: PgPool) {
                 lossy_compression_value: None,
                 target_file_format: None,
                 strip_exif: true,
+                ..Default::default()
             },
             uploader,
             None,

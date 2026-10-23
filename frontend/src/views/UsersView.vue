@@ -32,6 +32,9 @@
           <template #body="{ data }">{{ data.banned ? $t('account.banned') : $t('account.active') }}</template>
         </Column>
         <Column field="uploads" :header="$t('account.uploads_count')" sortable />
+        <Column field="storage_used_bytes" :header="$t('account.storage')" sortable>
+          <template #body="{ data }">{{ formatBytes(data.storage_used_bytes) }}</template>
+        </Column>
         <Column field="created_at" :header="$t('account.registered_at')" sortable>
           <template #body="{ data }">{{ timeAgo(new Date(data.created_at)) }}</template>
         </Column>
@@ -52,7 +55,7 @@ import InputText from 'primevue/inputtext'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
 import { api } from '@/services/api/http'
-import { timeAgo } from '@/services/format'
+import { formatBytes, timeAgo } from '@/services/format'
 import { SortOrder, UsersSortBy, type PaginatedResultsUserSummaryResultsInner } from '@/services/api-schema'
 
 const router = useRouter()

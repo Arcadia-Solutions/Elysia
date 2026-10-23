@@ -51,7 +51,16 @@
     "ban_confirm": "Ban {username}? They are signed out right away and can no longer log in or upload.",
     "banned_toast": "{username} is banned",
     "unbanned_toast": "{username} is no longer banned",
-    "uploads_count": "Uploads"
+    "uploads_count": "Uploads",
+    "storage": "Storage used",
+    "storage_of": "{used} of {quota}",
+    "storage_unlimited": "{used} (no quota)",
+    "storage_quota": "Storage quota",
+    "storage_quota_default": "Global default",
+    "storage_quota_unlimited": "Unlimited",
+    "storage_quota_custom": "Custom",
+    "storage_quota_save": "Save quota",
+    "storage_quota_saved": "Storage quota of {username} saved"
   },
   "upload": {
     "choose": "Choose image",
@@ -274,6 +283,10 @@
     "allow_registration": {
       "label": "Allow open registration",
       "help": "When on, anyone may create a local account. When off, only a future single sign-on provider can provision users."
+    },
+    "default_storage_quota": {
+      "label": "Default storage quota per user",
+      "help": "Total size of the available and trashed images each user may keep. 0 means no limit. Admins are exempt, and admins can override it per user from their profile."
     },
     "allowed_referrers": {
       "label": "Allowed referrers",

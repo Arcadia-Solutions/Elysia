@@ -110,6 +110,7 @@ impl UploadOptionsQuery {
             lossy_compression_value,
             target_file_format,
             strip_exif,
+            remaining_storage_bytes: None,
         })
     }
 }
@@ -123,7 +124,7 @@ impl UploadOptionsQuery {
     security(("bearer" = []), ("sso_client_basic" = [])),
     responses(
         (status = 200, description = "Image uploaded", body = UploadResponse),
-        (status = 400, description = "File too large"),
+        (status = 400, description = "File too large, or storage quota exceeded"),
         (status = 401, description = "Missing or invalid session, or invalid SSO client credentials. The SSO provider may upload on behalf of its users with its client credentials as Basic auth and the user subject in the On-Behalf-Of-Sub header (On-Behalf-Of-Username names the account on first upload)"),
         (status = 403, description = "Uploads are disabled"),
         (status = 415, description = "Not a supported image"),
@@ -141,7 +142,13 @@ pub async fn upload(
     mut multipart: Multipart,
 ) -> Result<HttpResponse> {
     let settings = settings.read().expect("settings lock poisoned").clone();
-    let options = query.into_inner().into_options(&settings)?;
+    let mut options = query.into_inner().into_options(&settings)?;
+    options.remaining_storage_bytes = files::remaining_storage_bytes(
+        pool.get_ref(),
+        authenticated.user_id,
+        settings.default_storage_quota_bytes,
+    )
+    .await?;
 
     // The body is only read here, after the extractors (auth included) passed.
     // Refuse a declared oversized body up front, then cap what actually streams

@@ -10,7 +10,7 @@ use crate::settings::SharedElysiaSettings;
     get,
     path = "/api/public-elysia-settings",
     security(("bearer" = [])),
-    description = "The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.",
+    description = "The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.",
     responses(
         (status = 200, body = PublicElysiaSettings),
         (status = 401, description = "Missing or invalid session"),

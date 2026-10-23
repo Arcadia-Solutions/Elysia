@@ -36,7 +36,10 @@ if (route.query.error || typeof code !== 'string' || !code || !codeVerifier || t
     .ssoCallback({ code, code_verifier: codeVerifier })
     .then((response) => {
       saveSession(response.data.token, response.data.user.is_admin)
-      router.replace('/')
+      api
+        .getPublicElysiaSettings()
+        .then((settings) => localStorage.setItem('public_settings', JSON.stringify(settings.data)))
+        .finally(() => router.replace('/'))
     })
     .catch(() => {
       error.value = t('login.sso_failed')

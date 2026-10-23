@@ -13,6 +13,7 @@ create table users (
   external_sub text,
   is_admin boolean not null default false,
   banned boolean not null default false,
+  storage_quota_bytes bigint check (storage_quota_bytes >= 0),
   created_at timestamptz not null default now(),
   last_seen timestamptz,
   unique (external_issuer, external_sub),
@@ -23,6 +24,7 @@ create table users (
 comment on table users is 'Login accounts: local rows hold an Argon2 hash, sso rows are JIT-provisioned from an external sign-on backend (issuer/subject)';
 comment on column users.provider is 'local = password login, sso = shadow row provisioned on first sign-in';
 comment on column users.last_seen is 'Last authenticated API request';
+comment on column users.storage_quota_bytes is 'Per-user storage quota override in bytes: null follows elysia_settings.default_storage_quota_bytes (admins are then unlimited), 0 is unlimited';
 
 -- Default admin account (username `admin`, password `change-me-123`).
 -- Change the password right after the first login. The hash below is the
@@ -196,7 +198,8 @@ create table elysia_settings (
    thumbnail_quality int not null default 80,
    allow_registration boolean not null default true,
    allowed_referrers text[] not null default '{}',
-   uploads_enabled boolean not null default true
+   uploads_enabled boolean not null default true,
+   default_storage_quota_bytes bigint not null default 0 check (default_storage_quota_bytes >= 0)
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -218,6 +221,7 @@ comment on column elysia_settings.thumbnail_quality is 'Lossy WebP quality (1-10
 comment on column elysia_settings.allow_registration is 'When true, anyone may create a local account via the register endpoint';
 comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/ and /t/; empty allows any (including no Referer)';
 comment on column elysia_settings.uploads_enabled is 'When false, every upload is rejected, admins included';
+comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of available and trashed files each non-admin user may hold, unless overridden per user; 0 is unlimited';
 
 -- Default row: processing off, 10 MiB upload ceiling (valid against the same
 -- rules the API enforces on every save).

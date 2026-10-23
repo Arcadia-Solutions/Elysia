@@ -175,6 +175,66 @@ pub async fn set_banned(pool: &PgPool, user_id: Uuid, banned: bool) -> Result<bo
     Ok(result.rows_affected() == 1)
 }
 
+/// Set or clear (`None` follows the global default) a user's storage quota
+/// override. False when no user has this id.
+pub async fn set_storage_quota(
+    pool: &PgPool,
+    user_id: Uuid,
+    storage_quota_bytes: Option<i64>,
+) -> Result<bool> {
+    let result = sqlx::query!(
+        "update users set storage_quota_bytes = $2 where id = $1",
+        user_id,
+        storage_quota_bytes
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() == 1)
+}
+
+/// How much storage a user holds and may hold.
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct StorageUsage {
+    /// Bytes of the user's available and trashed files.
+    pub used_bytes: i64,
+    /// Effective quota in bytes; null is unlimited.
+    pub quota_bytes: Option<i64>,
+}
+
+impl StorageUsage {
+    /// Bytes the user may still store; `None` is unlimited.
+    pub fn remaining_bytes(&self) -> Option<u64> {
+        self.quota_bytes
+            .map(|quota| quota.saturating_sub(self.used_bytes).max(0) as u64)
+    }
+}
+
+/// A user's storage usage and effective quota: their override, else
+/// `default_quota_bytes` (admins are unlimited without an override). 0 is unlimited.
+// ponytail: concurrent uploads can overshoot the quota by the files in flight,
+// lock the user row if that matters.
+pub async fn storage_usage(
+    pool: &PgPool,
+    user_id: Uuid,
+    default_quota_bytes: u64,
+) -> Result<StorageUsage> {
+    let row = sqlx::query!(
+        r#"select coalesce(storage_quota_bytes, case when is_admin then 0 else $2 end) as "quota_bytes!",
+                  (select coalesce(sum(size), 0) from files
+                   where uploaded_by_user_id = users.id and status <> 'deleted')::bigint as "used_bytes!"
+           from users where id = $1"#,
+        user_id,
+        default_quota_bytes as i64,
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Ok(StorageUsage {
+        used_bytes: row.used_bytes,
+        quota_bytes: (row.quota_bytes > 0).then_some(row.quota_bytes),
+    })
+}
+
 /// Stamp a user who just made an API request as seen now, and the API key it
 /// authenticated with (if any) as used now.
 pub async fn update_last_seen(
@@ -353,6 +413,13 @@ pub struct UserSummary {
     pub last_seen: Option<String>,
     /// Available (not trashed) files the user uploaded.
     pub uploads: i64,
+    /// Bytes of the user's available and trashed files.
+    pub storage_used_bytes: i64,
+    /// Storage quota override in bytes: null follows the global default, 0 is unlimited.
+    pub storage_quota_bytes: Option<i64>,
+    /// Quota in force: the override, else the global default (admins are
+    /// unlimited without an override). Null is unlimited.
+    pub effective_storage_quota_bytes: Option<i64>,
 }
 
 /// Column the user list is sorted by.
@@ -363,6 +430,7 @@ pub enum UsersSortBy {
     CreatedAt,
     LastSeen,
     Uploads,
+    StorageUsedBytes,
 }
 
 impl UsersSortBy {
@@ -372,6 +440,7 @@ impl UsersSortBy {
             UsersSortBy::CreatedAt => "created_at",
             UsersSortBy::LastSeen => "last_seen",
             UsersSortBy::Uploads => "uploads",
+            UsersSortBy::StorageUsedBytes => "storage_used_bytes",
         }
     }
 }
@@ -406,15 +475,21 @@ impl UsersQuery {
 /// seen sort last by `last_seen` either way. `id` breaks ties.
 // ponytail: the upload counts scan every file per page, add an index on
 // files.uploaded_by_user_id if it gets slow.
-pub async fn list(pool: &PgPool, query: &UsersQuery) -> Result<Vec<UserSummary>> {
+pub async fn list(
+    pool: &PgPool,
+    query: &UsersQuery,
+    default_quota_bytes: u64,
+) -> Result<Vec<UserSummary>> {
     Ok(sqlx::query_as!(
         UserSummary,
         r#"select users.id, username, email, provider::text as "provider!", is_admin, banned,
                   to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
                   to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_seen,
-                  count(files.id) as "uploads!"
+                  count(files.id) filter (where files.status = 'available') as "uploads!",
+                  coalesce(sum(files.size), 0)::bigint as "storage_used_bytes!", storage_quota_bytes,
+                  nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $6 end), 0) as effective_storage_quota_bytes
            from users
-           left join files on files.uploaded_by_user_id = users.id and files.status = 'available'
+           left join files on files.uploaded_by_user_id = users.id and files.status <> 'deleted'
            where $1::text is null
               or strpos(lower(username), lower($1)) > 0
               or strpos(lower(email), lower($1)) > 0
@@ -426,8 +501,10 @@ pub async fn list(pool: &PgPool, query: &UsersQuery) -> Result<Vec<UserSummary>>
              case when $2 = 'created_at' and not $3 then users.created_at end desc,
              case when $2 = 'last_seen' and $3 then last_seen end asc nulls last,
              case when $2 = 'last_seen' and not $3 then last_seen end desc nulls last,
-             case when $2 = 'uploads' and $3 then count(files.id) end asc,
-             case when $2 = 'uploads' and not $3 then count(files.id) end desc,
+             case when $2 = 'uploads' and $3 then count(files.id) filter (where files.status = 'available') end asc,
+             case when $2 = 'uploads' and not $3 then count(files.id) filter (where files.status = 'available') end desc,
+             case when $2 = 'storage_used_bytes' and $3 then sum(files.size) end asc nulls first,
+             case when $2 = 'storage_used_bytes' and not $3 then sum(files.size) end desc nulls last,
              users.id
            offset $4 limit $5"#,
         query.search(),
@@ -435,24 +512,32 @@ pub async fn list(pool: &PgPool, query: &UsersQuery) -> Result<Vec<UserSummary>>
         matches!(query.order, SortOrder::Asc),
         (i64::from(query.page.get()) - 1) * i64::from(query.page_size),
         i64::from(query.page_size),
+        default_quota_bytes as i64,
     )
     .fetch_all(pool)
     .await?)
 }
 
-/// One user's summary by id.
-pub async fn find_summary(pool: &PgPool, user_id: Uuid) -> Result<Option<UserSummary>> {
+/// One user's summary by id, resolving their quota against `default_quota_bytes`.
+pub async fn find_summary(
+    pool: &PgPool,
+    user_id: Uuid,
+    default_quota_bytes: u64,
+) -> Result<Option<UserSummary>> {
     Ok(sqlx::query_as!(
         UserSummary,
         r#"select users.id, username, email, provider::text as "provider!", is_admin, banned,
                   to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
                   to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_seen,
-                  count(files.id) as "uploads!"
+                  count(files.id) filter (where files.status = 'available') as "uploads!",
+                  coalesce(sum(files.size), 0)::bigint as "storage_used_bytes!", storage_quota_bytes,
+                  nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $2 end), 0) as effective_storage_quota_bytes
            from users
-           left join files on files.uploaded_by_user_id = users.id and files.status = 'available'
+           left join files on files.uploaded_by_user_id = users.id and files.status <> 'deleted'
            where users.id = $1
            group by users.id"#,
         user_id,
+        default_quota_bytes as i64,
     )
     .fetch_optional(pool)
     .await?)

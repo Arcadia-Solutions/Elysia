@@ -86,6 +86,7 @@ pub fn test_settings() -> ElysiaSettings {
         allow_registration: true,
         allowed_referrers: Vec::new(),
         uploads_enabled: true,
+        default_storage_quota_bytes: 0,
     }
 }
 

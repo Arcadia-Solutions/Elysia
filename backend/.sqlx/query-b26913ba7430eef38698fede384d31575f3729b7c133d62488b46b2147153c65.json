@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select coalesce(storage_quota_bytes, case when is_admin then 0 else $2 end) as \"quota_bytes!\",\n                  (select coalesce(sum(size), 0) from files\n                   where uploaded_by_user_id = users.id and status <> 'deleted')::bigint as \"used_bytes!\"\n           from users where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "quota_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "used_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "b26913ba7430eef38698fede384d31575f3729b7c133d62488b46b2147153c65"
+}

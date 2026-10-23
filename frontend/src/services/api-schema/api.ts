@@ -268,6 +268,10 @@ export interface ElysiaSettings {
      */
     'default_compression'?: number;
     /**
+     * Bytes of available and trashed files each user may hold, unless overridden per user; 0 is unlimited. Admins are exempt without an override.
+     */
+    'default_storage_quota_bytes'?: number;
+    /**
      * Default output format; null stores uploads as-is (processing off).
      */
     'default_target_file_format'?: TargetFormat | null;
@@ -417,6 +421,20 @@ export interface LoginRequest {
 export interface LoginResponse {
     'token': string;
     'user': ProfileResponse;
+}
+/**
+ * The caller\'s own account and storage usage.
+ */
+export interface MeResponse {
+    'email'?: string;
+    'id': string;
+    'is_admin': boolean;
+    'provider': string;
+    'username': string;
+    /**
+     * Storage the caller\'s available and trashed files use, and their effective quota.
+     */
+    'storage': StorageUsage;
 }
 /**
  * Display metadata for the `/i/<id>` viewer page.
@@ -577,6 +595,10 @@ export interface PaginatedResultsUserSummaryResultsInner {
      * Account creation time as a UTC ISO-8601 string.
      */
     'created_at': string;
+    /**
+     * Quota in force: the override, else the global default (admins are unlimited without an override). Null is unlimited.
+     */
+    'effective_storage_quota_bytes'?: number | null;
     'email'?: string | null;
     'id': string;
     'is_admin': boolean;
@@ -588,6 +610,14 @@ export interface PaginatedResultsUserSummaryResultsInner {
      * `local` or `sso`.
      */
     'provider': string;
+    /**
+     * Storage quota override in bytes: null follows the global default, 0 is unlimited.
+     */
+    'storage_quota_bytes'?: number | null;
+    /**
+     * Bytes of the user\'s available and trashed files.
+     */
+    'storage_used_bytes': number;
     /**
      * Available (not trashed) files the user uploaded.
      */
@@ -638,7 +668,7 @@ export interface ProfileResponse {
     'username': string;
 }
 /**
- * The subset of [`ElysiaSettings`] exposed publicly, so the upload page can validate files client-side.
+ * The subset of [`ElysiaSettings`] exposed to logged-in users, loaded once by the frontend (upload validation, quota defaults).
  */
 export interface PublicElysiaSettings {
     /**
@@ -657,6 +687,10 @@ export interface PublicElysiaSettings {
      * Whether open registration is allowed; lets the login page offer signup.
      */
     'allow_registration': boolean;
+    /**
+     * Storage quota of users without an override; 0 is unlimited.
+     */
+    'default_storage_quota_bytes': number;
     'default_target_file_format'?: TargetFormat | null;
     'max_file_size_bytes': number;
     'max_height_pixels': number;
@@ -715,6 +749,12 @@ export interface ScanParams {
 }
 export interface SetUserBannedRequest {
     'banned': boolean;
+}
+export interface SetUserStorageQuotaRequest {
+    /**
+     * Quota in bytes; null follows the global default, 0 is unlimited.
+     */
+    'storage_quota_bytes'?: number | null;
 }
 /**
  * Sort direction.
@@ -789,6 +829,19 @@ export interface StatsResponse {
      */
     'uploaders': Array<Uploader>;
     'window': WindowTotals;
+}
+/**
+ * How much storage a user holds and may hold.
+ */
+export interface StorageUsage {
+    /**
+     * Effective quota in bytes; null is unlimited.
+     */
+    'quota_bytes'?: number | null;
+    /**
+     * Bytes of the user\'s available and trashed files.
+     */
+    'used_bytes': number;
 }
 /**
  * Output format; `jxl` is accepted as an alias for `jpegxl` on input. Stored in the DB as the `target_format` Postgres enum, mapped by the `sqlx::Type` derive.
@@ -939,6 +992,10 @@ export interface UserSummary {
      * Account creation time as a UTC ISO-8601 string.
      */
     'created_at': string;
+    /**
+     * Quota in force: the override, else the global default (admins are unlimited without an override). Null is unlimited.
+     */
+    'effective_storage_quota_bytes'?: number | null;
     'email'?: string | null;
     'id': string;
     'is_admin': boolean;
@@ -950,6 +1007,14 @@ export interface UserSummary {
      * `local` or `sso`.
      */
     'provider': string;
+    /**
+     * Storage quota override in bytes: null follows the global default, 0 is unlimited.
+     */
+    'storage_quota_bytes'?: number | null;
+    /**
+     * Bytes of the user\'s available and trashed files.
+     */
+    'storage_used_bytes': number;
     /**
      * Available (not trashed) files the user uploaded.
      */
@@ -964,7 +1029,8 @@ export const UsersSortBy = {
     Username: 'username',
     CreatedAt: 'created_at',
     LastSeen: 'last_seen',
-    Uploads: 'uploads'
+    Uploads: 'uploads',
+    StorageUsedBytes: 'storage_used_bytes'
 } as const;
 
 export type UsersSortBy = typeof UsersSortBy[keyof typeof UsersSortBy];
@@ -1248,7 +1314,7 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
+         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -1974,6 +2040,45 @@ export const ElysiaApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Override a user\'s storage quota, or clear the override to follow the global default. Existing files are kept when the user ends up over quota; only new uploads are refused.
+         * @param {string} id User id
+         * @param {SetUserStorageQuotaRequest} setUserStorageQuotaRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setUserStorageQuota: async (id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('setUserStorageQuota', 'id', id)
+            // verify required parameter 'setUserStorageQuotaRequest' is not null or undefined
+            assertParamExists('setUserStorageQuota', 'setUserStorageQuotaRequest', setUserStorageQuotaRequest)
+            const localVarPath = `/api/users/{id}/storage-quota`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(setUserStorageQuotaRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {SsoCallbackRequest} ssoCallbackRequest 
          * @param {*} [options] Override http request option.
@@ -2414,7 +2519,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
+         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2536,7 +2641,7 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async me(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ProfileResponse>> {
+        async me(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<MeResponse>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.me(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.me']?.[localVarOperationServerIndex]?.url;
@@ -2649,6 +2754,19 @@ export const ElysiaApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.setUserBanned(id, setUserBannedRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ElysiaApi.setUserBanned']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Override a user\'s storage quota, or clear the override to follow the global default. Existing files are kept when the user ends up over quota; only new uploads are refused.
+         * @param {string} id User id
+         * @param {SetUserStorageQuotaRequest} setUserStorageQuotaRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async setUserStorageQuota(id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.setUserStorageQuota(id, setUserStorageQuotaRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ElysiaApi.setUserStorageQuota']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2840,7 +2958,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.getFixturesProgress(options).then((request) => request(axios, basePath));
         },
         /**
-         * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
+         * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2935,7 +3053,7 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        me(options?: RawAxiosRequestConfig): AxiosPromise<ProfileResponse> {
+        me(options?: RawAxiosRequestConfig): AxiosPromise<MeResponse> {
             return localVarFp.me(options).then((request) => request(axios, basePath));
         },
         /**
@@ -3019,6 +3137,16 @@ export const ElysiaApiFactory = function (configuration?: Configuration, basePat
          */
         setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.setUserBanned(id, setUserBannedRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Override a user\'s storage quota, or clear the override to follow the global default. Existing files are kept when the user ends up over quota; only new uploads are refused.
+         * @param {string} id User id
+         * @param {SetUserStorageQuotaRequest} setUserStorageQuotaRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setUserStorageQuota(id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.setUserStorageQuota(id, setUserStorageQuotaRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3188,7 +3316,7 @@ export class ElysiaApi extends BaseAPI {
     }
 
     /**
-     * The public subset of the settings, so the upload page can validate files client-side before sending them. Requires a session; any logged-in user may call it.
+     * The public subset of the settings, loaded once by the frontend. Requires a session; any logged-in user may call it.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3385,6 +3513,17 @@ export class ElysiaApi extends BaseAPI {
      */
     public setUserBanned(id: string, setUserBannedRequest: SetUserBannedRequest, options?: RawAxiosRequestConfig) {
         return ElysiaApiFp(this.configuration).setUserBanned(id, setUserBannedRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Override a user\'s storage quota, or clear the override to follow the global default. Existing files are kept when the user ends up over quota; only new uploads are refused.
+     * @param {string} id User id
+     * @param {SetUserStorageQuotaRequest} setUserStorageQuotaRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public setUserStorageQuota(id: string, setUserStorageQuotaRequest: SetUserStorageQuotaRequest, options?: RawAxiosRequestConfig) {
+        return ElysiaApiFp(this.configuration).setUserStorageQuota(id, setUserStorageQuotaRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

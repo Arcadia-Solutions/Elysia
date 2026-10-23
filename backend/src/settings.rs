@@ -76,6 +76,10 @@ pub struct ElysiaSettings {
     /// When false, every upload (file or URL) is rejected, admins included.
     #[serde(default = "default_uploads_enabled")]
     pub uploads_enabled: bool,
+    /// Bytes of available and trashed files each user may hold, unless
+    /// overridden per user; 0 is unlimited. Admins are exempt without an override.
+    #[serde(default)]
+    pub default_storage_quota_bytes: u64,
 }
 
 fn default_allow_registration() -> bool {
@@ -86,8 +90,8 @@ fn default_uploads_enabled() -> bool {
     true
 }
 
-/// The subset of [`ElysiaSettings`] exposed publicly, so the upload page
-/// can validate files client-side.
+/// The subset of [`ElysiaSettings`] exposed to logged-in users, loaded once
+/// by the frontend (upload validation, quota defaults).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
 pub struct PublicElysiaSettings {
     pub max_file_size_bytes: u64,
@@ -112,6 +116,8 @@ pub struct PublicElysiaSettings {
     pub allow_registration: bool,
     /// Whether uploads are accepted; lets the upload page say they are paused.
     pub uploads_enabled: bool,
+    /// Storage quota of users without an override; 0 is unlimited.
+    pub default_storage_quota_bytes: u64,
 }
 
 impl From<ElysiaSettings> for PublicElysiaSettings {
@@ -130,6 +136,7 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             target_file_size_bytes: s.target_file_size_bytes,
             allow_registration: s.allow_registration,
             uploads_enabled: s.uploads_enabled,
+            default_storage_quota_bytes: s.default_storage_quota_bytes,
         }
     }
 }
@@ -275,6 +282,13 @@ impl ElysiaSettings {
             if self.thumbnail_quality < 1 || self.thumbnail_quality > 100 {
                 return Err("thumbnail_quality must be between 1 and 100".into());
             }
+        }
+        // Stored as a signed bigint, so a larger count would wrap negative.
+        if self.default_storage_quota_bytes > i64::MAX as u64 {
+            return Err(format!(
+                "default_storage_quota_bytes must be <= {}",
+                i64::MAX
+            ));
         }
         if let Some(host) = self
             .allowed_referrers

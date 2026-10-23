@@ -6,21 +6,7 @@
     <div class="field">
       <label>{{ $t('settings.max_file_size.label') }}</label>
       <small>{{ $t('settings.max_file_size.help') }}</small>
-      <div class="size-row">
-        <InputNumber v-model="fileSize.state.value" size="small" :min="0" fluid :invalid="!!errors.max_file_size_bytes" />
-        <Select
-          v-model="fileSize.state.unit"
-          size="small"
-          :options="[
-            { label: 'B', value: 1 },
-            { label: 'KB', value: 1024 },
-            { label: 'MB', value: 1048576 },
-            { label: 'GB', value: 1073741824 },
-          ]"
-          option-label="label"
-          option-value="value"
-        />
-      </div>
+      <ByteInput v-model="form.max_file_size_bytes" :invalid="!!errors.max_file_size_bytes" />
       <Message v-if="errors.max_file_size_bytes" severity="error" size="small" variant="simple">{{ errors.max_file_size_bytes }}</Message>
     </div>
 
@@ -86,22 +72,7 @@
       <div class="field">
         <label>{{ $t('settings.target_file_size.label') }}</label>
         <small>{{ $t('settings.target_file_size.help') }}</small>
-        <div class="size-row">
-          <InputNumber v-model="targetSize.state.value" size="small" :min="0" fluid :disabled="!form.default_target_file_format" />
-          <Select
-            v-model="targetSize.state.unit"
-            size="small"
-            :disabled="!form.default_target_file_format"
-            :options="[
-              { label: 'B', value: 1 },
-              { label: 'KB', value: 1024 },
-              { label: 'MB', value: 1048576 },
-              { label: 'GB', value: 1073741824 },
-            ]"
-            option-label="label"
-            option-value="value"
-          />
-        </div>
+        <ByteInput v-model="form.target_file_size_bytes" :disabled="!form.default_target_file_format" />
       </div>
 
       <div class="field">
@@ -158,6 +129,12 @@
       <ToggleSwitch v-model="form.allow_registration" />
     </div>
 
+    <div class="field">
+      <label>{{ $t('settings.default_storage_quota.label') }}</label>
+      <small>{{ $t('settings.default_storage_quota.help') }}</small>
+      <ByteInput v-model="form.default_storage_quota_bytes" />
+    </div>
+
     <hr />
 
     <div class="field">
@@ -211,6 +188,7 @@ import Message from 'primevue/message'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Tooltip from 'primevue/tooltip'
 import { useI18n } from 'vue-i18n'
+import ByteInput from '@/components/ByteInput.vue'
 import { api } from '@/services/api/http'
 import type { ElysiaSettings, TargetFormat } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
@@ -240,33 +218,11 @@ const form = reactive<Required<ElysiaSettings>>({
   allow_registration: true,
   allowed_referrers: [],
   uploads_enabled: true,
+  default_storage_quota_bytes: 0,
 })
 
 // Thumbnails are on when a box is set on either axis.
 const thumbnailsEnabled = computed(() => form.thumbnail_width_pixels > 0 || form.thumbnail_height_pixels > 0)
-
-// A byte count edited as value + unit. `bytes` is the canonical count sent to
-// the API; `set` shows a stored count as the largest unit that divides it
-// evenly (10485760 as "10 MB"), keeping the current unit when the count is 0.
-const useByteField = () => {
-  const state = reactive({ value: 0, unit: 1048576 })
-  const bytes = computed(() => Math.round(state.value * state.unit))
-  const set = (count: number) => {
-    for (const unit of [1073741824, 1048576, 1024]) {
-      if (count >= unit && count % unit === 0) {
-        state.value = count / unit
-        state.unit = unit
-        return
-      }
-    }
-    state.value = count
-    if (count !== 0) state.unit = 1
-  }
-  return { state, bytes, set }
-}
-
-const fileSize = useByteField()
-const targetSize = useByteField()
 
 // PrimeVue Select shows the placeholder (blank) for a null model, so "store
 // as-is" (null) would never appear selected. Map it to a sentinel for the Select.
@@ -274,9 +230,6 @@ const targetFormat = computed({
   get: () => form.default_target_file_format ?? 'store_as_is',
   set: (v: TargetFormat | 'store_as_is') => (form.default_target_file_format = v === 'store_as_is' ? null : v),
 })
-
-watch(fileSize.bytes, (value) => (form.max_file_size_bytes = value))
-watch(targetSize.bytes, (value) => (form.target_file_size_bytes = value))
 
 // AVIF and JPEG have no lossless mode, so if one can be the output there must be
 // a quality source. With no default compression, per-upload overriding is the
@@ -311,8 +264,6 @@ api
   .getElysiaSettings()
   .then((response) => {
     Object.assign(form, response.data)
-    fileSize.set(form.max_file_size_bytes)
-    targetSize.set(form.target_file_size_bytes)
   })
   .finally(() => {
     loading.value = false
@@ -325,8 +276,6 @@ const save = () => {
     .putElysiaSettings({ ...form })
     .then((response) => {
       Object.assign(form, response.data)
-      fileSize.set(form.max_file_size_bytes)
-      targetSize.set(form.target_file_size_bytes)
       showToast(t('settings.saved'), 'success')
     })
     .finally(() => {
@@ -366,13 +315,6 @@ const save = () => {
 }
 .field small {
   color: var(--p-text-muted-color, #666);
-}
-.size-row {
-  display: flex;
-  gap: 8px;
-}
-.size-row > :first-child {
-  flex: 1;
 }
 hr {
   width: 100%;

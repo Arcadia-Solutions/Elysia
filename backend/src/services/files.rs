@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::error::{Error, Result};
 use crate::repository::files::{self, NewFile};
+use crate::repository::users;
 use crate::services::image::{self, TargetFormat};
 use crate::services::paginate;
 use crate::settings::ElysiaSettings;
@@ -94,6 +95,8 @@ pub struct UploadOptions {
     /// Effective EXIF-stripping choice: the per-upload override, or the
     /// configured default.
     pub strip_exif: bool,
+    /// Bytes the uploader may still store; `None` is unlimited.
+    pub remaining_storage_bytes: Option<u64>,
 }
 
 /// The bytes to store plus their metadata: either the pipeline's output or, when
@@ -518,6 +521,13 @@ pub async fn store_upload(
         return Ok(existing_stored(record));
     }
 
+    if options
+        .remaining_storage_bytes
+        .is_some_and(|remaining| output.size as u64 > remaining)
+    {
+        return Err(storage_quota_exceeded());
+    }
+
     let original_name = original_name.as_deref();
 
     // Files hit disk before the row exists, so a failed persist never leaves a
@@ -634,6 +644,26 @@ fn orientation_exif(orientation: Orientation) -> img_parts::Bytes {
     let mut exif = b"II*\0\x08\0\0\0\x01\0\x12\x01\x03\0\x01\0\0\0".to_vec();
     exif.extend_from_slice(&[orientation.to_exif(), 0, 0, 0, 0, 0, 0, 0]);
     exif.into()
+}
+
+/// Bytes `user_id` may still store (`None` is unlimited), refusing a user
+/// already at their quota before any upload work is done.
+pub async fn remaining_storage_bytes(
+    pool: &PgPool,
+    user_id: Uuid,
+    default_quota_bytes: u64,
+) -> Result<Option<u64>> {
+    let remaining = users::storage_usage(pool, user_id, default_quota_bytes)
+        .await?
+        .remaining_bytes();
+    if remaining == Some(0) {
+        return Err(storage_quota_exceeded());
+    }
+    Ok(remaining)
+}
+
+fn storage_quota_exceeded() -> Error {
+    Error::BadRequest("storage quota exceeded".into())
 }
 
 /// Build a `StoredFile` for a dedup or skip hit from a stored record.

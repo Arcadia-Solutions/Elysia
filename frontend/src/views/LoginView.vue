@@ -52,7 +52,10 @@ const handleLogin = () => {
     .login({ login: login.value, password: password.value })
     .then((response) => {
       saveSession(response.data.token, response.data.user.is_admin)
-      router.push('/')
+      api
+        .getPublicElysiaSettings()
+        .then((settings) => localStorage.setItem('public_settings', JSON.stringify(settings.data)))
+        .finally(() => router.push('/'))
     })
     .catch(() => {
       error.value = t('login.failed')

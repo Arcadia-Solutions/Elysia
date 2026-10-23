@@ -21,6 +21,7 @@ async fn api_keys_are_scoped_tracked_and_revoked(pool: PgPool) {
         App::new()
             .app_data(Data::new(common::test_config()))
             .app_data(Data::new(pool.clone()))
+            .app_data(Data::new(std::sync::RwLock::new(common::test_settings())))
             .configure(routes::init),
     )
     .await;
@@ -227,6 +228,7 @@ async fn admin_keys_reach_neither_admin_routes_nor_password_change(pool: PgPool)
         App::new()
             .app_data(Data::new(config))
             .app_data(Data::new(pool.clone()))
+            .app_data(Data::new(std::sync::RwLock::new(common::test_settings())))
             .configure(routes::init),
     )
     .await;

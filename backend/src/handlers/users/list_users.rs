@@ -8,6 +8,7 @@ use crate::error::Result;
 use crate::middlewares::AuthUser;
 use crate::repository::PaginatedResults;
 use crate::repository::users::{self, UserSummary, UsersQuery};
+use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
     tag = "elysia",
@@ -24,12 +25,17 @@ use crate::repository::users::{self, UserSummary, UsersQuery};
 )]
 pub async fn list_users(
     authenticated: AuthUser,
+    settings: SharedElysiaSettings,
     pool: Data<PgPool>,
     query: Query<UsersQuery>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
+    let default_quota_bytes = settings
+        .read()
+        .expect("settings lock poisoned")
+        .default_storage_quota_bytes;
     let (users, total) = tokio::try_join!(
-        users::list(pool.get_ref(), &query),
+        users::list(pool.get_ref(), &query, default_quota_bytes),
         users::count_users(pool.get_ref(), query.search()),
     )?;
     Ok(HttpResponse::Ok().json(PaginatedResults::new(

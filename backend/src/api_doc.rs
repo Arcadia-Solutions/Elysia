@@ -45,6 +45,7 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::users::list_users::list_users,
         crate::handlers::users::get_user::get_user,
         crate::handlers::users::set_user_banned::set_user_banned,
+        crate::handlers::users::set_user_storage_quota::set_user_storage_quota,
     ),
     // Query parameter types are inlined into each path; list them so the
     // generated client still gets them as named types. The rest is collected

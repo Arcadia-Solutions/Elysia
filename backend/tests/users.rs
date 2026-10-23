@@ -31,6 +31,7 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
         App::new()
             .app_data(Data::new(config))
             .app_data(Data::new(pool.clone()))
+            .app_data(Data::new(std::sync::RwLock::new(common::test_settings())))
             .configure(routes::init),
     )
     .await;
@@ -94,7 +95,7 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
     }
 
     // Authenticated requests stamp `last_seen`.
-    let summary = |id| users::find_summary(&pool, id);
+    let summary = |id| users::find_summary(&pool, id, 0);
     assert!(
         summary(admin.id)
             .await

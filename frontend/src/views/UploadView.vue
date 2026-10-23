@@ -126,7 +126,8 @@ const urlInput = ref('')
 // File chosen but not yet uploaded, with an object URL for the preview.
 const selectedFile = ref<File | null>(null)
 const selectedPreview = ref('')
-const settings = ref<PublicElysiaSettings | null>(null)
+// Cached by App.vue on load and on login.
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
 // Per-upload output format; 'default' uses the server's default (a non-empty
 // sentinel so PrimeVue shows it as selected). Only honored when the settings
 // allow overriding; the backend rejects it otherwise.
@@ -142,31 +143,25 @@ const formatLabels: Record<TargetFormat, string> = {
 const quality = ref(80)
 // Per-upload lossless choice, offered only for formats with a lossless mode.
 const lossless = ref(false)
-// Per-upload EXIF-stripping choice, initialized from the server default once
-// settings load. Only honored when the settings allow overriding.
-const stripExif = ref(false)
+// Per-upload EXIF-stripping choice, initialized from the server default.
+// Only honored when the settings allow overriding.
+const stripExif = ref(!!settings?.strip_exif_by_default)
 
 // The format that will actually be applied: the override, or the server default.
-const effectiveFormat = computed(() => (formatOverride.value === 'default' ? settings.value?.default_target_file_format : formatOverride.value))
+const effectiveFormat = computed(() => (formatOverride.value === 'default' ? settings?.default_target_file_format : formatOverride.value))
 // Quality applies only to lossy-capable formats (every target format but PNG),
 // and only when the settings allow overriding compression.
-const showCompression = computed(() => !!settings.value?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
+const showCompression = computed(() => !!settings?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
 // The options section is empty (and hidden) unless the server exposes at least one knob.
-const hasOptions = computed(() => !!settings.value?.allow_overriding_file_format || showCompression.value || !!settings.value?.allow_overriding_strip_exif)
+const hasOptions = computed(() => !!settings?.allow_overriding_file_format || showCompression.value || !!settings?.allow_overriding_strip_exif)
 // PNG is always lossless and AVIF/JPEG never are, so only WebP and JPEG XL get the toggle.
 const showLosslessToggle = computed(() => showCompression.value && ['webp', 'jpegxl'].includes(effectiveFormat.value ?? ''))
 const losslessSelected = computed(() => showLosslessToggle.value && lossless.value)
 // 0 asks the backend for lossless, overriding its default quality.
 const qualityValue = () => (losslessSelected.value ? 0 : showCompression.value ? quality.value : undefined)
-const stripExifValue = () => (settings.value?.allow_overriding_strip_exif ? stripExif.value : undefined)
+const stripExifValue = () => (settings?.allow_overriding_strip_exif ? stripExif.value : undefined)
 
-// Public upload limits, so files are rejected client-side before a wasted
-// round-trip. The backend still enforces them. A 0 limit means "no limit".
 onMounted(() => {
-  api.getPublicElysiaSettings().then((r) => {
-    settings.value = r.data
-    stripExif.value = r.data.strip_exif_by_default
-  })
   window.addEventListener('paste', onPaste)
 })
 onUnmounted(() => window.removeEventListener('paste', onPaste))
@@ -186,9 +181,11 @@ const readDimensions = (file: File): Promise<{ width: number; height: number }> 
     img.src = url
   })
 
+// Public upload limits, so files are rejected client-side before a wasted
+// round-trip. The backend still enforces them. A 0 limit means "no limit".
 // Resolves to an error message when the file breaks a limit, else null.
 const validate = (file: File): Promise<string | null> => {
-  const s = settings.value
+  const s = settings
   if (!s) return Promise.resolve(null)
   if (s.max_file_size_bytes > 0 && file.size > s.max_file_size_bytes) {
     return Promise.resolve(t('upload.too_large', { max: formatBytes(s.max_file_size_bytes) }))
@@ -260,7 +257,7 @@ const onDrop = (event: DragEvent) => {
 // Page-wide paste: grab a pasted image file, leave text pastes (e.g. into the URL field) alone.
 const onPaste = (event: ClipboardEvent) => {
   const file = event.clipboardData?.files?.[0]
-  if (uploading.value || settings.value?.uploads_enabled === false || !file?.type.startsWith('image/')) return
+  if (uploading.value || settings?.uploads_enabled === false || !file?.type.startsWith('image/')) return
   event.preventDefault()
   urlInput.value = ''
   pick(file)

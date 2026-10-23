@@ -12,6 +12,7 @@ use sqlx::PgPool;
 
 use elysia::error::Error;
 use elysia::repository::files::{self, NewFile};
+use elysia::repository::users;
 use elysia::services::files::{check_dimensions, check_size, generate_id, store_from_url};
 use elysia::storage::Storage;
 
@@ -196,6 +197,54 @@ async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
         upload_status(pool, settings, tiny_png(2, 2)).await,
         StatusCode::FORBIDDEN
     );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_respects_storage_quota(pool: PgPool) {
+    // 1000 bytes already stored against a 1000 byte global quota: full, until
+    // an unlimited (0) override lifts it.
+    let (user, token) = test_user(&pool, "quota-user").await;
+    seed_files(&pool, user.id, "quota", 1, 1000).await;
+    let mut settings = test_settings();
+    settings.default_storage_quota_bytes = 1000;
+    let (status, body) =
+        upload_with_token(pool.clone(), settings.clone(), tiny_png(2, 2), "", &token).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "storage quota exceeded");
+
+    // One byte left: refused once the processed size is known.
+    users::set_storage_quota(&pool, user.id, Some(1001))
+        .await
+        .unwrap();
+    let (status, body) =
+        upload_with_token(pool.clone(), settings.clone(), tiny_png(2, 2), "", &token).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "storage quota exceeded");
+
+    users::set_storage_quota(&pool, user.id, Some(0))
+        .await
+        .unwrap();
+    let (status, _) = upload_with_token(pool, settings, tiny_png(2, 2), "", &token).await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn storage_usage_counts_trash_and_exempts_admins(pool: PgPool) {
+    // Trashed files still count, deleted ones free their bytes.
+    let (user, _) = test_user(&pool, "quota-user").await;
+    seed_files(&pool, user.id, "quota", 2, 100).await;
+    let ids = ["quota000000".to_string(), "quota000001".to_string()];
+    files::mark_trashed(&pool, &ids, user.id).await.unwrap();
+    files::mark_deleted(&pool, &ids[1..], None).await.unwrap();
+    let usage = users::storage_usage(&pool, user.id, 1000).await.unwrap();
+    assert_eq!((usage.used_bytes, usage.quota_bytes), (100, Some(1000)));
+
+    // Admins are unlimited without an override.
+    let admin = users::create_local_user(&pool, "quota-admin", None, "hash", true)
+        .await
+        .unwrap();
+    let usage = users::storage_usage(&pool, admin.id, 1000).await.unwrap();
+    assert_eq!(usage.quota_bytes, None);
 }
 
 #[sqlx::test(migrations = "./migrations")]
