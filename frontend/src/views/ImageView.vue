@@ -15,6 +15,18 @@
           <br />
           ({{ timeAgo(new Date(meta.created_at)) }})
         </dd>
+        <template v-if="meta.trashed_at">
+          <dt>{{ $t('image.trashed_at') }}</dt>
+          <dd>
+            {{ new Date(meta.trashed_at).toLocaleString('sv-SE') }}
+            <br />
+            ({{ timeAgo(new Date(meta.trashed_at)) }})
+            <br />
+            <span class="trashed">{{ $t('image.days_until_deletion', { days: meta.days_until_deletion }, meta.days_until_deletion ?? 0) }}</span>
+          </dd>
+          <dt>{{ $t('image.trashed_by') }}</dt>
+          <dd>{{ meta.trashed_by_username }}</dd>
+        </template>
         <dt>{{ $t('image.dimensions') }}</dt>
         <dd>{{ meta.width }} × {{ meta.height }}</dd>
         <dt>{{ $t('image.size') }}</dt>
@@ -36,6 +48,7 @@
         <CopyLink v-for="row in group.rows" :key="row.label" :label="row.label" :value="row.value" />
       </template>
       <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" class="delete" @click="trash" />
+      <Button v-if="meta.trashed" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
     </aside>
   </div>
 </template>
@@ -76,7 +89,8 @@ const processing = computed(() => {
 
 // Copyable direct links and embed snippets. The thumbnail embeds link to the full image.
 const linkGroups = computed(() => {
-  if (!meta.value) return []
+  // Trashed images are not served from their public links.
+  if (!meta.value || meta.value.trashed) return []
   const full = absoluteUrl(meta.value.url)
   const thumb = absoluteUrl(meta.value.thumbnail_url)
   return [
@@ -109,9 +123,20 @@ const trash = () => {
   })
 }
 
-api.metadata(String(route.params.id)).then((response) => {
-  meta.value = response.data
-})
+const restore = () => {
+  if (!meta.value) return
+  api.restoreImages({ ids: [meta.value.id] }).then(() => {
+    showToast(t('trash.restored', 1), 'success')
+    load()
+  })
+}
+
+const load = () =>
+  api.metadata(String(route.params.id)).then((response) => {
+    meta.value = response.data
+  })
+
+load()
 </script>
 
 <style scoped>
@@ -156,6 +181,9 @@ api.metadata(String(route.params.id)).then((response) => {
 .delete {
   align-self: flex-start;
   margin-top: 16px;
+}
+.trashed {
+  color: var(--p-red-500);
 }
 .meta dd {
   margin: 0 0 12px;

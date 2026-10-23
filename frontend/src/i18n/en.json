@@ -101,6 +101,9 @@
     "uploaded_by": "Uploaded by",
     "views": "Views",
     "views_value": "{views} image, {thumbnail_views} thumbnail",
+    "trashed_at": "Deleted at",
+    "trashed_by": "Deleted by",
+    "days_until_deletion": "Will be deleted today | Will be deleted in {days} day | Will be deleted in {days} days",
     "links": {
       "full": "Full image",
       "thumbnail": "Thumbnail",
@@ -120,7 +123,9 @@
   "trash": {
     "delete": "Delete | Delete ({count})",
     "delete_confirm": "Move this image to the trash? It stops being served right away and is deleted for good after 30 days. | Move these {count} images to the trash? They stop being served right away and are deleted for good after 30 days.",
-    "deleted": "Image moved to the trash | {count} images moved to the trash"
+    "deleted": "Image moved to the trash | {count} images moved to the trash",
+    "restore": "Restore | Restore ({count})",
+    "restored": "Image restored | {count} images restored"
   },
   "browse": {
     "title": "Browse images",

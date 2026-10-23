@@ -46,7 +46,21 @@
         @update:modelValue="(size: number) => router.push({ query: { ...route.query, page: undefined, page_size: size } })"
       />
       <template v-if="selected.size > 0">
-        <Button :label="$t('trash.delete', { count: selected.size }, selected.size)" icon="pi pi-trash" size="small" severity="danger" @click="trashSelected" />
+        <Button
+          v-if="status === ImagesStatus.Trashed"
+          :label="$t('trash.restore', { count: selected.size }, selected.size)"
+          icon="pi pi-replay"
+          size="small"
+          @click="restoreSelected"
+        />
+        <Button
+          v-else
+          :label="$t('trash.delete', { count: selected.size }, selected.size)"
+          icon="pi pi-trash"
+          size="small"
+          severity="danger"
+          @click="trashSelected"
+        />
         <Button :label="$t('browse.clear_selection')" icon="pi pi-times" size="small" severity="secondary" @click="selected.clear()" />
       </template>
       <Button
@@ -64,16 +78,14 @@
     <PaginatedResults v-else :page :pageSize :totalItems="total" @changePage="(page: number) => router.push({ query: { ...route.query, page } })">
       <div class="grid" :class="{ selecting: selected.size > 0 }">
         <div v-for="image in images" :key="image.id" class="cell" :class="{ selected: selected.has(image.id) }">
-          <img v-if="status === ImagesStatus.Trashed" :src="trashedThumbnails[image.id]" :alt="image.id" />
           <!-- While a selection is in progress, a click on the image selects it too. -->
-          <button v-else-if="selected.size > 0" type="button" class="thumb" tabindex="-1" @click="toggleSelected(image.id)">
+          <button v-if="selected.size > 0" type="button" class="thumb" tabindex="-1" @click="toggleSelected(image.id)">
             <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
           </button>
           <router-link v-else :to="{ name: 'Image', params: { id: image.id } }" class="thumb">
             <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
           </router-link>
           <button
-            v-if="status === ImagesStatus.Available"
             type="button"
             class="select-indicator"
             :aria-pressed="selected.has(image.id)"
@@ -99,7 +111,7 @@ import AutoComplete, { type AutoCompleteCompleteEvent, type AutoCompleteOptionSe
 import FixturesDialog from '@/components/FixturesDialog.vue'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
-import http, { api } from '@/services/api/http'
+import { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
 import { ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
@@ -114,9 +126,6 @@ const total = ref(0)
 const fixturesVisible = ref(false)
 // Selection survives page changes, so images from several pages can go at once.
 const selected = ref(new Set<string>())
-// Object URLs of the trashed thumbnails, by image id. The trash is admin-only,
-// so they are fetched with the session token instead of loaded by an <img>.
-const trashedThumbnails = ref<Record<string, string>>({})
 
 const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) ?? ImagesSortBy.CreatedAt)
 const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)
@@ -142,17 +151,6 @@ const suggestUsernames = (search: string) => {
 
 const setUsername = (value: string) => router.push({ query: { ...route.query, username: value.trim() || undefined, page: undefined } })
 
-const loadTrashedThumbnails = () => {
-  Object.values(trashedThumbnails.value).forEach(URL.revokeObjectURL)
-  trashedThumbnails.value = {}
-  if (status.value !== ImagesStatus.Trashed) return
-  for (const image of images.value) {
-    http.get(image.thumbnail_url, { responseType: 'blob' }).then((response) => {
-      trashedThumbnails.value[image.id] = URL.createObjectURL(response.data)
-    })
-  }
-}
-
 const load = (target: number) => {
   api
     .images(target, pageSize.value, sortBy.value, order.value, status.value, username.value)
@@ -160,7 +158,6 @@ const load = (target: number) => {
       images.value = response.data.results
       page.value = response.data.page
       total.value = response.data.total_items
-      loadTrashedThumbnails()
     })
     .catch(() => {
       showToast(t('browse.load_error'), 'error')
@@ -180,6 +177,15 @@ const trashSelected = () => {
   if (!confirm(t('trash.delete_confirm', { count }, count))) return
   api.trashImages({ ids: [...selected.value] }).then(() => {
     showToast(t('trash.deleted', { count }, count), 'success')
+    selected.value.clear()
+    load(page.value)
+  })
+}
+
+const restoreSelected = () => {
+  const count = selected.value.size
+  api.restoreImages({ ids: [...selected.value] }).then(() => {
+    showToast(t('trash.restored', { count }, count), 'success')
     selected.value.clear()
     load(page.value)
   })

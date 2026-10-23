@@ -108,6 +108,25 @@ impl Storage {
         )
     }
 
+    /// Move a trashed file and its thumbnail back into the served tree. A
+    /// missing file is an error (wiped meanwhile), a missing thumbnail is not.
+    pub async fn restore(&self, id: &str, ext: &str) -> Result<()> {
+        self.prepare_shard(id).await?;
+        tokio::fs::rename(self.trash_path_for(id, ext), self.path_for(id, ext)).await?;
+        ignore_missing(
+            tokio::fs::rename(
+                self.trash_thumbnail_path_for(id),
+                self.thumbnail_path_for(id),
+            )
+            .await,
+        )
+    }
+
+    /// Open a trashed file for streaming.
+    pub async fn open_trashed(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
+        NamedFile::open_async(self.trash_path_for(id, ext)).await
+    }
+
     /// Open a trashed file's thumbnail, or the trashed file itself when it has
     /// none (same fallback as `/t/`).
     pub async fn open_trashed_thumbnail(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {

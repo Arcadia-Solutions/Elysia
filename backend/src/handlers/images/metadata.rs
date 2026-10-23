@@ -36,13 +36,22 @@ pub struct MetadataResponse {
     pub uploader_username: String,
     /// Upload time as a UTC ISO-8601 string.
     pub created_at: String,
-    /// Public URL for the raw image.
+    /// Public URL for the raw image. Trashed, it is only served to Elysia's own pages.
     pub url: String,
-    /// Public URL for the thumbnail.
+    /// Public URL for the thumbnail. Trashed, it is only served to Elysia's own pages.
     pub thumbnail_url: String,
     /// Whether the caller may trash the image: an admin, or its uploader during
-    /// the hour after upload.
+    /// the hour after upload. False once trashed.
     pub can_delete: bool,
+    /// Whether the image is in the trash.
+    pub trashed: bool,
+    /// When the image was trashed, as a UTC ISO-8601 string. Null while available.
+    pub trashed_at: Option<String>,
+    /// Who trashed the image. Null while available.
+    pub trashed_by_username: Option<String>,
+    /// Whole days left before the trashed image is deleted for good, rounded
+    /// up. Null while available.
+    pub days_until_deletion: Option<i32>,
 }
 
 #[utoipa::path(
@@ -54,7 +63,7 @@ pub struct MetadataResponse {
     responses(
         (status = 200, description = "File metadata", body = MetadataResponse),
         (status = 401, description = "Missing or invalid session"),
-        (status = 404, description = "Not found, or trashed"),
+        (status = 404, description = "Not found, or trashed and the caller is not an admin"),
     )
 )]
 pub async fn metadata(
@@ -63,21 +72,23 @@ pub async fn metadata(
     pool: Data<PgPool>,
     id: Path<String>,
 ) -> Result<HttpResponse> {
-    let row = files::get_metadata(pool.get_ref(), &id.into_inner()).await?;
+    let row = files::get_metadata(pool.get_ref(), &id.into_inner(), user.is_admin).await?;
+    let public_url = &config.server.public_url;
+    let trashed = row.trashed_at.is_some();
     Ok(HttpResponse::Ok().json(MetadataResponse {
-        url: image_url(&config.server.public_url, &row.id, &row.ext),
-        thumbnail_url: thumbnail_url(
-            &config.server.public_url,
-            &row.id,
-            &row.ext,
-            row.has_thumbnail,
-        ),
-        can_delete: files::may_trash(
-            user.user_id,
-            user.is_admin,
-            row.uploaded_by_user_id,
-            row.recent,
-        ),
+        url: image_url(public_url, &row.id, &row.ext),
+        thumbnail_url: thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
+        can_delete: !trashed
+            && files::may_trash(
+                user.user_id,
+                user.is_admin,
+                row.uploaded_by_user_id,
+                row.recent,
+            ),
+        trashed,
+        trashed_at: row.trashed_at,
+        trashed_by_username: row.trashed_by_username,
+        days_until_deletion: row.days_until_deletion,
         id: row.id,
         ext: row.ext,
         mime: row.mime,

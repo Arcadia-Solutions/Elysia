@@ -1,11 +1,12 @@
 use std::num::NonZeroU32;
 
 use serde::Deserialize;
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::error::Result;
+use crate::services::files::TRASH_RETENTION_DAYS;
 
 pub struct NewFile<'a> {
     pub id: &'a str,
@@ -162,14 +163,20 @@ pub struct FileMetadata {
     pub created_at: String,
     /// Still within `UPLOADER_TRASH_WINDOW_MINUTES` of its upload.
     pub recent: bool,
+    /// When the file was trashed, as a UTC ISO-8601 string. None while available.
+    pub trashed_at: Option<String>,
+    pub trashed_by_username: Option<String>,
+    /// Whole days left before the scheduled wipe, rounded up. None while available.
+    pub days_until_deletion: Option<i32>,
 }
 
 /// Minutes after upload during which uploaders may trash their own files.
 /// Also spelled out as "an hour" in the OpenAPI descriptions.
 pub const UPLOADER_TRASH_WINDOW_MINUTES: i32 = 60;
 
-/// Fetch an available file's display metadata and its uploader's username by
-/// id; `recent` while within `UPLOADER_TRASH_WINDOW_MINUTES` of its upload.
+/// Fetch an available or trashed file's display metadata, with its uploader's
+/// and trasher's usernames, by id; `recent` while within
+/// `UPLOADER_TRASH_WINDOW_MINUTES` of its upload.
 pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadata>> {
     Ok(sqlx::query_as!(
         FileMetadata,
@@ -179,11 +186,19 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
                 users.username as uploader_username, \
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
                   as \"created_at!\", \
-                files.created_at > now() - make_interval(mins => $2) as \"recent!\" \
+                files.created_at > now() - make_interval(mins => $2) as \"recent!\", \
+                to_char(files.trashed_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                  as trashed_at, \
+                trashers.username as \"trashed_by_username?\", \
+                greatest(0, ceil(extract(epoch from \
+                  files.trashed_at + make_interval(days => $3) - now()) / 86400))::int \
+                  as days_until_deletion \
          from files join users on users.id = files.uploaded_by_user_id \
-         where files.id = $1 and status = 'available'",
+         left join users trashers on trashers.id = files.trashed_by_id \
+         where files.id = $1 and status in ('available', 'trashed')",
         id,
-        UPLOADER_TRASH_WINDOW_MINUTES
+        UPLOADER_TRASH_WINDOW_MINUTES,
+        TRASH_RETENTION_DAYS
     )
     .fetch_optional(pool)
     .await?)
@@ -527,6 +542,33 @@ pub async fn trashed_before(pool: &PgPool, days: i32) -> Result<Vec<TrashedRow>>
         days
     )
     .fetch_all(pool)
+    .await?)
+}
+
+/// Flag the trashed files among `ids` that can be served again as available,
+/// returning them: one per hash, none past `TRASH_RETENTION_DAYS` (the wipe is
+/// due), and none whose bytes are available again (re-uploaded), so dedup
+/// stays unique. A concurrent restore of the same bytes waits on
+/// `files_hash_idx` and fails once this transaction commits.
+pub async fn mark_restored(
+    connection: &mut PgConnection,
+    ids: &[String],
+) -> Result<Vec<TrashedRow>> {
+    Ok(sqlx::query_as!(
+        TrashedRow,
+        "update files set status = 'available', trashed_at = null, trashed_by_id = null \
+         where id in (select distinct on (hash) id from files trashed \
+                      where id = any($1) and status = 'trashed' \
+                        and trashed_at > now() - make_interval(days => $2) \
+                        and not exists (select 1 from files available \
+                                        where available.hash = trashed.hash \
+                                          and available.status = 'available') \
+                      order by hash, trashed_at desc) \
+         returning id, ext",
+        ids,
+        TRASH_RETENTION_DAYS
+    )
+    .fetch_all(connection)
     .await?)
 }
 

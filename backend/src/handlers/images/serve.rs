@@ -3,8 +3,8 @@ use actix_web::{
     web::{Data, Path},
 };
 
-use super::{check_referrer, file_response, parse_filename};
-use crate::error::{Error, Result};
+use super::{check_referrer, file_response, parse_filename, trashed_response};
+use crate::error::Result;
 use crate::services::views::ViewCounter;
 use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
@@ -13,7 +13,9 @@ use crate::storage::Storage;
     tag = "elysia",
     get,
     path = "/i/{filename}",
-    description = "Served straight from disk, without a database lookup.",
+    description = "Served straight from disk, without a database lookup. A trashed image \
+        is still served, uncached, when the `Referer` is one of \
+        Elysia's own pages.",
     params(("filename" = String, Path, description = "<id>.<ext>")),
     responses(
         (status = 200, description = "The image bytes"),
@@ -30,8 +32,14 @@ pub async fn serve(
 ) -> Result<HttpResponse> {
     let decision = check_referrer(&req, &settings)?;
     let (id, ext) = parse_filename(&filename)?;
-    let file = storage.open(id, ext).await.map_err(|_| Error::NotFound)?;
-    if decision.count_view {
+    let file = match storage.open(id, ext).await {
+        Ok(file) => file,
+        Err(_) => {
+            let trashed_file = storage.open_trashed(id, ext).await;
+            return trashed_response(&req, &decision, trashed_file);
+        }
+    };
+    if !decision.from_own_page {
         views.count(id, false);
     }
     Ok(file_response(&req, file, decision.cache_control))

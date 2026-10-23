@@ -3,8 +3,8 @@ use actix_web::{
     web::{Data, Path},
 };
 
-use super::{check_referrer, file_response, parse_filename};
-use crate::error::{Error, Result};
+use super::{check_referrer, file_response, parse_filename, trashed_response};
+use crate::error::Result;
 use crate::services::views::ViewCounter;
 use crate::settings::SharedElysiaSettings;
 use crate::storage::Storage;
@@ -16,7 +16,8 @@ use crate::storage::Storage;
     description = "Served straight from disk, without a database lookup. Falls back to \
         the original file when no thumbnail was generated (the image was within the \
         thumbnail box, or thumbnails were off at store time): its thumbnail URL then \
-        carries the original extension.",
+        carries the original extension. A trashed image's thumbnail is still served, \
+        uncached, when the `Referer` is one of Elysia's own pages.",
     params(("filename" = String, Path, description = "<id>.<ext>")),
     responses(
         (status = 200, description = "The thumbnail bytes, or the original image when it is smaller than the thumbnail box"),
@@ -35,9 +36,15 @@ pub async fn serve_thumbnail(
     let (id, ext) = parse_filename(&filename)?;
     let file = match storage.open_thumbnail(id).await {
         Ok(file) => file,
-        Err(_) => storage.open(id, ext).await.map_err(|_| Error::NotFound)?,
+        Err(_) => match storage.open(id, ext).await {
+            Ok(file) => file,
+            Err(_) => {
+                let trashed_file = storage.open_trashed_thumbnail(id, ext).await;
+                return trashed_response(&req, &decision, trashed_file);
+            }
+        },
     };
-    if decision.count_view {
+    if !decision.from_own_page {
         views.count(id, true);
     }
     Ok(file_response(&req, file, decision.cache_control))

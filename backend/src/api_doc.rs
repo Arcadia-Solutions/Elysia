@@ -26,7 +26,7 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::images::list_images::images,
         crate::handlers::images::trash_images::trash_images,
         crate::handlers::images::empty_trash::empty_trash,
-        crate::handlers::images::serve_trashed_thumbnail::serve_trashed_thumbnail,
+        crate::handlers::images::restore_images::restore_images,
         crate::handlers::stats::overview::stats_overview,
         crate::handlers::fixtures::generate_fixtures::generate_fixtures,
         crate::handlers::fixtures::get_fixtures_progress::get_fixtures_progress,

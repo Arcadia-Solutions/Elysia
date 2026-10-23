@@ -12,8 +12,8 @@ use crate::services::files;
 use crate::storage::Storage;
 
 #[derive(Deserialize, ToSchema)]
-pub struct TrashImagesRequest {
-    /// Ids of the images to trash.
+pub struct ImageIdsRequest {
+    /// Ids of the images to act on.
     pub ids: Vec<String>,
 }
 
@@ -21,10 +21,10 @@ pub struct TrashImagesRequest {
     tag = "elysia",
     post,
     path = "/api/images/trash",
-    description = "Move images to the trash: they stop being served at once and are wiped \
-        from disk 30 days later. Admins may trash any image, uploaders their own during \
+    description = "Move images to the trash: they stop being served to other sites at once \
+        (Elysia's own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during \
         the hour after upload. Unknown or already trashed ids are skipped.",
-    request_body = TrashImagesRequest,
+    request_body = ImageIdsRequest,
     security(("bearer" = [])),
     responses(
         (status = 204, description = "Images trashed"),
@@ -36,7 +36,7 @@ pub async fn trash_images(
     authenticated: AuthUser,
     pool: Data<PgPool>,
     storage: Data<Storage>,
-    body: Json<TrashImagesRequest>,
+    body: Json<ImageIdsRequest>,
 ) -> Result<HttpResponse> {
     files::trash(
         pool.get_ref(),

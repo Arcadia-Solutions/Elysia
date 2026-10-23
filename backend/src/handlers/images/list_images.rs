@@ -17,8 +17,7 @@ use crate::services::files;
 #[derive(Serialize, ToSchema)]
 pub struct ImageSummary {
     pub id: String,
-    /// Thumbnail URL: from `/t/`, or for a trashed image from the admin-only
-    /// trash, fetched with the session token.
+    /// Thumbnail URL from `/t/`. Trashed, it is only served to Elysia's own pages.
     pub thumbnail_url: String,
 }
 
@@ -68,14 +67,7 @@ pub async fn images(
     let images = rows
         .into_iter()
         .map(|row| ImageSummary {
-            thumbnail_url: match query.status {
-                ImagesStatus::Available => {
-                    files::thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail)
-                }
-                ImagesStatus::Trashed => {
-                    files::trashed_thumbnail_url(public_url, &row.id, &row.ext)
-                }
-            },
+            thumbnail_url: files::thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
             id: row.id,
         })
         .collect();

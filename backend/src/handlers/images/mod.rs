@@ -8,9 +8,9 @@ use crate::settings::{RefererHost, SharedElysiaSettings, referer_host};
 pub mod empty_trash;
 pub mod list_images;
 pub mod metadata;
+pub mod restore_images;
 pub mod serve;
 pub mod serve_thumbnail;
-pub mod serve_trashed_thumbnail;
 pub mod trash_images;
 pub mod upload;
 pub mod upload_url;
@@ -23,8 +23,8 @@ pub fn config(cfg: &mut ServiceConfig) {
         .route("/images/trash", post().to(trash_images::trash_images))
         .route("/images/trash/empty", post().to(empty_trash::empty_trash))
         .route(
-            "/images/trash/{filename}",
-            get().to(serve_trashed_thumbnail::serve_trashed_thumbnail),
+            "/images/trash/restore",
+            post().to(restore_images::restore_images),
         )
         .route("/i/{id}", get().to(metadata::metadata));
 }
@@ -53,9 +53,10 @@ pub(crate) struct ServeDecision {
     /// `private` while an allowlist is set, so shared caches (CDN, proxy) can't
     /// hand the image to other referrers.
     pub cache_control: &'static str,
-    /// False when the `Referer` is one of Elysia's own pages (browse, viewer),
-    /// so browsing the app does not inflate the view counters.
-    pub count_view: bool,
+    /// True when the `Referer` is one of Elysia's own pages (browse, viewer):
+    /// browsing the app does not inflate the view counters, and still shows
+    /// trashed images.
+    pub from_own_page: bool,
 }
 
 /// Refuse an image request whose `Referer` is not in the allowed referrers.
@@ -78,8 +79,21 @@ pub(crate) fn check_referrer(
         } else {
             "private, max-age=31536000, immutable"
         },
-        count_view: !matches!(referer_host(referer, &own_host), Some(RefererHost::Own)),
+        from_own_page: matches!(referer_host(referer, &own_host), Some(RefererHost::Own)),
     })
+}
+
+/// Serve a file missing from the served tree from the trash instead, uncached,
+/// to Elysia's own pages only: other sites keep getting a 404.
+pub(crate) fn trashed_response(
+    req: &HttpRequest,
+    decision: &ServeDecision,
+    trashed_file: std::io::Result<NamedFile>,
+) -> Result<HttpResponse> {
+    match trashed_file {
+        Ok(file) if decision.from_own_page => Ok(file_response(req, file, "private, no-store")),
+        _ => Err(Error::NotFound),
+    }
 }
 
 /// Turn a NamedFile into a long-lived, immutable response with the given

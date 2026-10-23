@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select files.id, ext, mime, original_name, size, width, height, original_ext, original_width, original_height, applied_quality, has_thumbnail, views, thumbnail_views, uploaded_by_user_id, users.username as uploader_username, to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\", files.created_at > now() - make_interval(mins => $2) as \"recent!\" from files join users on users.id = files.uploaded_by_user_id where files.id = $1 and status = 'available'",
+  "query": "select files.id, ext, mime, original_name, size, width, height, original_ext, original_width, original_height, applied_quality, has_thumbnail, views, thumbnail_views, uploaded_by_user_id, users.username as uploader_username, to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\", files.created_at > now() - make_interval(mins => $2) as \"recent!\", to_char(files.trashed_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as trashed_at, trashers.username as \"trashed_by_username?\", greatest(0, ceil(extract(epoch from files.trashed_at + make_interval(days => $3) - now()) / 86400))::int as days_until_deletion from files join users on users.id = files.uploaded_by_user_id left join users trashers on trashers.id = files.trashed_by_id where files.id = $1 and status in ('available', 'trashed')",
   "describe": {
     "columns": [
       {
@@ -190,11 +190,35 @@
         "name": "recent!",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 18,
+        "name": "trashed_at",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 19,
+        "name": "trashed_by_username?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "days_until_deletion",
+        "type_info": "Int4",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
         "Text",
+        "Int4",
         "Int4"
       ]
     },
@@ -216,8 +240,11 @@
       false,
       false,
       null,
+      null,
+      null,
+      true,
       null
     ]
   },
-  "hash": "dcaee0d7673e8f1e3654e0e79bef8fdd67a78cf0fb6cdd87f1dbc3345947905c"
+  "hash": "0172e7b5811a5d79f227d4d123bbca787bb38db1d7fef0ea16fe7cac261dbd2d"
 }

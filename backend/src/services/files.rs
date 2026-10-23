@@ -59,11 +59,6 @@ pub fn image_url(public_url: &str, id: &str, ext: &str) -> String {
     format!("{public_url}/i/{id}.{ext}")
 }
 
-/// Thumbnail URL for a trashed file, served admin-only from the trash.
-pub fn trashed_thumbnail_url(public_url: &str, id: &str, ext: &str) -> String {
-    format!("{public_url}/api/images/trash/{id}.{ext}")
-}
-
 /// Public thumbnail URL for a stored file. Generated thumbnails are always
 /// WebP; without one, `/t/` falls back to the original, hence its extension.
 pub fn thumbnail_url(public_url: &str, id: &str, ext: &str, has_thumbnail: bool) -> String {
@@ -811,6 +806,38 @@ pub async fn trash(
     files::mark_trashed(pool, &ids, user_id).await
 }
 
+/// Move trashed files back to being served. Unknown and not trashed ids are
+/// skipped, as are files past their retention or whose bytes were uploaded
+/// again since (see `files::mark_restored`).
+pub async fn restore(pool: &PgPool, storage: &Storage, ids: &[String]) -> Result<()> {
+    // The rows flip in a transaction committed only once every file moved, so
+    // a file is never served while its row still says trashed.
+    let mut transaction = pool.begin().await?;
+    let rows = files::mark_restored(&mut transaction, ids).await?;
+    let mut result = Ok(());
+    for row in &rows {
+        result = storage.restore(&row.id, &row.ext).await;
+        if result.is_err() {
+            break;
+        }
+    }
+    if result.is_ok() {
+        result = transaction.commit().await.map_err(Error::from);
+    }
+    if result.is_err() {
+        // The rows roll back: put the files that moved back in the trash.
+        for row in &rows {
+            if let Err(error) = storage.trash(&row.id, &row.ext).await {
+                tracing::warn!(
+                    "failed to move file {} back to the trash: {error:?}",
+                    row.id
+                );
+            }
+        }
+    }
+    result
+}
+
 /// Days a trashed file waits before the scheduled wipe. Also spelled out as
 /// "30 days" in the OpenAPI descriptions and the frontend strings: update them
 /// together.
@@ -836,9 +863,13 @@ pub async fn wipe_trash(
     files::mark_deleted(pool, &wiped_ids, deleted_by_id).await
 }
 
-/// Look up a file's display metadata by id, or `NotFound`.
-pub async fn get_metadata(pool: &PgPool, id: &str) -> Result<files::FileMetadata> {
-    files::find_metadata(pool, id).await?.ok_or(Error::NotFound)
+/// Look up a file's display metadata by id, or `NotFound`. Trashed files are
+/// only found by admins.
+pub async fn get_metadata(pool: &PgPool, id: &str, is_admin: bool) -> Result<files::FileMetadata> {
+    files::find_metadata(pool, id)
+        .await?
+        .filter(|row| is_admin || row.trashed_at.is_none())
+        .ok_or(Error::NotFound)
 }
 
 #[cfg(test)]
