@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into chevereto_import_failures (image_id, fetch_url, error) values ($1, $2, $3)\n         on conflict (image_id) do update set fetch_url = excluded.fetch_url, error = excluded.error",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "146c57bfdbd286e3c5ffcafe6f871338b7c90e293091d5ebb2c50d3297b56dbe"
+}

@@ -32,35 +32,35 @@ const MAX_SCAN_AGE_HOURS: i32 = 24;
 
 /// Text-like columns of every base table, ordered by table: table and column
 /// names, then the same quoted by the database itself, the table with its schema.
-const POSTGRES_COLUMNS_SQL: &str = "select c.table_name::text, c.column_name::text, \
-            quote_ident(c.table_schema::text) || '.' || quote_ident(c.table_name::text), \
-            quote_ident(c.column_name::text) \
-     from information_schema.columns c \
-     join information_schema.tables t \
-       on t.table_schema = c.table_schema and t.table_name = c.table_name \
-     where t.table_type = 'BASE TABLE' \
-       and c.table_schema not in ('pg_catalog', 'information_schema') \
-       and (c.data_type in ('text', 'character varying', 'character', 'json', 'jsonb', 'xml', 'ARRAY') \
-         or c.data_type = 'USER-DEFINED' and c.udt_name in ('citext', 'hstore')) \
-     order by c.table_schema, c.table_name, c.ordinal_position";
+const POSTGRES_COLUMNS_SQL: &str = r#"select c.table_name::text, c.column_name::text,
+            quote_ident(c.table_schema::text) || '.' || quote_ident(c.table_name::text),
+            quote_ident(c.column_name::text)
+     from information_schema.columns c
+     join information_schema.tables t
+       on t.table_schema = c.table_schema and t.table_name = c.table_name
+     where t.table_type = 'BASE TABLE'
+       and c.table_schema not in ('pg_catalog', 'information_schema')
+       and (c.data_type in ('text', 'character varying', 'character', 'json', 'jsonb', 'xml', 'ARRAY')
+         or c.data_type = 'USER-DEFINED' and c.udt_name in ('citext', 'hstore'))
+     order by c.table_schema, c.table_name, c.ordinal_position"#;
 
 /// `POSTGRES_COLUMNS_SQL` for MySQL and MariaDB, on the connected database.
-const MYSQL_COLUMNS_SQL: &str = "select cast(c.table_name as char), cast(c.column_name as char), \
-            cast(concat('`', replace(c.table_schema, '`', '``'), '`.`', \
-              replace(c.table_name, '`', '``'), '`') as char), \
-            cast(concat('`', replace(c.column_name, '`', '``'), '`') as char) \
-     from information_schema.columns c \
-     join information_schema.tables t \
-       on t.table_schema = c.table_schema and t.table_name = c.table_name \
-     where t.table_type = 'BASE TABLE' and c.table_schema = database() \
-       and c.data_type in ('char', 'varchar', 'tinytext', 'text', 'mediumtext', 'longtext', 'json') \
-     order by c.table_schema, c.table_name, c.ordinal_position";
+const MYSQL_COLUMNS_SQL: &str = r#"select cast(c.table_name as char), cast(c.column_name as char),
+            cast(concat('`', replace(c.table_schema, '`', '``'), '`.`',
+              replace(c.table_name, '`', '``'), '`') as char),
+            cast(concat('`', replace(c.column_name, '`', '``'), '`') as char)
+     from information_schema.columns c
+     join information_schema.tables t
+       on t.table_schema = c.table_schema and t.table_name = c.table_name
+     where t.table_type = 'BASE TABLE' and c.table_schema = database()
+       and c.data_type in ('char', 'varchar', 'tinytext', 'text', 'mediumtext', 'longtext', 'json')
+     order by c.table_schema, c.table_name, c.ordinal_position"#;
 
 /// Bound how long each select may run (10 minutes), so a huge table cannot
 /// hold the scanned database for hours. MySQL and MariaDB name it differently.
-const POSTGRES_TIMEOUT_SQL: &str = "set statement_timeout = '600s'";
-const MYSQL_TIMEOUT_SQL: &str = "set session max_execution_time = 600000";
-const MARIADB_TIMEOUT_SQL: &str = "set session max_statement_time = 600";
+const POSTGRES_TIMEOUT_SQL: &str = r#"set statement_timeout = '600s'"#;
+const MYSQL_TIMEOUT_SQL: &str = r#"set session max_execution_time = 600000"#;
+const MARIADB_TIMEOUT_SQL: &str = r#"set session max_statement_time = 600"#;
 
 #[derive(Deserialize, ToSchema)]
 pub struct ScanParams {

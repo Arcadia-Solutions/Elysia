@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select files.id, ext, mime, original_name, size, width, height, original_ext, original_width, original_height, applied_quality, has_thumbnail, views, thumbnail_views, uploaded_by_user_id, users.username as uploader_username, to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\", files.created_at > now() - make_interval(mins => $2) as \"recent!\", to_char(files.trashed_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as trashed_at, trashers.username as \"trashed_by_username?\", greatest(0, ceil(extract(epoch from files.trashed_at + make_interval(days => $3) - now()) / 86400))::int as days_until_deletion from files join users on users.id = files.uploaded_by_user_id left join users trashers on trashers.id = files.trashed_by_id where files.id = $1 and status in ('available', 'trashed')",
+  "query": "select files.id, ext, mime, original_name, size, width, height,\n                original_ext, original_width, original_height, applied_quality,\n                has_thumbnail, views, thumbnail_views, uploaded_by_user_id,\n                users.username as uploader_username,\n                to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"created_at!\",\n                files.created_at > now() - make_interval(mins => $2) as \"recent!\",\n                to_char(files.trashed_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as trashed_at,\n                trashers.username as \"trashed_by_username?\",\n                greatest(0, ceil(extract(epoch from\n                  files.trashed_at + make_interval(days => $3) - now()) / 86400))::int\n                  as days_until_deletion\n         from files join users on users.id = files.uploaded_by_user_id\n         left join users trashers on trashers.id = files.trashed_by_id\n         where files.id = $1 and status in ('available', 'trashed')",
   "describe": {
     "columns": [
       {
@@ -242,9 +242,9 @@
       null,
       null,
       null,
-      true,
+      false,
       null
     ]
   },
-  "hash": "0172e7b5811a5d79f227d4d123bbca787bb38db1d7fef0ea16fe7cac261dbd2d"
+  "hash": "0ae7ba4bfc0d3382101557f8c303e1cc4cb3e9e80c047c1911feb6ce849d86ee"
 }

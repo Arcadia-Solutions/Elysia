@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail, f.views, u.username as uploader_username, to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\", count(*) over() as \"total!\" from files f join users u on u.id = f.uploaded_by_user_id where f.status = $5 and ($6::uuid is null or f.uploaded_by_user_id = $6) order by case when $3 = 'created_at' and $4 then f.created_at end asc, case when $3 = 'created_at' and not $4 then f.created_at end desc, case when $3 = 'size' and $4 then f.size end asc, case when $3 = 'size' and not $4 then f.size end desc, case when $3 = 'width' and $4 then f.width end asc, case when $3 = 'width' and not $4 then f.width end desc, case when $3 = 'height' and $4 then f.height end asc, case when $3 = 'height' and not $4 then f.height end desc, case when $3 = 'original_hash' and $4 then f.original_hash end asc, case when $3 = 'original_hash' and not $4 then f.original_hash end desc, case when $3 = 'views' and $4 then f.views end asc, case when $3 = 'views' and not $4 then f.views end desc, case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc, case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc, f.id desc offset $1 limit $2",
+  "query": "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,\n                f.views, u.username as uploader_username,\n                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"created_at!\",\n                count(*) over() as \"total!\"\n         from files f\n         join unreferenced_files on file_id = f.id\n         join users u on u.id = f.uploaded_by_user_id\n         where f.status = 'available' order by\n           case when $3 = 'created_at' and $4 then f.created_at end asc,\n           case when $3 = 'created_at' and not $4 then f.created_at end desc,\n           case when $3 = 'size' and $4 then f.size end asc,\n           case when $3 = 'size' and not $4 then f.size end desc,\n           case when $3 = 'width' and $4 then f.width end asc,\n           case when $3 = 'width' and not $4 then f.width end desc,\n           case when $3 = 'height' and $4 then f.height end asc,\n           case when $3 = 'height' and not $4 then f.height end desc,\n           case when $3 = 'original_hash' and $4 then f.original_hash end asc,\n           case when $3 = 'original_hash' and not $4 then f.original_hash end desc,\n           case when $3 = 'views' and $4 then f.views end asc,\n           case when $3 = 'views' and not $4 then f.views end desc,\n           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,\n           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,\n           f.id desc\n         offset $1 limit $2",
   "describe": {
     "columns": [
       {
@@ -120,20 +120,7 @@
         "Int8",
         "Int8",
         "Text",
-        "Bool",
-        {
-          "Custom": {
-            "name": "file_status",
-            "kind": {
-              "Enum": [
-                "available",
-                "trashed",
-                "deleted"
-              ]
-            }
-          }
-        },
-        "Uuid"
+        "Bool"
       ]
     },
     "nullable": [
@@ -150,5 +137,5 @@
       null
     ]
   },
-  "hash": "84202e7584c0d15df716266d4878cf7c9e5f73447bbc2a97b5f8a1b115512849"
+  "hash": "f82a3e2800cc5d48bff01b9ea299922d3e1ee4bb2fc3559333f6eda565c1873f"
 }

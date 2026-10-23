@@ -279,7 +279,7 @@ async fn run(
             Ok(stored) => {
                 let seconds_ago = random.unit().powi(2) * history_seconds;
                 sqlx::query!(
-                    "update files set created_at = now() - make_interval(secs => $2) where id = $1",
+                    r#"update files set created_at = now() - make_interval(secs => $2) where id = $1"#,
                     stored.id,
                     seconds_ago,
                 )
@@ -303,11 +303,11 @@ async fn run(
     // Users were created now; move each sign-up back to their first upload so
     // the new users count matches the upload history.
     sqlx::query!(
-        "update users u set created_at = first.created_at \
-         from (select uploaded_by_user_id, min(created_at) as created_at \
-               from files group by 1) as first \
-         where first.uploaded_by_user_id = u.id and u.id = any($1) \
-           and first.created_at < u.created_at",
+        r#"update users u set created_at = first.created_at
+         from (select uploaded_by_user_id, min(created_at) as created_at
+               from files group by 1) as first
+         where first.uploaded_by_user_id = u.id and u.id = any($1)
+           and first.created_at < u.created_at"#,
         &user_ids,
     )
     .execute(pool)

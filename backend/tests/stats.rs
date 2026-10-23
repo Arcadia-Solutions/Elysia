@@ -55,7 +55,7 @@ async fn aggregates_uploads(pool: PgPool) {
     // An upload from before the last week still counts in the stored totals of
     // the series, but not in the window's totals.
     common::seed_files(&pool, big, "old", 1, 1000).await;
-    sqlx::query("update files set created_at = now() - interval '8 days' where id like 'old%'")
+    sqlx::query(r#"update files set created_at = now() - interval '8 days' where id like 'old%'"#)
         .execute(&pool)
         .await
         .unwrap();
@@ -98,7 +98,7 @@ async fn groups_referrers_past_the_top_ones(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 2, 1).await;
     common::seed_files(&pool, uploader, "old", 1, 1).await;
-    sqlx::query("update files set created_at = now() - interval '30 days' where id like 'old%'")
+    sqlx::query(r#"update files set created_at = now() - interval '30 days' where id like 'old%'"#)
         .execute(&pool)
         .await
         .unwrap();

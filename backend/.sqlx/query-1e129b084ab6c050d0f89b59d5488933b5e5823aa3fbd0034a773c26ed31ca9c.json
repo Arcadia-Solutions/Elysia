@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select image_id, fetch_url, error, count(*) over() as \"total!\" from chevereto_import_failures order by image_id offset $1 limit $2",
+  "query": "select image_id, fetch_url, error, count(*) over() as \"total!\"\n         from chevereto_import_failures order by image_id offset $1 limit $2",
   "describe": {
     "columns": [
       {
@@ -56,5 +56,5 @@
       null
     ]
   },
-  "hash": "6a77e1b00f680171d9cb30d9df13f34851389acba669d3fd267413f13f44ec9b"
+  "hash": "1e129b084ab6c050d0f89b59d5488933b5e5823aa3fbd0034a773c26ed31ca9c"
 }

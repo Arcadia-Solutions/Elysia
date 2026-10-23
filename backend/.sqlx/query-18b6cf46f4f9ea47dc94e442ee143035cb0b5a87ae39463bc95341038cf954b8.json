@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext from files where status = 'trashed' and trashed_at <= now() - make_interval(days => $1)",
+  "query": "select id, ext from files\n         where status = 'trashed' and trashed_at <= now() - make_interval(days => $1)",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       false
     ]
   },
-  "hash": "39d78280e02b012be4aac36bd555c5582f6359b8954b63c69acc4efcad3abd34"
+  "hash": "18b6cf46f4f9ea47dc94e442ee143035cb0b5a87ae39463bc95341038cf954b8"
 }

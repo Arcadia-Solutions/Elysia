@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select u.username, count(*) as \"files!\", sum(f.size)::bigint as \"bytes!\", to_char(max(f.created_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"last_upload!\" from files f join users u on u.id = f.uploaded_by_user_id where $1::text is null or f.created_at >= now() - $1::text::interval group by u.id, u.username order by 3 desc, u.id",
+  "query": "select u.username, count(*) as \"files!\", sum(f.size)::bigint as \"bytes!\",\n                to_char(max(f.created_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"last_upload!\"\n         from files f join users u on u.id = f.uploaded_by_user_id\n         where $1::text is null or f.created_at >= now() - $1::text::interval\n         group by u.id, u.username\n         order by 3 desc, u.id",
   "describe": {
     "columns": [
       {
@@ -45,5 +45,5 @@
       null
     ]
   },
-  "hash": "df0c02f8c4d1da823c911e4938c4d15f4d6aad91c90a31b79ca9723fc2fc4725"
+  "hash": "deb6a4cd30643202435d8c0783f8ecf68f101323fe9faeb3a2c4301b514c88c6"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select referrer, views, thumbnail_views from file_referrer_views where file_id = $1 order by views desc, thumbnail_views desc, referrer",
+  "query": "select referrer, views, thumbnail_views from file_referrer_views\n         where file_id = $1 order by views desc, thumbnail_views desc, referrer",
   "describe": {
     "columns": [
       {
@@ -48,5 +48,5 @@
       false
     ]
   },
-  "hash": "6e52d72c65d0391c320d7e477c98fae5c29c7320eba034eeca5538cb16fa796a"
+  "hash": "6728f54c501277bfe182c4d732e2ffb83692574ccf9759463ccf7674f96744a7"
 }

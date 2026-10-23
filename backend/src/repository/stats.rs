@@ -83,39 +83,39 @@ pub async fn period_totals(
 ) -> Result<Vec<PeriodTotal>> {
     Ok(sqlx::query_as!(
         PeriodTotal,
-        "with start as ( \
-           select date_trunc($1, coalesce(now() - $2::text::interval, \
-                                          (select min(created_at) from files)) \
-                                 at time zone 'UTC') as at), \
-         events as ( \
-           select created_at as at, true as is_upload, 1 as files, size as bytes from files \
-           union all \
-           select trashed_at, false, -1, -size from files where trashed_at is not null), \
-         per_step as ( \
-           select date_trunc($1, events.at at time zone 'UTC') as step, \
-                  sum(files) as files, sum(bytes) as bytes, \
-                  count(*) filter (where is_upload) as uploads, \
-                  sum(bytes) filter (where is_upload) as uploaded_bytes, \
-                  count(*) filter (where not is_upload) as deletions, \
-                  -sum(bytes) filter (where not is_upload) as deleted_bytes \
-           from events, start where events.at at time zone 'UTC' >= start.at \
-           group by 1), \
-         earlier as ( \
-           select coalesce(sum(files), 0) as files, coalesce(sum(bytes), 0) as bytes \
-           from events, start where events.at at time zone 'UTC' < start.at) \
-         select to_char(step, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"period!\", \
-                (earlier.files + sum(coalesce(per_step.files, 0)) over (order by step))::bigint \
-                  as \"files!\", \
-                (earlier.bytes + sum(coalesce(per_step.bytes, 0)) over (order by step))::bigint \
-                  as \"bytes!\", \
-                coalesce(per_step.uploads, 0) as \"uploads!\", \
-                coalesce(per_step.uploaded_bytes, 0)::bigint as \"uploaded_bytes!\", \
-                coalesce(per_step.deletions, 0) as \"deletions!\", \
-                coalesce(per_step.deleted_bytes, 0)::bigint as \"deleted_bytes!\" \
-         from earlier, start, \
-              generate_series(start.at, now() at time zone 'UTC', ('1 ' || $1)::interval) as step \
-         left join per_step using (step) \
-         order by step",
+        r#"with start as (
+           select date_trunc($1, coalesce(now() - $2::text::interval,
+                                          (select min(created_at) from files))
+                                 at time zone 'UTC') as at),
+         events as (
+           select created_at as at, true as is_upload, 1 as files, size as bytes from files
+           union all
+           select trashed_at, false, -1, -size from files where trashed_at is not null),
+         per_step as (
+           select date_trunc($1, events.at at time zone 'UTC') as step,
+                  sum(files) as files, sum(bytes) as bytes,
+                  count(*) filter (where is_upload) as uploads,
+                  sum(bytes) filter (where is_upload) as uploaded_bytes,
+                  count(*) filter (where not is_upload) as deletions,
+                  -sum(bytes) filter (where not is_upload) as deleted_bytes
+           from events, start where events.at at time zone 'UTC' >= start.at
+           group by 1),
+         earlier as (
+           select coalesce(sum(files), 0) as files, coalesce(sum(bytes), 0) as bytes
+           from events, start where events.at at time zone 'UTC' < start.at)
+         select to_char(step, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "period!",
+                (earlier.files + sum(coalesce(per_step.files, 0)) over (order by step))::bigint
+                  as "files!",
+                (earlier.bytes + sum(coalesce(per_step.bytes, 0)) over (order by step))::bigint
+                  as "bytes!",
+                coalesce(per_step.uploads, 0) as "uploads!",
+                coalesce(per_step.uploaded_bytes, 0)::bigint as "uploaded_bytes!",
+                coalesce(per_step.deletions, 0) as "deletions!",
+                coalesce(per_step.deleted_bytes, 0)::bigint as "deleted_bytes!"
+         from earlier, start,
+              generate_series(start.at, now() at time zone 'UTC', ('1 ' || $1)::interval) as step
+         left join per_step using (step)
+         order by step"#,
         interval.as_sql(),
         period.as_sql(),
     )
@@ -135,8 +135,8 @@ pub struct FormatTotal {
 pub async fn format_totals(pool: &PgPool) -> Result<Vec<FormatTotal>> {
     Ok(sqlx::query_as!(
         FormatTotal,
-        "select mime, count(*) as \"files!\", sum(size)::bigint as \"bytes!\" \
-         from files where status = 'available' group by mime order by 3 desc, mime"
+        r#"select mime, count(*) as "files!", sum(size)::bigint as "bytes!"
+         from files where status = 'available' group by mime order by 3 desc, mime"#
     )
     .fetch_all(pool)
     .await?)
@@ -159,13 +159,13 @@ pub struct WindowTotals {
 pub async fn window_totals(pool: &PgPool, period: StatsPeriod) -> Result<WindowTotals> {
     Ok(sqlx::query_as!(
         WindowTotals,
-        "select (select count(*) from users \
-                 where $1::text is null or created_at >= now() - $1::text::interval) \
-                  as \"new_users!\", \
-                count(distinct uploaded_by_user_id) as \"active_uploaders!\", \
-                count(*) as \"uploads!\", \
-                coalesce(sum(size), 0)::bigint as \"uploaded_bytes!\" \
-         from files where $1::text is null or created_at >= now() - $1::text::interval",
+        r#"select (select count(*) from users
+                 where $1::text is null or created_at >= now() - $1::text::interval)
+                  as "new_users!",
+                count(distinct uploaded_by_user_id) as "active_uploaders!",
+                count(*) as "uploads!",
+                coalesce(sum(size), 0)::bigint as "uploaded_bytes!"
+         from files where $1::text is null or created_at >= now() - $1::text::interval"#,
         period.as_sql(),
     )
     .fetch_one(pool)
@@ -188,13 +188,13 @@ pub struct Uploader {
 pub async fn uploaders(pool: &PgPool, period: StatsPeriod) -> Result<Vec<Uploader>> {
     Ok(sqlx::query_as!(
         Uploader,
-        "select u.username, count(*) as \"files!\", sum(f.size)::bigint as \"bytes!\", \
-                to_char(max(f.created_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as \"last_upload!\" \
-         from files f join users u on u.id = f.uploaded_by_user_id \
-         where $1::text is null or f.created_at >= now() - $1::text::interval \
-         group by u.id, u.username \
-         order by 3 desc, u.id",
+        r#"select u.username, count(*) as "files!", sum(f.size)::bigint as "bytes!",
+                to_char(max(f.created_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as "last_upload!"
+         from files f join users u on u.id = f.uploaded_by_user_id
+         where $1::text is null or f.created_at >= now() - $1::text::interval
+         group by u.id, u.username
+         order by 3 desc, u.id"#,
         period.as_sql(),
     )
     .fetch_all(pool)
@@ -221,18 +221,18 @@ const TOP_REFERRERS: i64 = 9;
 pub async fn referrer_totals(pool: &PgPool, period: StatsPeriod) -> Result<Vec<ReferrerTotal>> {
     Ok(sqlx::query_as!(
         ReferrerTotal,
-        "select case when rank <= $1 then referrer end as referrer, \
-                sum(views)::bigint as \"views!\", \
-                sum(thumbnail_views)::bigint as \"thumbnail_views!\" \
-         from (select r.referrer, sum(r.views) as views, \
-                      sum(r.thumbnail_views) as thumbnail_views, \
-                      row_number() over (order by sum(r.views) + sum(r.thumbnail_views) desc, \
-                                                  r.referrer) as rank \
-               from file_referrer_views r join files f on f.id = r.file_id \
-               where $2::text is null or f.created_at >= now() - $2::text::interval \
-               group by r.referrer) as per_referrer \
-         group by 1 \
-         order by bool_or(rank > $1), sum(views) + sum(thumbnail_views) desc, 1",
+        r#"select case when rank <= $1 then referrer end as referrer,
+                sum(views)::bigint as "views!",
+                sum(thumbnail_views)::bigint as "thumbnail_views!"
+         from (select r.referrer, sum(r.views) as views,
+                      sum(r.thumbnail_views) as thumbnail_views,
+                      row_number() over (order by sum(r.views) + sum(r.thumbnail_views) desc,
+                                                  r.referrer) as rank
+               from file_referrer_views r join files f on f.id = r.file_id
+               where $2::text is null or f.created_at >= now() - $2::text::interval
+               group by r.referrer) as per_referrer
+         group by 1
+         order by bool_or(rank > $1), sum(views) + sum(thumbnail_views) desc, 1"#,
         TOP_REFERRERS,
         period.as_sql(),
     )

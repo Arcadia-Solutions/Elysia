@@ -42,11 +42,11 @@ pub struct FileRow {
 /// id, or fall back to the existing row, before any file hits disk.
 pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
     let res = sqlx::query!(
-        "insert into files \
-         (id, ext, mime, original_name, size, width, height, hash, \
-          original_hash, original_ext, original_width, original_height, \
-          requested_quality, applied_quality, has_thumbnail, uploaded_by_user_id, api_key_id) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)",
+        r#"insert into files
+         (id, ext, mime, original_name, size, width, height, hash,
+          original_hash, original_ext, original_width, original_height,
+          requested_quality, applied_quality, has_thumbnail, uploaded_by_user_id, api_key_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"#,
         f.id,
         f.ext,
         f.mime,
@@ -77,7 +77,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
 pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     Ok(sqlx::query_as!(
         FileRow,
-        "select id, ext, mime, has_thumbnail, uploaded_by_user_id from files where id = $1",
+        r#"select id, ext, mime, has_thumbnail, uploaded_by_user_id from files where id = $1"#,
         id
     )
     .fetch_optional(pool)
@@ -95,26 +95,26 @@ pub async fn add_views(
     thumbnail_views: &[i64],
 ) -> Result<()> {
     sqlx::query!(
-        "with pending as ( \
-           select pending.* \
-           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[]) \
-             as pending(id, referrer, views, thumbnail_views) \
-           join files on files.id = pending.id \
-         ), totals as ( \
-           update files set \
-             views = files.views + per_file.views, \
-             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views \
-           from (select id, sum(views)::bigint as views, \
-                        sum(thumbnail_views)::bigint as thumbnail_views \
-                 from pending group by id) as per_file \
-           where files.id = per_file.id \
-         ) \
-         insert into file_referrer_views (file_id, referrer, views, thumbnail_views) \
-         select id, referrer, sum(views)::bigint, sum(thumbnail_views)::bigint \
-         from pending group by 1, 2 \
-         on conflict (file_id, referrer) do update set \
-           views = file_referrer_views.views + excluded.views, \
-           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views",
+        r#"with pending as (
+           select pending.*
+           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[])
+             as pending(id, referrer, views, thumbnail_views)
+           join files on files.id = pending.id
+         ), totals as (
+           update files set
+             views = files.views + per_file.views,
+             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views
+           from (select id, sum(views)::bigint as views,
+                        sum(thumbnail_views)::bigint as thumbnail_views
+                 from pending group by id) as per_file
+           where files.id = per_file.id
+         )
+         insert into file_referrer_views (file_id, referrer, views, thumbnail_views)
+         select id, referrer, sum(views)::bigint, sum(thumbnail_views)::bigint
+         from pending group by 1, 2
+         on conflict (file_id, referrer) do update set
+           views = file_referrer_views.views + excluded.views,
+           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views"#,
         ids,
         referrers,
         views,
@@ -148,11 +148,11 @@ pub async fn find_record_by_source(
 ) -> Result<Option<FileRecord>> {
     Ok(sqlx::query_as!(
         FileRecord,
-        "select id, ext, mime, original_ext, original_width, original_height, \
-                width, height, applied_quality, has_thumbnail \
-         from files where original_hash = $1 and status = 'available' \
-           and requested_quality is not distinct from $2 \
-         order by created_at limit 1",
+        r#"select id, ext, mime, original_ext, original_width, original_height,
+                width, height, applied_quality, has_thumbnail
+         from files where original_hash = $1 and status = 'available'
+           and requested_quality is not distinct from $2
+         order by created_at limit 1"#,
         original_hash,
         requested_quality,
     )
@@ -197,22 +197,22 @@ pub const UPLOADER_TRASH_WINDOW_MINUTES: i32 = 60;
 pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadata>> {
     Ok(sqlx::query_as!(
         FileMetadata,
-        "select files.id, ext, mime, original_name, size, width, height, \
-                original_ext, original_width, original_height, applied_quality, \
-                has_thumbnail, views, thumbnail_views, uploaded_by_user_id, \
-                users.username as uploader_username, \
-                to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as \"created_at!\", \
-                files.created_at > now() - make_interval(mins => $2) as \"recent!\", \
-                to_char(files.trashed_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as trashed_at, \
-                trashers.username as \"trashed_by_username?\", \
-                greatest(0, ceil(extract(epoch from \
-                  files.trashed_at + make_interval(days => $3) - now()) / 86400))::int \
-                  as days_until_deletion \
-         from files join users on users.id = files.uploaded_by_user_id \
-         left join users trashers on trashers.id = files.trashed_by_id \
-         where files.id = $1 and status in ('available', 'trashed')",
+        r#"select files.id, ext, mime, original_name, size, width, height,
+                original_ext, original_width, original_height, applied_quality,
+                has_thumbnail, views, thumbnail_views, uploaded_by_user_id,
+                users.username as uploader_username,
+                to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as "created_at!",
+                files.created_at > now() - make_interval(mins => $2) as "recent!",
+                to_char(files.trashed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as trashed_at,
+                trashers.username as "trashed_by_username?",
+                greatest(0, ceil(extract(epoch from
+                  files.trashed_at + make_interval(days => $3) - now()) / 86400))::int
+                  as days_until_deletion
+         from files join users on users.id = files.uploaded_by_user_id
+         left join users trashers on trashers.id = files.trashed_by_id
+         where files.id = $1 and status in ('available', 'trashed')"#,
         id,
         UPLOADER_TRASH_WINDOW_MINUTES,
         TRASH_RETENTION_DAYS
@@ -234,8 +234,8 @@ pub struct ReferrerViews {
 pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<ReferrerViews>> {
     Ok(sqlx::query_as!(
         ReferrerViews,
-        "select referrer, views, thumbnail_views from file_referrer_views \
-         where file_id = $1 order by views desc, thumbnail_views desc, referrer",
+        r#"select referrer, views, thumbnail_views from file_referrer_views
+         where file_id = $1 order by views desc, thumbnail_views desc, referrer"#,
         id
     )
     .fetch_all(pool)
@@ -246,7 +246,7 @@ pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<Referrer
 /// earlier, so a deduplicated import keeps its oldest date.
 pub async fn backdate_created_at(pool: &PgPool, id: &str, uploaded_at: i64) -> Result<()> {
     sqlx::query!(
-        "update files set created_at = least(created_at, to_timestamp($2)) where id = $1",
+        r#"update files set created_at = least(created_at, to_timestamp($2)) where id = $1"#,
         id,
         uploaded_at as f64
     )
@@ -347,30 +347,30 @@ pub async fn list_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail, \
-                f.views, u.username as uploader_username, \
-                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as \"created_at!\", \
-                count(*) over() as \"total!\" \
-         from files f join users u on u.id = f.uploaded_by_user_id \
-         where f.status = $5 \
-           and ($6::uuid is null or f.uploaded_by_user_id = $6) order by \
-           case when $3 = 'created_at' and $4 then f.created_at end asc, \
-           case when $3 = 'created_at' and not $4 then f.created_at end desc, \
-           case when $3 = 'size' and $4 then f.size end asc, \
-           case when $3 = 'size' and not $4 then f.size end desc, \
-           case when $3 = 'width' and $4 then f.width end asc, \
-           case when $3 = 'width' and not $4 then f.width end desc, \
-           case when $3 = 'height' and $4 then f.height end asc, \
-           case when $3 = 'height' and not $4 then f.height end desc, \
-           case when $3 = 'original_hash' and $4 then f.original_hash end asc, \
-           case when $3 = 'original_hash' and not $4 then f.original_hash end desc, \
-           case when $3 = 'views' and $4 then f.views end asc, \
-           case when $3 = 'views' and not $4 then f.views end desc, \
-           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc, \
-           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc, \
-           f.id desc \
-         offset $1 limit $2",
+        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,
+                f.views, u.username as uploader_username,
+                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as "created_at!",
+                count(*) over() as "total!"
+         from files f join users u on u.id = f.uploaded_by_user_id
+         where f.status = $5
+           and ($6::uuid is null or f.uploaded_by_user_id = $6) order by
+           case when $3 = 'created_at' and $4 then f.created_at end asc,
+           case when $3 = 'created_at' and not $4 then f.created_at end desc,
+           case when $3 = 'size' and $4 then f.size end asc,
+           case when $3 = 'size' and not $4 then f.size end desc,
+           case when $3 = 'width' and $4 then f.width end asc,
+           case when $3 = 'width' and not $4 then f.width end desc,
+           case when $3 = 'height' and $4 then f.height end asc,
+           case when $3 = 'height' and not $4 then f.height end desc,
+           case when $3 = 'original_hash' and $4 then f.original_hash end asc,
+           case when $3 = 'original_hash' and not $4 then f.original_hash end desc,
+           case when $3 = 'views' and $4 then f.views end asc,
+           case when $3 = 'views' and not $4 then f.views end desc,
+           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
+           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
+           f.id desc
+         offset $1 limit $2"#,
         offset,
         limit,
         query.sort_by.as_sql(),
@@ -393,31 +393,31 @@ pub async fn unreferenced_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        "select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail, \
-                f.views, u.username as uploader_username, \
-                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as \"created_at!\", \
-                count(*) over() as \"total!\" \
-         from files f \
-         join unreferenced_files on file_id = f.id \
-         join users u on u.id = f.uploaded_by_user_id \
-         where f.status = 'available' order by \
-           case when $3 = 'created_at' and $4 then f.created_at end asc, \
-           case when $3 = 'created_at' and not $4 then f.created_at end desc, \
-           case when $3 = 'size' and $4 then f.size end asc, \
-           case when $3 = 'size' and not $4 then f.size end desc, \
-           case when $3 = 'width' and $4 then f.width end asc, \
-           case when $3 = 'width' and not $4 then f.width end desc, \
-           case when $3 = 'height' and $4 then f.height end asc, \
-           case when $3 = 'height' and not $4 then f.height end desc, \
-           case when $3 = 'original_hash' and $4 then f.original_hash end asc, \
-           case when $3 = 'original_hash' and not $4 then f.original_hash end desc, \
-           case when $3 = 'views' and $4 then f.views end asc, \
-           case when $3 = 'views' and not $4 then f.views end desc, \
-           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc, \
-           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc, \
-           f.id desc \
-         offset $1 limit $2",
+        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,
+                f.views, u.username as uploader_username,
+                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as "created_at!",
+                count(*) over() as "total!"
+         from files f
+         join unreferenced_files on file_id = f.id
+         join users u on u.id = f.uploaded_by_user_id
+         where f.status = 'available' order by
+           case when $3 = 'created_at' and $4 then f.created_at end asc,
+           case when $3 = 'created_at' and not $4 then f.created_at end desc,
+           case when $3 = 'size' and $4 then f.size end asc,
+           case when $3 = 'size' and not $4 then f.size end desc,
+           case when $3 = 'width' and $4 then f.width end asc,
+           case when $3 = 'width' and not $4 then f.width end desc,
+           case when $3 = 'height' and $4 then f.height end asc,
+           case when $3 = 'height' and not $4 then f.height end desc,
+           case when $3 = 'original_hash' and $4 then f.original_hash end asc,
+           case when $3 = 'original_hash' and not $4 then f.original_hash end desc,
+           case when $3 = 'views' and $4 then f.views end asc,
+           case when $3 = 'views' and not $4 then f.views end desc,
+           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
+           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
+           f.id desc
+         offset $1 limit $2"#,
         offset,
         limit,
         sort_by.as_sql(),
@@ -431,8 +431,8 @@ pub async fn unreferenced_page(
 /// count for an out-of-range page, where `unreferenced_page` returns no rows.
 pub async fn unreferenced_count(pool: &PgPool) -> Result<i64> {
     Ok(sqlx::query_scalar!(
-        "select count(*) as \"count!\" from files \
-         join unreferenced_files on file_id = id where status = 'available'"
+        r#"select count(*) as "count!" from files
+         join unreferenced_files on file_id = id where status = 'available'"#
     )
     .fetch_one(pool)
     .await?)
@@ -447,14 +447,14 @@ pub async fn replace_unreferenced(
     before: f64,
 ) -> Result<u64> {
     let mut transaction = pool.begin().await?;
-    sqlx::query!("delete from unreferenced_files")
+    sqlx::query!(r#"delete from unreferenced_files"#)
         .execute(&mut *transaction)
         .await?;
     // `not in` a subquery is hashed, `<> all(array)` scans the array per row.
     let inserted = sqlx::query!(
-        "insert into unreferenced_files (file_id, scanned_at) \
-         select id, to_timestamp($2) from files where status = 'available' \
-           and created_at < to_timestamp($2) and id not in (select unnest($1::text[]))",
+        r#"insert into unreferenced_files (file_id, scanned_at)
+         select id, to_timestamp($2) from files where status = 'available'
+           and created_at < to_timestamp($2) and id not in (select unnest($1::text[]))"#,
         referenced,
         before
     )
@@ -480,10 +480,10 @@ pub async fn unreferenced_scan(
 ) -> Result<Option<UnreferencedScanRow>> {
     Ok(sqlx::query_as!(
         UnreferencedScanRow,
-        "select to_char(min(scanned_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
-                  as \"scanned_at!\", \
-                min(scanned_at) > now() - make_interval(hours => $1) as \"recent!\" \
-         from unreferenced_files having count(*) > 0",
+        r#"select to_char(min(scanned_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as "scanned_at!",
+                min(scanned_at) > now() - make_interval(hours => $1) as "recent!"
+         from unreferenced_files having count(*) > 0"#,
         max_age_hours
     )
     .fetch_optional(pool)
@@ -493,8 +493,8 @@ pub async fn unreferenced_scan(
 /// Ids of the last scan's unreferenced images that are still available.
 pub async fn unreferenced_ids(pool: &PgPool) -> Result<Vec<String>> {
     Ok(sqlx::query_scalar!(
-        "select id from files join unreferenced_files on file_id = id \
-         where status = 'available' order by id"
+        r#"select id from files join unreferenced_files on file_id = id
+         where status = 'available' order by id"#
     )
     .fetch_all(pool)
     .await?)
@@ -504,8 +504,8 @@ pub async fn unreferenced_ids(pool: &PgPool) -> Result<Vec<String>> {
 /// count for an out-of-range page, where the window count in `list_page` returns no rows.
 pub async fn count(pool: &PgPool, status: ImagesStatus, uploader: Option<Uuid>) -> Result<i64> {
     Ok(sqlx::query_scalar!(
-        "select count(*) as \"count!\" from files where status = $1 \
-           and ($2::uuid is null or uploaded_by_user_id = $2)",
+        r#"select count(*) as "count!" from files where status = $1
+           and ($2::uuid is null or uploaded_by_user_id = $2)"#,
         status as ImagesStatus,
         uploader
     )
@@ -517,9 +517,9 @@ pub async fn count(pool: &PgPool, status: ImagesStatus, uploader: Option<Uuid>) 
 pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<FileRecord>> {
     Ok(sqlx::query_as!(
         FileRecord,
-        "select id, ext, mime, original_ext, original_width, original_height, \
-                width, height, applied_quality, has_thumbnail \
-         from files where hash = $1 and status = 'available'",
+        r#"select id, ext, mime, original_ext, original_width, original_height,
+                width, height, applied_quality, has_thumbnail
+         from files where hash = $1 and status = 'available'"#,
         hash,
     )
     .fetch_optional(pool)
@@ -538,9 +538,9 @@ pub struct TrashRow {
 pub async fn find_available(pool: &PgPool, ids: &[String]) -> Result<Vec<TrashRow>> {
     Ok(sqlx::query_as!(
         TrashRow,
-        "select id, ext, uploaded_by_user_id, \
-                created_at > now() - make_interval(mins => $2) as \"recent!\" \
-         from files where id = any($1) and status = 'available'",
+        r#"select id, ext, uploaded_by_user_id,
+                created_at > now() - make_interval(mins => $2) as "recent!"
+         from files where id = any($1) and status = 'available'"#,
         ids,
         UPLOADER_TRASH_WINDOW_MINUTES
     )
@@ -551,8 +551,8 @@ pub async fn find_available(pool: &PgPool, ids: &[String]) -> Result<Vec<TrashRo
 /// Flag available files as trashed by `user_id`, starting their 30 days in the trash.
 pub async fn mark_trashed(pool: &PgPool, ids: &[String], user_id: Uuid) -> Result<()> {
     sqlx::query!(
-        "update files set status = 'trashed', trashed_at = now(), trashed_by_id = $2 \
-         where id = any($1) and status = 'available'",
+        r#"update files set status = 'trashed', trashed_at = now(), trashed_by_id = $2
+         where id = any($1) and status = 'available'"#,
         ids,
         user_id
     )
@@ -571,8 +571,8 @@ pub struct TrashedRow {
 pub async fn trashed_before(pool: &PgPool, days: i32) -> Result<Vec<TrashedRow>> {
     Ok(sqlx::query_as!(
         TrashedRow,
-        "select id, ext from files \
-         where status = 'trashed' and trashed_at <= now() - make_interval(days => $1)",
+        r#"select id, ext from files
+         where status = 'trashed' and trashed_at <= now() - make_interval(days => $1)"#,
         days
     )
     .fetch_all(pool)
@@ -590,15 +590,15 @@ pub async fn mark_restored(
 ) -> Result<Vec<TrashedRow>> {
     Ok(sqlx::query_as!(
         TrashedRow,
-        "update files set status = 'available', trashed_at = null, trashed_by_id = null \
-         where id in (select distinct on (hash) id from files trashed \
-                      where id = any($1) and status = 'trashed' \
-                        and trashed_at > now() - make_interval(days => $2) \
-                        and not exists (select 1 from files available \
-                                        where available.hash = trashed.hash \
-                                          and available.status = 'available') \
-                      order by hash, trashed_at desc) \
-         returning id, ext",
+        r#"update files set status = 'available', trashed_at = null, trashed_by_id = null
+         where id in (select distinct on (hash) id from files trashed
+                      where id = any($1) and status = 'trashed'
+                        and trashed_at > now() - make_interval(days => $2)
+                        and not exists (select 1 from files available
+                                        where available.hash = trashed.hash
+                                          and available.status = 'available')
+                      order by hash, trashed_at desc)
+         returning id, ext"#,
         ids,
         TRASH_RETENTION_DAYS
     )
@@ -614,9 +614,9 @@ pub async fn mark_deleted(
     deleted_by_id: Option<Uuid>,
 ) -> Result<()> {
     sqlx::query!(
-        "update files set status = 'deleted', deleted_by_id = $2, \
-           deletion_source = case when $2::uuid is null then 'scheduler' else 'manual' end::deletion_source \
-         where id = any($1) and status = 'trashed'",
+        r#"update files set status = 'deleted', deleted_by_id = $2,
+           deletion_source = case when $2::uuid is null then 'scheduler' else 'manual' end::deletion_source
+         where id = any($1) and status = 'trashed'"#,
         ids,
         deleted_by_id as Option<Uuid>
     )

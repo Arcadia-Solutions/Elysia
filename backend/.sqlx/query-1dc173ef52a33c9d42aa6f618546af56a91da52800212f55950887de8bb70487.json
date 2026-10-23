@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select count(*) as \"count!\" from files where status = $1 and ($2::uuid is null or uploaded_by_user_id = $2)",
+  "query": "select count(*) as \"count!\" from files where status = $1\n           and ($2::uuid is null or uploaded_by_user_id = $2)",
   "describe": {
     "columns": [
       {
@@ -31,5 +31,5 @@
       null
     ]
   },
-  "hash": "8dd8188dfa178ee4af2cfe4a1659ed6fc566d6bb615122905801390d6f98157e"
+  "hash": "1dc173ef52a33c9d42aa6f618546af56a91da52800212f55950887de8bb70487"
 }

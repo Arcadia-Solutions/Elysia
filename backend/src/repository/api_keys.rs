@@ -151,9 +151,9 @@ pub async fn find_active(pool: &PgPool, token_hash: &str) -> Result<Option<Activ
 /// Revoke one of the user's keys. False when they have no active key with this id.
 pub async fn revoke(pool: &PgPool, user_id: Uuid, api_key_id: Uuid) -> Result<bool> {
     let result = sqlx::query!(
-        "update api_keys set revoked_at = now()
+        r#"update api_keys set revoked_at = now()
          where id = $1 and user_id = $2 and revoked_at is null
-           and (expires_at is null or expires_at > now())",
+           and (expires_at is null or expires_at > now())"#,
         api_key_id,
         user_id,
     )

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with pending as (\n           select pending.*\n           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[])\n             as pending(id, referrer, views, thumbnail_views)\n           join files on files.id = pending.id\n         ), totals as (\n           update files set\n             views = files.views + per_file.views,\n             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views\n           from (select id, sum(views)::bigint as views,\n                        sum(thumbnail_views)::bigint as thumbnail_views\n                 from pending group by id) as per_file\n           where files.id = per_file.id\n         )\n         insert into file_referrer_views (file_id, referrer, views, thumbnail_views)\n         select id, referrer, sum(views)::bigint, sum(thumbnail_views)::bigint\n         from pending group by 1, 2\n         on conflict (file_id, referrer) do update set\n           views = file_referrer_views.views + excluded.views,\n           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "Int8Array",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e5ef84ec8aa8fffe481795d3ddf15a1692429831419ecef3e0857136d457ba0d"
+}

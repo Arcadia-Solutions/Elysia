@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update files set status = 'trashed', trashed_at = now(), trashed_by_id = $2\n         where id = any($1) and status = 'available'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1c239f89d8f235bae2631ae9ae494cda5fa6569c161194ff55a758e8df3b9f00"
+}

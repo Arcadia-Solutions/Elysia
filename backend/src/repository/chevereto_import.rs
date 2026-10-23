@@ -20,12 +20,12 @@ pub struct CheveretoImportRow {
 pub async fn get(pool: &PgPool) -> Result<CheveretoImportRow> {
     Ok(sqlx::query_as!(
         CheveretoImportRow,
-        "select last_image_id, total, done, imported, rewritten_rows, \
-                (select count(*) from chevereto_import_failures) as \"failed!\", \
-                to_char(started_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as started_at, \
-                to_char(finished_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as finished_at, \
-                error \
-         from chevereto_import"
+        r#"select last_image_id, total, done, imported, rewritten_rows,
+                (select count(*) from chevereto_import_failures) as "failed!",
+                to_char(started_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as started_at,
+                to_char(finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as finished_at,
+                error
+         from chevereto_import"#
     )
     .fetch_one(pool)
     .await?)
@@ -34,7 +34,7 @@ pub async fn get(pool: &PgPool) -> Result<CheveretoImportRow> {
 /// Lowest failed image id, None without failures.
 pub async fn first_failed_image_id(pool: &PgPool) -> Result<Option<i64>> {
     Ok(
-        sqlx::query_scalar!("select min(image_id) from chevereto_import_failures")
+        sqlx::query_scalar!(r#"select min(image_id) from chevereto_import_failures"#)
             .fetch_one(pool)
             .await?,
     )
@@ -45,14 +45,14 @@ pub async fn first_failed_image_id(pool: &PgPool) -> Result<Option<i64>> {
 pub async fn start(pool: &PgPool, last_image_id: i64, total: i64) -> Result<()> {
     let mut transaction = pool.begin().await?;
     sqlx::query!(
-        "delete from chevereto_import_failures where image_id > $1",
+        r#"delete from chevereto_import_failures where image_id > $1"#,
         last_image_id
     )
     .execute(&mut *transaction)
     .await?;
     sqlx::query!(
-        "update chevereto_import set last_image_id = $1, total = $2, done = 0, imported = 0, \
-         rewritten_rows = 0, started_at = now(), finished_at = null, error = null",
+        r#"update chevereto_import set last_image_id = $1, total = $2, done = 0, imported = 0,
+         rewritten_rows = 0, started_at = now(), finished_at = null, error = null"#,
         last_image_id,
         total
     )
@@ -64,7 +64,7 @@ pub async fn start(pool: &PgPool, last_image_id: i64, total: i64) -> Result<()> 
 
 /// Count one processed image.
 pub async fn record_imported(pool: &PgPool) -> Result<()> {
-    sqlx::query!("update chevereto_import set done = done + 1, imported = imported + 1")
+    sqlx::query!(r#"update chevereto_import set done = done + 1, imported = imported + 1"#)
         .execute(pool)
         .await?;
     Ok(())
@@ -79,15 +79,15 @@ pub async fn record_failure(
 ) -> Result<()> {
     let mut transaction = pool.begin().await?;
     sqlx::query!(
-        "insert into chevereto_import_failures (image_id, fetch_url, error) values ($1, $2, $3) \
-         on conflict (image_id) do update set fetch_url = excluded.fetch_url, error = excluded.error",
+        r#"insert into chevereto_import_failures (image_id, fetch_url, error) values ($1, $2, $3)
+         on conflict (image_id) do update set fetch_url = excluded.fetch_url, error = excluded.error"#,
         image_id,
         fetch_url,
         error
     )
     .execute(&mut *transaction)
     .await?;
-    sqlx::query!("update chevereto_import set done = done + 1")
+    sqlx::query!(r#"update chevereto_import set done = done + 1"#)
         .execute(&mut *transaction)
         .await?;
     transaction.commit().await?;
@@ -97,7 +97,7 @@ pub async fn record_failure(
 /// Save a fully processed chunk: the next run resumes after `last_image_id`.
 pub async fn finish_chunk(pool: &PgPool, last_image_id: i64, rewritten_rows: i64) -> Result<()> {
     sqlx::query!(
-        "update chevereto_import set last_image_id = $1, rewritten_rows = rewritten_rows + $2",
+        r#"update chevereto_import set last_image_id = $1, rewritten_rows = rewritten_rows + $2"#,
         last_image_id,
         rewritten_rows
     )
@@ -108,7 +108,7 @@ pub async fn finish_chunk(pool: &PgPool, last_image_id: i64, rewritten_rows: i64
 
 pub async fn finish(pool: &PgPool, error: Option<&str>) -> Result<()> {
     sqlx::query!(
-        "update chevereto_import set finished_at = now(), error = $1",
+        r#"update chevereto_import set finished_at = now(), error = $1"#,
         error
     )
     .execute(pool)
@@ -131,8 +131,8 @@ pub async fn failures_page(
 ) -> Result<Vec<CheveretoImportFailureRow>> {
     Ok(sqlx::query_as!(
         CheveretoImportFailureRow,
-        "select image_id, fetch_url, error, count(*) over() as \"total!\" \
-         from chevereto_import_failures order by image_id offset $1 limit $2",
+        r#"select image_id, fetch_url, error, count(*) over() as "total!"
+         from chevereto_import_failures order by image_id offset $1 limit $2"#,
         offset,
         limit
     )
@@ -142,7 +142,7 @@ pub async fn failures_page(
 
 pub async fn failures_count(pool: &PgPool) -> Result<i64> {
     Ok(
-        sqlx::query_scalar!("select count(*) as \"count!\" from chevereto_import_failures")
+        sqlx::query_scalar!(r#"select count(*) as "count!" from chevereto_import_failures"#)
             .fetch_one(pool)
             .await?,
     )

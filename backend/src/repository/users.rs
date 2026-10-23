@@ -153,7 +153,7 @@ pub async fn find_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<AuthUserR
 /// Replace the password hash of a local user, for password changes.
 pub async fn update_password_hash(pool: &PgPool, user_id: Uuid, password_hash: &str) -> Result<()> {
     sqlx::query!(
-        "update users set password_hash = $2 where id = $1",
+        r#"update users set password_hash = $2 where id = $1"#,
         user_id,
         password_hash
     )
@@ -166,7 +166,7 @@ pub async fn update_password_hash(pool: &PgPool, user_id: Uuid, password_hash: &
 /// False when no user has this id.
 pub async fn set_banned(pool: &PgPool, user_id: Uuid, banned: bool) -> Result<bool> {
     let result = sqlx::query!(
-        "update users set banned = $2 where id = $1",
+        r#"update users set banned = $2 where id = $1"#,
         user_id,
         banned
     )
@@ -183,7 +183,7 @@ pub async fn set_storage_quota(
     storage_quota_bytes: Option<i64>,
 ) -> Result<bool> {
     let result = sqlx::query!(
-        "update users set storage_quota_bytes = $2 where id = $1",
+        r#"update users set storage_quota_bytes = $2 where id = $1"#,
         user_id,
         storage_quota_bytes
     )
@@ -244,8 +244,8 @@ pub async fn update_last_seen(
 ) -> Result<()> {
     // One round trip stamps the user and, when the request used one, its API key.
     sqlx::query!(
-        "with used_key as (update api_keys set last_used_at = now() where id = $2)
-         update users set last_seen = now() where id = $1",
+        r#"with used_key as (update api_keys set last_used_at = now() where id = $2)
+         update users set last_seen = now() where id = $1"#,
         user_id,
         api_key_id,
     )
@@ -356,7 +356,7 @@ async fn free_username(pool: &PgPool, base: &str) -> Result<String> {
     let mut candidate = stem.clone();
     for _ in 0..USERNAME_ATTEMPTS {
         let taken = sqlx::query_scalar!(
-            "select exists(select 1 from users where username = $1) as \"taken!\"",
+            r#"select exists(select 1 from users where username = $1) as "taken!""#,
             candidate,
         )
         .fetch_one(pool)
@@ -546,7 +546,7 @@ pub async fn find_summary(
 /// Id of the user with exactly this username.
 pub async fn find_id_by_username(pool: &PgPool, username: &str) -> Result<Option<Uuid>> {
     Ok(
-        sqlx::query_scalar!("select id from users where username = $1", username)
+        sqlx::query_scalar!(r#"select id from users where username = $1"#, username)
             .fetch_optional(pool)
             .await?,
     )

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update users u set created_at = first.created_at\n         from (select uploaded_by_user_id, min(created_at) as created_at\n               from files group by 1) as first\n         where first.uploaded_by_user_id = u.id and u.id = any($1)\n           and first.created_at < u.created_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7897832725694ac20d90ea62f87217226ba57806f1a63cea8e064b0aa64d67e4"
+}

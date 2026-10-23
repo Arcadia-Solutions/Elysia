@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into unreferenced_files (file_id, scanned_at)\n         select id, to_timestamp($2) from files where status = 'available'\n           and created_at < to_timestamp($2) and id not in (select unnest($1::text[]))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fdb291aafcca83257933ae748405d85b1723cf6dd98edc5a15a560d852df7668"
+}

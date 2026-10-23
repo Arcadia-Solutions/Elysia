@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select count(*) as \"count!\" from files join unreferenced_files on file_id = id where status = 'available'",
+  "query": "select count(*) as \"count!\" from files\n         join unreferenced_files on file_id = id where status = 'available'",
   "describe": {
     "columns": [
       {
@@ -17,5 +17,5 @@
       null
     ]
   },
-  "hash": "0546cf3f01f910f63e037a6a217ea1162c6d4924808c14bdad35566a668b914f"
+  "hash": "b7b194f3e98d159f3c1f4b41d40e28f0772889ee1ab1ee5ca00d833e11483698"
 }

@@ -196,8 +196,8 @@ pub fn link_rewrites(
     Some(rewrites)
 }
 
-const TABLE_SQL: &str = "create temp table if not exists chevereto_links \
-     (link_key text primary key, replacement text not null) on commit delete rows";
+const TABLE_SQL: &str = r#"create temp table if not exists chevereto_links
+     (link_key text primary key, replacement text not null) on commit delete rows"#;
 
 const APPLY_FUNCTION_SQL: &str = r#"
 create or replace function pg_temp.apply_link_rewrites(value text, pattern text)
@@ -323,26 +323,24 @@ pub async fn find_backend_user(
     users: &BackendUsers,
     username: &str,
 ) -> Result<Option<(String, Option<String>)>> {
-    Ok(
-        sqlx::query_as(
-            "select subject, email from pg_temp.find_user($1::regclass, $2, $3, $4, $5)",
-        )
-        .bind(&users.table)
-        .bind(&users.username_column)
-        .bind(&users.subject_column)
-        .bind(&users.email_column)
-        .bind(username)
-        .fetch_optional(connection)
-        .await?,
+    Ok(sqlx::query_as(
+        r#"select subject, email from pg_temp.find_user($1::regclass, $2, $3, $4, $5)"#,
     )
+    .bind(&users.table)
+    .bind(&users.username_column)
+    .bind(&users.subject_column)
+    .bind(&users.email_column)
+    .bind(username)
+    .fetch_optional(connection)
+    .await?)
 }
 
 /// Fills the link table, emptied again when the caller's transaction ends.
 async fn load_rewrites(connection: &mut PgConnection, rewrites: &[(String, String)]) -> Result<()> {
     let (keys, replacements): (Vec<String>, Vec<String>) = rewrites.iter().cloned().unzip();
     sqlx::query(
-        "insert into pg_temp.chevereto_links select * from unnest($1::text[], $2::text[]) \
-         on conflict do nothing",
+        r#"insert into pg_temp.chevereto_links select * from unnest($1::text[], $2::text[])
+         on conflict do nothing"#,
     )
     .bind(keys)
     .bind(replacements)
@@ -363,7 +361,7 @@ pub async fn rewrite_links(
     }
     let mut transaction = connection.begin().await?;
     load_rewrites(&mut transaction, rewrites).await?;
-    let updated: i64 = sqlx::query_scalar("select pg_temp.rewrite_links($1)")
+    let updated: i64 = sqlx::query_scalar(r#"select pg_temp.rewrite_links($1)"#)
         .bind(pattern)
         .fetch_one(&mut *transaction)
         .await?;
@@ -380,7 +378,7 @@ pub async fn apply_link_rewrites(
 ) -> Result<String> {
     let mut transaction = connection.begin().await?;
     load_rewrites(&mut transaction, rewrites).await?;
-    let rewritten: String = sqlx::query_scalar("select pg_temp.apply_link_rewrites($1, $2)")
+    let rewritten: String = sqlx::query_scalar(r#"select pg_temp.apply_link_rewrites($1, $2)"#)
         .bind(value)
         .bind(pattern)
         .fetch_one(&mut *transaction)
@@ -656,15 +654,15 @@ struct Failure {
 }
 
 /// One chunk of images after the saved id, with storage and uploader.
-const CHUNK_QUERY: &str = "select cast(i.image_id as unsigned), i.image_name, i.image_extension, \
-     cast(i.image_storage_mode as char), date_format(i.image_date, '%Y/%m/%d'), \
-     cast(nullif(unix_timestamp(i.image_date_gmt), 0) as signed), i.image_original_filename, \
-     s.storage_url, u.user_username \
-     from chv_images i \
-     left join chv_storages s on s.storage_id = i.image_storage_id \
-     left join chv_users u on u.user_id = i.image_user_id \
-     where i.image_type = 1 and i.image_id > ? \
-     order by i.image_id limit ?";
+const CHUNK_QUERY: &str = r#"select cast(i.image_id as unsigned), i.image_name, i.image_extension,
+     cast(i.image_storage_mode as char), date_format(i.image_date, '%Y/%m/%d'),
+     cast(nullif(unix_timestamp(i.image_date_gmt), 0) as signed), i.image_original_filename,
+     s.storage_url, u.user_username
+     from chv_images i
+     left join chv_storages s on s.storage_id = i.image_storage_id
+     left join chv_users u on u.user_id = i.image_user_id
+     where i.image_type = 1 and i.image_id > ?
+     order by i.image_id limit ?"#;
 
 /// A `CHUNK_QUERY` row, in select order.
 type ChunkRow = (
@@ -690,8 +688,8 @@ fn backend_error(error: Error) -> Error {
 /// Fails unless Chevereto uses the default paths the link patterns assume.
 async fn check_chevereto_settings(chevereto: &MySqlPool) -> Result<()> {
     let rows: Vec<(String, Option<String>)> = sqlx::query_as(
-        "select setting_name, setting_value from chv_settings \
-         where setting_name in ('upload_image_path', 'route_image', 'root_route')",
+        r#"select setting_name, setting_value from chv_settings
+         where setting_name in ('upload_image_path', 'route_image', 'root_route')"#,
     )
     .fetch_all(chevereto)
     .await
@@ -896,7 +894,7 @@ async fn prepare(
         .acquire_timeout(CHECK_TIMEOUT)
         .after_connect(|connection, _| {
             Box::pin(async move {
-                sqlx::query("set time_zone = '+00:00'")
+                sqlx::query(r#"set time_zone = '+00:00'"#)
                     .execute(connection)
                     .await?;
                 Ok(())
@@ -924,15 +922,16 @@ async fn prepare(
             .map_err(|_| Error::BadRequest("chevereto id_padding is not a number".into()))?,
         None => 0,
     };
-    let storage_urls: Vec<String> = sqlx::query_scalar("select storage_url from chv_storages")
+    let storage_urls: Vec<String> = sqlx::query_scalar(r#"select storage_url from chv_storages"#)
         .fetch_all(&chevereto)
         .await
         .map_err(chevereto_error)?;
-    let extensions: Vec<String> =
-        sqlx::query_scalar("select distinct image_extension from chv_images where image_type = 1")
-            .fetch_all(&chevereto)
-            .await
-            .map_err(chevereto_error)?;
+    let extensions: Vec<String> = sqlx::query_scalar(
+        r#"select distinct image_extension from chv_images where image_type = 1"#,
+    )
+    .fetch_all(&chevereto)
+    .await
+    .map_err(chevereto_error)?;
 
     let backend = match &params.backend_database_url {
         Some(database_url) => {
@@ -985,12 +984,13 @@ async fn prepare(
         }
         CheveretoImportStart::Restart => 0,
     };
-    let total: i64 =
-        sqlx::query_scalar("select count(*) from chv_images where image_type = 1 and image_id > ?")
-            .bind(last_image_id)
-            .fetch_one(&chevereto)
-            .await
-            .map_err(chevereto_error)?;
+    let total: i64 = sqlx::query_scalar(
+        r#"select count(*) from chv_images where image_type = 1 and image_id > ?"#,
+    )
+    .bind(last_image_id)
+    .fetch_one(&chevereto)
+    .await
+    .map_err(chevereto_error)?;
     import_repo::start(pool, last_image_id, total).await?;
 
     let link_settings = LinkSettings {
