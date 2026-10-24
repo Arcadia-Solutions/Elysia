@@ -413,7 +413,7 @@ pub async fn start_trash(pool: PgPool, storage: Data<Storage>, admin_id: Uuid) -
         let ids = files::unreferenced_ids(&pool).await?;
         update(|progress| progress.total = ids.len());
         for batch in ids.chunks(TRASH_BATCH) {
-            files_service::trash(&pool, &storage, admin_id, true, batch).await?;
+            files_service::trash(&pool, &storage, admin_id, true, batch, false).await?;
             update(|progress| progress.done += batch.len());
         }
         Ok(())

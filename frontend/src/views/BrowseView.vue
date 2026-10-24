@@ -49,7 +49,7 @@
           icon="pi pi-trash"
           size="small"
           severity="danger"
-          @click="trashSelected"
+          @click="deleteDialogVisible = true"
         />
         <Button :label="$t('browse.clear_selection')" icon="pi pi-times" size="small" severity="secondary" @click="selected.clear()" />
       </template>
@@ -72,6 +72,7 @@
       />
     </div>
     <FixturesDialog v-if="isAdmin()" v-model:visible="fixturesVisible" @done="load(1)" />
+    <DeleteImagesDialog v-model:visible="deleteDialogVisible" :ids="[...selected]" @deleted="onDeleted" />
     <AlbumDialog v-model:visible="albumDialogVisible" @saved="(album) => router.push({ name: 'Album', params: { id: album.id } })" />
     <p v-if="total === 0" class="empty">{{ shownTab === 'albums' ? $t('albums.empty') : $t(`browse.empty.${status}`) }}</p>
     <AlbumResults
@@ -116,6 +117,7 @@ import AlbumDialog from '@/components/AlbumDialog.vue'
 import AlbumResults from '@/components/AlbumResults.vue'
 import FixturesDialog from '@/components/FixturesDialog.vue'
 import ImageResults from '@/components/ImageResults.vue'
+import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
@@ -198,14 +200,10 @@ const load = (target: number) => {
 const setSort = (sort_by: ImagesSortBy | AlbumsSortBy, order: SortOrder) =>
   router.push({ query: { tab: route.query.tab, status: route.query.status, username: route.query.username, page_size: route.query.page_size, sort_by, order } })
 
-const trashSelected = () => {
-  const count = selected.value.size
-  if (!confirm(t('trash.delete_confirm', { count }, count))) return
-  api.trashImages({ ids: [...selected.value] }).then(() => {
-    showToast(t('trash.deleted', { count }, count), 'success')
-    selected.value.clear()
-    load(page.value)
-  })
+const deleteDialogVisible = ref(false)
+const onDeleted = () => {
+  selected.value.clear()
+  load(page.value)
 }
 
 const restoreSelected = () => {

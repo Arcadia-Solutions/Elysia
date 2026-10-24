@@ -24,7 +24,7 @@
           size="small"
           severity="danger"
           :disabled="selected.size === 0"
-          @click="trashSelected"
+          @click="deleteDialogVisible = true"
         />
         <PageSizeSelect
           :modelValue="pageSize"
@@ -57,13 +57,13 @@
       </PaginatedResults>
     </template>
     <p v-else-if="page && !progress?.running" class="summary">{{ $t('maintenance.similar_images.empty') }}</p>
+    <DeleteImagesDialog v-model:visible="deleteDialogVisible" :ids="[...selected]" @deleted="onDeleted" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
@@ -71,12 +71,11 @@ import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
+import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import { api } from '@/services/api/http'
 import { formatBytes, timeAgo } from '@/services/format'
-import { showToast } from '@/services/toast'
 import { type PaginatedResultsSimilarImagesGroup, type SimilarProgress } from '@/services/api-schema'
 
-const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const currentPage = computed(() => Number(route.query.page) || 1)
@@ -129,13 +128,9 @@ const toggleSelected = (id: string) => {
   selected.value = next
 }
 
-const trashSelected = () => {
-  const count = selected.value.size
-  if (!confirm(t('trash.delete_confirm', { count }, count))) return
-  api.trashImages({ ids: [...selected.value] }).then(() => {
-    showToast(t('trash.deleted', { count }, count), 'success')
-    load(currentPage.value)
-  })
+const deleteDialogVisible = ref(false)
+const onDeleted = () => {
+  load(currentPage.value)
 }
 
 // Post flush: switching tabs unmounts this one before it would reload.

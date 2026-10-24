@@ -733,7 +733,7 @@ pub async fn mark_restored(
     .await?)
 }
 
-/// Flag trashed files as deleted, once wiped from disk: by the admin
+/// Flag trashed files as deleted, once wiped from disk: by the user
 /// `deleted_by_id` when set, by the scheduler otherwise.
 pub async fn mark_deleted(
     pool: &PgPool,

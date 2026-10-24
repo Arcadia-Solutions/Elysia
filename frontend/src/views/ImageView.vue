@@ -75,9 +75,18 @@
       </dl>
       <!-- Trashed images are not served from their public links. -->
       <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
-      <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" class="delete" @click="trash" />
+      <Button
+        v-if="meta.can_delete"
+        :label="$t('trash.delete', 1)"
+        icon="pi pi-trash"
+        severity="danger"
+        size="small"
+        class="delete"
+        @click="deleteDialogVisible = true"
+      />
       <Button v-if="meta.trashed_at" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
     </aside>
+    <DeleteImagesDialog v-if="meta" v-model:visible="deleteDialogVisible" :ids="[meta.id]" @deleted="router.push({ name: isAdmin() ? 'Browse' : 'Upload' })" />
     <Dialog v-model:visible="albumDialogVisible" modal :header="$t('albums.add')" :style="{ width: '25rem' }">
       <AlbumSelect
         :modelValue="null"
@@ -98,6 +107,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Chip from 'primevue/chip'
 import Dialog from 'primevue/dialog'
+import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import AlbumSelect from '@/components/AlbumSelect.vue'
 import EmbedLinks from '@/components/EmbedLinks.vue'
 import { api } from '@/services/api/http'
@@ -127,13 +137,7 @@ const processing = computed(() => {
   return steps
 })
 
-const trash = () => {
-  if (!meta.value || !confirm(t('trash.delete_confirm', 1))) return
-  api.trashImages({ ids: [meta.value.id] }).then(() => {
-    showToast(t('trash.deleted', 1), 'success')
-    router.push({ name: isAdmin() ? 'Browse' : 'Upload' })
-  })
-}
+const deleteDialogVisible = ref(false)
 
 const restore = () => {
   if (!meta.value) return

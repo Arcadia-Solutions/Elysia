@@ -849,13 +849,15 @@ pub fn may_trash(user_id: Uuid, is_admin: bool, uploaded_by_user_id: Uuid, recen
 }
 
 /// Move files to the trash, where they wait 30 days before the scheduled
-/// wipe. See `may_trash` for who may. Unknown or already trashed ids are skipped.
+/// wipe, or wipe them right away when `permanent`. See `may_trash` for who
+/// may. Unknown or already trashed ids are skipped.
 pub async fn trash(
     pool: &PgPool,
     storage: &Storage,
     user_id: Uuid,
     is_admin: bool,
     ids: &[String],
+    permanent: bool,
 ) -> Result<()> {
     let rows = files::find_available(pool, ids).await?;
     if !rows
@@ -869,8 +871,19 @@ pub async fn trash(
     for row in &rows {
         storage.trash(&row.id, &row.ext).await?;
     }
-    let ids: Vec<String> = rows.into_iter().map(|row| row.id).collect();
-    files::mark_trashed(pool, &ids, user_id).await
+    let ids: Vec<String> = rows.iter().map(|row| row.id.clone()).collect();
+    files::mark_trashed(pool, &ids, user_id).await?;
+    if permanent {
+        let rows = rows
+            .into_iter()
+            .map(|row| files::TrashedRow {
+                id: row.id,
+                ext: row.ext,
+            })
+            .collect();
+        wipe(pool, storage, rows, Some(user_id)).await?;
+    }
+    Ok(())
 }
 
 /// Move trashed files back to being served. Unknown and not trashed ids are
@@ -911,17 +924,29 @@ pub async fn restore(pool: &PgPool, storage: &Storage, ids: &[String]) -> Result
 pub const TRASH_RETENTION_DAYS: i32 = 30;
 
 /// Wipe the files trashed at least `days` days ago from disk (all of them for
-/// 0), keeping their rows as `deleted` for the stats. `deleted_by_id` is the
-/// admin emptying the trash, None for the scheduler. A file that fails to wipe
-/// is logged and stays trashed, so it does not block the others.
+/// 0). `deleted_by_id` is the admin emptying the trash, None for the scheduler.
 pub async fn wipe_trash(
     pool: &PgPool,
     storage: &Storage,
     days: i32,
     deleted_by_id: Option<Uuid>,
 ) -> Result<()> {
+    let rows = files::trashed_before(pool, days).await?;
+    wipe(pool, storage, rows, deleted_by_id).await
+}
+
+/// Wipe trashed files from disk, keeping their rows as `deleted` for the
+/// stats. `deleted_by_id` is the user deleting them, None for the scheduler. A
+/// file that fails to wipe is logged and stays trashed, so it does not block
+/// the others.
+async fn wipe(
+    pool: &PgPool,
+    storage: &Storage,
+    rows: Vec<files::TrashedRow>,
+    deleted_by_id: Option<Uuid>,
+) -> Result<()> {
     let mut wiped_ids = Vec::new();
-    for row in files::trashed_before(pool, days).await? {
+    for row in rows {
         match storage.wipe_trashed(&row.id, &row.ext).await {
             Ok(()) => wiped_ids.push(row.id),
             Err(error) => tracing::warn!("failed to wipe trashed file {}: {error:?}", row.id),

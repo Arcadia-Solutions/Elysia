@@ -35,12 +35,14 @@ async fn trashes_own_files(pool: PgPool) {
 
     // Someone else's file is refused, and nothing moves.
     assert!(matches!(
-        trash(&pool, &storage, other, false, ids).await,
+        trash(&pool, &storage, other, false, ids, false).await,
         Err(Error::Forbidden)
     ));
     assert!(storage.path_for(&id, "png").exists());
 
-    trash(&pool, &storage, owner, false, ids).await.unwrap();
+    trash(&pool, &storage, owner, false, ids, false)
+        .await
+        .unwrap();
     assert!(files::find_available(&pool, ids).await.unwrap().is_empty());
     assert!(!storage.path_for(&id, "png").exists());
     assert!(!storage.thumbnail_path_for(&id).exists());
@@ -84,7 +86,9 @@ async fn trashes_own_files(pool: PgPool) {
     );
 
     // Trashing again is a no-op, even for an admin who does not own it.
-    trash(&pool, &storage, other, true, ids).await.unwrap();
+    trash(&pool, &storage, other, true, ids, false)
+        .await
+        .unwrap();
 
     // Past the first hour, only an admin may trash it.
     files::backdate_created_at(&pool, kept, 1_577_836_800)
@@ -92,12 +96,18 @@ async fn trashes_own_files(pool: PgPool) {
         .unwrap();
     let kept_ids = [kept.to_string()];
     assert!(matches!(
-        trash(&pool, &storage, owner, false, &kept_ids).await,
+        trash(&pool, &storage, owner, false, &kept_ids, false).await,
         Err(Error::Forbidden)
     ));
-    trash(&pool, &storage, other, true, &kept_ids)
+    // Skipping the trash wipes the file at once.
+    trash(&pool, &storage, other, true, &kept_ids, true)
         .await
         .unwrap();
+    assert!(!dir.path().join("trash/mine000001.png").exists());
+    assert!(matches!(
+        get_metadata(&pool, kept, true).await,
+        Err(Error::NotFound)
+    ));
 }
 
 #[sqlx::test(migrations = "./migrations", fixtures("trash"))]
@@ -201,9 +211,16 @@ async fn restores_trashed_files(pool: PgPool) {
     // A trashed file missing from disk fails the whole restore, and the files
     // already moved go back to the trash.
     insert_png(&pool, "missing0", "zzz", admin).await;
-    trash(&pool, &storage, admin, true, &["missing0".to_string()])
-        .await
-        .unwrap();
+    trash(
+        &pool,
+        &storage,
+        admin,
+        true,
+        &["missing0".to_string()],
+        false,
+    )
+    .await
+    .unwrap();
     let ids = ["recent00".to_string(), "missing0".to_string()];
     assert!(restore(&pool, &storage, &ids).await.is_err());
     assert!(available_ids(&["recent00", "missing0"]).await.is_empty());
@@ -219,9 +236,16 @@ async fn restores_trashed_files(pool: PgPool) {
     assert!(dir.path().join("trash/expired0.png").exists());
 
     // Files whose bytes were uploaded again since stay trashed.
-    trash(&pool, &storage, admin, true, &["recent00".to_string()])
-        .await
-        .unwrap();
+    trash(
+        &pool,
+        &storage,
+        admin,
+        true,
+        &["recent00".to_string()],
+        false,
+    )
+    .await
+    .unwrap();
     insert_png(&pool, "reupload", "recent00", admin).await;
     restore(&pool, &storage, &["recent00".to_string()])
         .await

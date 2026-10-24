@@ -51,7 +51,7 @@ pub struct MetadataResponse {
     pub trashed_at: Option<String>,
     /// Who trashed the image. Null while available.
     pub trashed_by_username: Option<String>,
-    /// Whole days left before the trashed image is deleted for good, rounded
+    /// Whole days left before the trashed image is deleted, rounded
     /// up. Null while available.
     pub days_until_deletion: Option<i32>,
     /// Every album the image is in, whoever owns it, the caller's first.

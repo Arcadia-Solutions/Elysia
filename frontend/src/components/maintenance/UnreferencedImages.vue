@@ -38,7 +38,7 @@
           size="small"
           severity="danger"
           :disabled="selected.size === 0 || progress?.running"
-          @click="trashSelected"
+          @click="deleteDialogVisible = true"
         />
         <Button
           :label="$t('maintenance.unreferenced_images.trash_all', { count: page.total_items })"
@@ -64,6 +64,7 @@
       />
     </template>
     <p v-else-if="page && !progress?.running" class="summary">{{ $t('maintenance.unreferenced_images.empty') }}</p>
+    <DeleteImagesDialog v-model:visible="deleteDialogVisible" :ids="[...selected]" @deleted="onDeleted" />
   </div>
 </template>
 
@@ -76,6 +77,7 @@ import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
 import ImageResults from '@/components/ImageResults.vue'
+import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import { api } from '@/services/api/http'
 import { timeAgo } from '@/services/format'
 import { showToast } from '@/services/toast'
@@ -145,13 +147,9 @@ const scan = () => {
     .then(() => markStarted(UnreferencedTask.Scan))
 }
 
-const trashSelected = () => {
-  const count = selected.value.size
-  if (!confirm(t('trash.delete_confirm', { count }, count))) return
-  api.trashImages({ ids: [...selected.value] }).then(() => {
-    showToast(t('trash.deleted', { count }, count), 'success')
-    load(currentPage.value)
-  })
+const deleteDialogVisible = ref(false)
+const onDeleted = () => {
+  load(currentPage.value)
 }
 
 const trashAll = () => {

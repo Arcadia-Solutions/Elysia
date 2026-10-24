@@ -17,14 +17,23 @@ pub struct ImageIdsRequest {
     pub ids: Vec<String>,
 }
 
+#[derive(Deserialize, ToSchema)]
+pub struct TrashImagesRequest {
+    /// Ids of the images to delete.
+    pub ids: Vec<String>,
+    /// Skip the trash: wipe the images from disk right away.
+    #[serde(default)]
+    pub permanent: bool,
+}
+
 #[utoipa::path(
     tag = "Images",
     post,
     path = "/api/images/trash",
     description = "Move images to the trash: they stop being served to other sites at once \
-        (Elysia's own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during \
+        (Elysia's own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during \
         the hour after upload. Unknown or already trashed ids are skipped.",
-    request_body = ImageIdsRequest,
+    request_body = TrashImagesRequest,
     security(("bearer" = [])),
     responses(
         (status = 204, description = "Images trashed"),
@@ -36,7 +45,7 @@ pub async fn trash_images(
     authenticated: AuthUser,
     pool: Data<PgPool>,
     storage: Data<Storage>,
-    body: Json<ImageIdsRequest>,
+    body: Json<TrashImagesRequest>,
 ) -> Result<HttpResponse> {
     files::trash(
         pool.get_ref(),
@@ -44,6 +53,7 @@ pub async fn trash_images(
         authenticated.user_id,
         authenticated.is_admin,
         &body.ids,
+        body.permanent,
     )
     .await?;
     Ok(HttpResponse::NoContent().finish())

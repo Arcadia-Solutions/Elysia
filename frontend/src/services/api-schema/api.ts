@@ -542,7 +542,7 @@ export interface MetadataResponse {
      */
     'created_at': string;
     /**
-     * Whole days left before the trashed image is deleted for good, rounded up. Null while available.
+     * Whole days left before the trashed image is deleted, rounded up. Null while available.
      */
     'days_until_deletion'?: number | null;
     'ext': string;
@@ -1035,6 +1035,16 @@ export const TargetFormat = {
 export type TargetFormat = typeof TargetFormat[keyof typeof TargetFormat];
 
 
+export interface TrashImagesRequest {
+    /**
+     * Ids of the images to delete.
+     */
+    'ids': Array<string>;
+    /**
+     * Skip the trash: wipe the images from disk right away.
+     */
+    'permanent'?: boolean;
+}
 /**
  * The subset of settings exposed without authentication, so the login and register pages can offer signup and single sign-on.
  */
@@ -2824,14 +2834,14 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {TrashImagesRequest} trashImagesRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        trashImages: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'imageIdsRequest' is not null or undefined
-            assertParamExists('trashImages', 'imageIdsRequest', imageIdsRequest)
+        trashImages: async (trashImagesRequest: TrashImagesRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'trashImagesRequest' is not null or undefined
+            assertParamExists('trashImages', 'trashImagesRequest', trashImagesRequest)
             const localVarPath = `/api/images/trash`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2851,7 +2861,7 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(trashImagesRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -3050,13 +3060,13 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {TrashImagesRequest} trashImagesRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(imageIdsRequest, options);
+        async trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.trashImages(trashImagesRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ImagesApi.trashImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3160,13 +3170,13 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
         },
         /**
-         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-         * @param {ImageIdsRequest} imageIdsRequest 
+         * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+         * @param {TrashImagesRequest} trashImagesRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.trashImages(imageIdsRequest, options).then((request) => request(axios, basePath));
+        trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.trashImages(trashImagesRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3265,13 +3275,13 @@ export class ImagesApi extends BaseAPI {
     }
 
     /**
-     * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
-     * @param {ImageIdsRequest} imageIdsRequest 
+     * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
+     * @param {TrashImagesRequest} trashImagesRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public trashImages(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
-        return ImagesApiFp(this.configuration).trashImages(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    public trashImages(trashImagesRequest: TrashImagesRequest, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).trashImages(trashImagesRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

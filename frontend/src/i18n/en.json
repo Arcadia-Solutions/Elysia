@@ -130,8 +130,11 @@
   },
   "trash": {
     "delete": "Delete | Delete ({count})",
-    "delete_confirm": "Move this image to the trash? It stops being served right away and is deleted for good after 30 days. | Move these {count} images to the trash? They stop being served right away and are deleted for good after 30 days.",
+    "delete_confirm": "Move this image to the trash? It stops being served right away and is deleted after 30 days. | Move these {count} images to the trash? They stop being served right away and are deleted after 30 days.",
+    "delete_permanent_confirm": "Delete this image? This cannot be undone. | Delete these {count} images? This cannot be undone.",
+    "skip_trash": "Skip the trash",
     "deleted": "Image moved to the trash | {count} images moved to the trash",
+    "deleted_permanent": "Image deleted | {count} images deleted",
     "restore": "Restore | Restore ({count})",
     "restored": "Image restored | {count} images restored"
   },
@@ -176,7 +179,7 @@
     },
     "clear_selection": "Clear selection",
     "empty_trash": "Empty trash",
-    "empty_trash_confirm": "Delete the image in the trash for good? This cannot be undone. | Delete the {count} images in the trash for good? This cannot be undone.",
+    "empty_trash_confirm": "Delete the image in the trash? This cannot be undone. | Delete the {count} images in the trash? This cannot be undone.",
     "trash_emptied": "Trash emptied",
     "username_placeholder": "Username",
     "fixtures": "Generate fixtures",
