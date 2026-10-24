@@ -743,3 +743,19 @@ fn settings_json_roundtrips_target_format() {
     let json = serde_json::to_string(&parsed).unwrap();
     assert!(json.contains("\"jpegxl\""));
 }
+
+#[test]
+fn gif_frame_larger_than_its_screen_is_rejected() {
+    // `imagesize` reads the 1x1 logical screen, but the frame declares
+    // 60000x60000: decoding it unbounded would allocate ~14 GB.
+    let mut gif = b"GIF89a\x01\x00\x01\x00\x00\x00\x00".to_vec();
+    gif.extend_from_slice(b"\x2c\x00\x00\x00\x00\x60\xea\x60\xea\x00\x02\x02\x44\x01\x00\x3b");
+    let options = ProcessOptions {
+        target_width: 0,
+        target_height: 0,
+        format: TargetFormat::Webp,
+        target_file_size: 0,
+        requested_quality: None,
+    };
+    assert!(matches!(process(&gif, &options), Err(ProcessError::Undecodable)));
+}
