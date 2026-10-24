@@ -1,6 +1,18 @@
 <template>
   <header class="topbar">
-    <router-link to="/upload" class="brand">{{ $t('app.name') }}</router-link>
+    <span class="actions">
+      <router-link to="/upload" class="brand">{{ $t('app.name') }}</router-link>
+      <Button
+        :icon="darkMode ? 'pi pi-sun' : 'pi pi-moon'"
+        size="small"
+        severity="secondary"
+        text
+        rounded
+        :title="$t('app.dark_mode')"
+        :aria-label="$t('app.dark_mode')"
+        @click="toggleDarkMode"
+      />
+    </span>
     <span v-if="!route.meta.public || getToken()" class="actions">
       <Button
         v-for="item in navItems"
@@ -23,6 +35,7 @@ import { computed } from 'vue'
 import Button from 'primevue/button'
 import { useRoute, useRouter } from 'vue-router'
 import { clearSession, getToken, isAdmin } from '@/services/session'
+import { darkMode, toggleDarkMode } from '@/services/theme'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,6 +74,7 @@ const navItems = computed(() =>
 }
 .topbar .actions {
   display: flex;
+  align-items: center;
   gap: 4px;
 }
 </style>

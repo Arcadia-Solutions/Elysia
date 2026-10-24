@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "Elysia"
+    "name": "Elysia",
+    "dark_mode": "Toggle dark mode"
   },
   "login": {
     "login_placeholder": "Username or email",

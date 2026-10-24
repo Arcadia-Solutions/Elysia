@@ -7,10 +7,11 @@ import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
 import { initToast } from '@/services/toast'
+import '@/services/theme'
 
 const app = createApp(App)
 
-app.use(PrimeVue, { theme: { preset: Aura } })
+app.use(PrimeVue, { theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } })
 app.use(router)
 app.use(i18n)
 app.use(ToastService)

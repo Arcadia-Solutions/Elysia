@@ -34,5 +34,7 @@ onMounted(() => {
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
 }
 </style>

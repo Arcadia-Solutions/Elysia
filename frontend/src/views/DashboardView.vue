@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -88,6 +88,7 @@ import { Chart } from 'highcharts-vue'
 import type Highcharts from 'highcharts'
 import { api } from '@/services/api/http'
 import { formatBytes } from '@/services/format'
+import { darkMode } from '@/services/theme'
 import { StatsInterval, StatsPeriod, type PeriodTotal, type StatsResponse } from '@/services/api-schema'
 
 const { t } = useI18n()
@@ -132,7 +133,7 @@ watch(
   { immediate: true },
 )
 
-// Chart colors are theme CSS variables, which follow the system dark mode.
+// Chart colors are theme CSS variables, which follow the dark mode toggle.
 const readThemeColors = () => {
   const style = getComputedStyle(document.documentElement)
   return {
@@ -142,12 +143,7 @@ const readThemeColors = () => {
   }
 }
 const themeColors = ref(readThemeColors())
-const darkMode = window.matchMedia('(prefers-color-scheme: dark)')
-const onThemeChange = () => {
-  themeColors.value = readThemeColors()
-}
-darkMode.addEventListener('change', onThemeChange)
-onUnmounted(() => darkMode.removeEventListener('change', onThemeChange))
+watch(darkMode, () => (themeColors.value = readThemeColors()), { flush: 'post' })
 
 // Tooltip label of a step, as precise as the interval: 2026-10-15 14:00 for
 // hours down to 2026 for years.
