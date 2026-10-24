@@ -13,6 +13,8 @@ The web UI is on <http://localhost:5174>. It serves the single page app and
 proxies the API (`/api`), the images (`/i`, `/t`) and the API docs to the
 backend. The backend address defaults to `elysia:8090` and can be changed with
 the `ELYSIA_BACKEND` environment variable of the frontend container.
+Request bodies are capped at 100MB, change it with `ELYSIA_MAX_BODY_SIZE`
+(e.g. `500MB`) if `max_file_size_bytes` is set higher.
 
 Uploaded files live in the `elysia_uploads` volume, the database in
 `elysia_pgdata`.

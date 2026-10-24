@@ -1,7 +1,12 @@
 # Serves the SPA and proxies the API and the images to the backend
 # (ELYSIA_BACKEND, default elysia:8090).
 # /i/<id>.<ext> is an image, /i/<id> the page showing it (served by the SPA).
+# Bodies are capped at ELYSIA_MAX_BODY_SIZE (default 100MB): keep it above the
+# max_file_size_bytes setting, the backend enforces the exact upload limit.
 :80 {
+	request_body {
+		max_size {$ELYSIA_MAX_BODY_SIZE:100MB}
+	}
 	@backend path_regexp ^/(api|api-docs|swagger-ui|t)/|^/i/[^/]+\.[^/]+$
 	handle @backend {
 		reverse_proxy {$ELYSIA_BACKEND:elysia:8090}
