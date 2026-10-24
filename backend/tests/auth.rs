@@ -28,16 +28,13 @@ macro_rules! auth_app {
 /// Like `auth_app!` but with explicit settings (for disabled registration).
 macro_rules! auth_app_with_settings {
     ($pool:expr, $settings:expr) => {{
-        let upload_dir = std::env::temp_dir().join(format!(
-            "elysia-auth-{}",
-            elysia::services::files::generate_id()
-        ));
-        std::fs::create_dir_all(&upload_dir).unwrap();
-        let storage = Storage::new(upload_dir.to_str().unwrap());
+        let upload_dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(upload_dir.path().to_str().unwrap());
         actix_test::init_service(
             App::new()
                 .app_data(Data::new(test_config()))
                 .app_data(Data::new($pool))
+                .app_data(upload_dir)
                 .app_data(Data::new(storage))
                 .app_data(Data::new(RwLock::new($settings)))
                 .configure(routes::init),

@@ -37,7 +37,7 @@ fn validate_requires_caps_and_quality_when_thumbnails_enabled() {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn thumbnail_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let settings = thumbnail_settings(4);
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(16, 16));
     let uploader = test_user(&pool, "thumbnailer").await.0.id;
@@ -60,12 +60,11 @@ async fn thumbnail_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
     let thumbnail = storage.thumbnail_path_for(&stored.id);
     let bytes = std::fs::read(&thumbnail).unwrap();
     assert_eq!(&bytes[0..4], b"RIFF", "thumbnail is a WebP");
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn no_thumbnail_when_image_fits_box(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let settings = thumbnail_settings(64);
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(16, 16));
     let uploader = test_user(&pool, "thumbnailer").await.0.id;
@@ -86,5 +85,4 @@ async fn no_thumbnail_when_image_fits_box(pool: PgPool) {
     let row = files::find(&pool, &stored.id).await.unwrap().unwrap();
     assert!(!row.has_thumbnail);
     assert!(!storage.thumbnail_path_for(&stored.id).exists());
-    let _ = std::fs::remove_dir_all(&dir);
 }

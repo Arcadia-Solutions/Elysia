@@ -195,9 +195,8 @@ pub async fn upload_with_headers(
     query: &str,
     headers: &[(&str, String)],
 ) -> (StatusCode, serde_json::Value) {
-    let upload_dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
-    std::fs::create_dir_all(&upload_dir).unwrap();
-    let storage = Storage::new(upload_dir.to_str().unwrap());
+    let upload_dir = tempfile::tempdir().unwrap();
+    let storage = Storage::new(upload_dir.path().to_str().unwrap());
 
     let app = actix_test::init_service(
         App::new()
@@ -234,7 +233,6 @@ pub async fn upload_with_headers(
     let response = actix_test::call_service(&app, request).await;
     let status = response.status();
     let response_body: serde_json::Value = actix_test::read_body_json(response).await;
-    let _ = std::fs::remove_dir_all(&upload_dir);
     (status, response_body)
 }
 
@@ -260,11 +258,11 @@ pub fn serve_once(status_line: &'static str, content_type: &'static str, body: V
     format!("http://{addr}/image.png")
 }
 
-/// Build a Storage over a fresh temp dir for rehost tests.
-pub fn temp_storage() -> (Storage, std::path::PathBuf) {
-    let dir = std::env::temp_dir().join(format!("elysia-test-{}", generate_id()));
-    std::fs::create_dir_all(dir.join("trash")).unwrap();
-    (Storage::new(dir.to_str().unwrap()), dir)
+/// Build a Storage over a fresh temp dir, deleted when the returned `TempDir` drops.
+pub fn temp_storage() -> (Storage, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("trash")).unwrap();
+    (Storage::new(dir.path().to_str().unwrap()), dir)
 }
 
 pub fn real_png(width: u32, height: u32) -> Vec<u8> {

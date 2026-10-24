@@ -263,7 +263,7 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn rehost_stores_a_fetched_image(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(2, 2));
     let uploader = test_user(&pool, "rehoster").await.0.id;
     let stored = store_from_url(
@@ -281,7 +281,6 @@ async fn rehost_stores_a_fetched_image(pool: PgPool) {
     .unwrap();
     assert_eq!(stored.ext, "png");
     assert!(storage.path_for(&stored.id, "png").exists());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -333,13 +332,11 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "png"))
         .collect();
     assert_eq!(stored.len(), 1);
-
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn rehost_rejects_a_non_image_link(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
     let uploader = test_user(&pool, "linkchecker").await.0.id;
     assert!(matches!(
@@ -357,12 +354,11 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
         .await,
         Err(Error::UnsupportedMediaType)
     ));
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 404 Not Found", "text/plain", b"nope".to_vec());
     let uploader = test_user(&pool, "fetchchecker").await.0.id;
     assert!(matches!(
@@ -380,12 +376,11 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
         .await,
         Err(Error::BadRequest(_))
     ));
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     // A hostname, so the guarded client's resolver is what refuses it.
     let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(1, 1))
         .replace("127.0.0.1", "localhost");
@@ -407,12 +402,11 @@ async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
         "{:?}",
         result.err()
     );
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn rehost_rejects_a_body_over_size_limit(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     // Large enough to arrive in several chunks, so the limit trips mid-stream.
     let url = serve_once("HTTP/1.1 200 OK", "image/png", vec![0; 4 * 1024 * 1024]);
     let uploader = test_user(&pool, "sizechecker").await.0.id;
@@ -433,7 +427,6 @@ async fn rehost_rejects_a_body_over_size_limit(pool: PgPool) {
     assert!(
         matches!(result, Err(Error::BadRequest(message)) if message.starts_with("file too large"))
     );
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

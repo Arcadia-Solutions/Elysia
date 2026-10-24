@@ -283,7 +283,7 @@ fn import_params(backend_users: Option<BackendUsers>) -> CheveretoImportParams {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn import_checks_params_and_services_before_starting(pool: PgPool) {
-    let (storage, _) = common::temp_storage();
+    let (storage, _dir) = common::temp_storage();
     let storage = Data::new(storage);
     let config = common::test_config();
     let start = |params| {

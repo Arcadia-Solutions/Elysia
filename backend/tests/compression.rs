@@ -223,7 +223,7 @@ fn strip_exif_override_respects_allow_flag() {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
     let uploader = test_user(&pool, "converter").await.0.id;
     let stored = store_from_url(
@@ -246,12 +246,11 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
         ("png", "webp")
     );
     assert!(storage.path_for(&stored.id, "webp").exists());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let image = real_png(8, 8);
     let uploader = test_user(&pool, "skipper").await.0.id;
     let first = store_from_url(
@@ -283,12 +282,11 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     .unwrap();
     assert!(second.existed);
     assert_eq!(first.id, second.id);
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn different_quality_reprocesses(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let image = noisy_png(32, 32);
     let uploader = test_user(&pool, "qualitychecker").await.0.id;
     let mut ids = Vec::new();
@@ -316,12 +314,11 @@ async fn different_quality_reprocesses(pool: PgPool) {
         ids.push(stored.id);
     }
     assert_ne!(ids[0], ids[1]);
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
     let uploader = test_user(&pool, "passthrough").await.0.id;
     let stored = store_from_url(
@@ -339,7 +336,6 @@ async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
     .unwrap();
     assert_eq!(stored.ext, "png");
     assert!(stored.actions.is_none());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -399,7 +395,7 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let exif_marker = &b"Exif\0\0"[..];
     // Processing off (store as-is), so stripping is the only thing touching bytes.
     let settings = test_settings();
@@ -458,14 +454,12 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
         contains(&kept_bytes, exif_marker),
         "passthrough without stripping keeps EXIF"
     );
-
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn exif_orientation_is_applied(pool: PgPool) {
     use image::ImageDecoder;
-    let (storage, dir) = temp_storage();
+    let (storage, _dir) = temp_storage();
     let uploader = test_user(&pool, "orienter").await.0.id;
     // 16x8 pixels tagged Orientation=6 (rotate 90): displayed as 8x16.
     let cases = [
@@ -530,7 +524,6 @@ async fn exif_orientation_is_applied(pool: PgPool) {
         };
         assert_eq!(upright, (8, 16));
     }
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations")]

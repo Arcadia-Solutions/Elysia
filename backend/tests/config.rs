@@ -51,9 +51,8 @@ fn rejects_an_invalid_outbound_proxy() {
 
 #[test]
 fn loads_the_config_file_with_environment_overrides() {
-    let dir = std::env::temp_dir().join(format!("elysia-config-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("config.yml");
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.yml");
     std::fs::write(&path, include_str!("../../config.example.yml")).unwrap();
     // SAFETY: the only test in this binary that touches the environment.
     unsafe {
@@ -65,9 +64,8 @@ fn loads_the_config_file_with_environment_overrides() {
     let config = Config::load();
     assert_eq!(
         std::path::Path::new(&config.storage.upload_dir),
-        dir.join("./data/uploads")
+        dir.path().join("./data/uploads")
     );
     assert_eq!(config.database.port, 5433);
     assert_eq!(config.server.public_url, "https://images.example.com");
-    let _ = std::fs::remove_dir_all(&dir);
 }

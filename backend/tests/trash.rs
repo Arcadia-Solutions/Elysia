@@ -44,8 +44,8 @@ async fn trashes_own_files(pool: PgPool) {
     assert!(files::find_available(&pool, ids).await.unwrap().is_empty());
     assert!(!storage.path_for(&id, "png").exists());
     assert!(!storage.thumbnail_path_for(&id).exists());
-    assert!(dir.join("trash/mine000000.png").exists());
-    assert!(dir.join("trash/mine000000.t.webp").exists());
+    assert!(dir.path().join("trash/mine000000.png").exists());
+    assert!(dir.path().join("trash/mine000000.t.webp").exists());
     assert!(storage.path_for(kept, "png").exists());
     // Trashed files leave the browse page, the viewer page and the stored totals,
     // but still count as uploads.
@@ -98,15 +98,13 @@ async fn trashes_own_files(pool: PgPool) {
     trash(&pool, &storage, other, true, &kept_ids)
         .await
         .unwrap();
-
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations", fixtures("trash"))]
 async fn wipes_trash(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
     for file in ["expired0.png", "expired0.t.webp", "recent00.png"] {
-        std::fs::write(dir.join("trash").join(file), b"bytes").unwrap();
+        std::fs::write(dir.path().join("trash").join(file), b"bytes").unwrap();
     }
     let trashed_ids = || async {
         list_images(
@@ -140,17 +138,15 @@ async fn wipes_trash(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(trashed_ids().await, ["recent00"]);
-    assert!(!dir.join("trash/expired0.png").exists());
-    assert!(!dir.join("trash/expired0.t.webp").exists());
-    assert!(dir.join("trash/recent00.png").exists());
+    assert!(!dir.path().join("trash/expired0.png").exists());
+    assert!(!dir.path().join("trash/expired0.t.webp").exists());
+    assert!(dir.path().join("trash/recent00.png").exists());
 
     // Emptying the trash takes the rest.
     let admin = common::test_user(&pool, "emptier").await.0.id;
     wipe_trash(&pool, &storage, 0, Some(admin)).await.unwrap();
     assert!(trashed_ids().await.is_empty());
-    assert!(!dir.join("trash/recent00.png").exists());
-
-    let _ = std::fs::remove_dir_all(&dir);
+    assert!(!dir.path().join("trash/recent00.png").exists());
 }
 
 /// Insert a 1x1 available png with the given hash.
@@ -185,7 +181,7 @@ async fn insert_png(pool: &PgPool, id: &str, hash: &str, uploader: Uuid) {
 async fn restores_trashed_files(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
     for file in ["expired0.png", "recent00.png", "recent00.t.webp"] {
-        std::fs::write(dir.join("trash").join(file), b"bytes").unwrap();
+        std::fs::write(dir.path().join("trash").join(file), b"bytes").unwrap();
     }
     let admin = common::test_user(&pool, "restorer").await.0.id;
     let available_ids = |ids: &'static [&'static str]| {
@@ -210,8 +206,8 @@ async fn restores_trashed_files(pool: PgPool) {
     let ids = ["recent00".to_string(), "missing0".to_string()];
     assert!(restore(&pool, &storage, &ids).await.is_err());
     assert!(available_ids(&["recent00", "missing0"]).await.is_empty());
-    assert!(dir.join("trash/recent00.png").exists());
-    assert!(dir.join("trash/recent00.t.webp").exists());
+    assert!(dir.path().join("trash/recent00.png").exists());
+    assert!(dir.path().join("trash/recent00.t.webp").exists());
 
     // Files past their retention stay trashed: the wipe is due.
     let ids = ["expired0".to_string(), "recent00".to_string()];
@@ -219,7 +215,7 @@ async fn restores_trashed_files(pool: PgPool) {
     assert_eq!(available_ids(&["expired0", "recent00"]).await, ["recent00"]);
     assert!(storage.path_for("recent00", "png").exists());
     assert!(storage.thumbnail_path_for("recent00").exists());
-    assert!(dir.join("trash/expired0.png").exists());
+    assert!(dir.path().join("trash/expired0.png").exists());
 
     // Files whose bytes were uploaded again since stay trashed.
     trash(&pool, &storage, admin, true, &["recent00".to_string()])
@@ -230,14 +226,12 @@ async fn restores_trashed_files(pool: PgPool) {
         .await
         .unwrap();
     assert!(available_ids(&["recent00"]).await.is_empty());
-
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[sqlx::test(migrations = "./migrations", fixtures("trash"))]
 async fn serves_trashed_files_to_own_pages_only(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
-    std::fs::write(dir.join("trash/recent00.png"), b"bytes").unwrap();
+    std::fs::write(dir.path().join("trash/recent00.png"), b"bytes").unwrap();
     let app = actix_test::init_service(
         App::new()
             .app_data(Data::new(common::test_config()))
@@ -268,6 +262,4 @@ async fn serves_trashed_files_to_own_pages_only(pool: PgPool) {
             StatusCode::NOT_FOUND
         );
     }
-
-    let _ = std::fs::remove_dir_all(&dir);
 }

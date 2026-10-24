@@ -42,16 +42,14 @@ fn limits(
 /// The full app with the given limits, as `main` builds it.
 macro_rules! limited_app {
     ($pool:expr, $limits:expr) => {{
-        let upload_dir = std::env::temp_dir().join(format!(
-            "elysia-rate-limit-{}",
-            elysia::services::files::generate_id()
-        ));
-        std::fs::create_dir_all(&upload_dir).unwrap();
+        let upload_dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(upload_dir.path().to_str().unwrap());
         actix_test::init_service(
             App::new()
                 .app_data(Data::new(test_config()))
                 .app_data(Data::new($pool))
-                .app_data(Data::new(Storage::new(upload_dir.to_str().unwrap())))
+                .app_data(upload_dir)
+                .app_data(Data::new(storage))
                 .app_data(Data::new(RwLock::new(test_settings())))
                 .app_data(Data::new(ViewCounter::default()))
                 .app_data(Data::new($limits))
