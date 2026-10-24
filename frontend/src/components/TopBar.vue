@@ -1,6 +1,6 @@
 <template>
   <header class="topbar">
-    <span>{{ $t('app.name') }}</span>
+    <router-link to="/upload" class="brand">{{ $t('app.name') }}</router-link>
     <span v-if="!route.meta.public || getToken()" class="actions">
       <Button
         v-for="item in navItems"
@@ -54,6 +54,10 @@ const navItems = computed(() =>
   font-weight: 600;
   font-size: 1.2rem;
   border-bottom: 1px solid var(--p-content-border-color, #ddd);
+}
+.topbar .brand {
+  color: inherit;
+  text-decoration: none;
 }
 .topbar .actions {
   display: flex;
