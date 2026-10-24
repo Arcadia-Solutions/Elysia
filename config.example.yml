@@ -14,6 +14,8 @@ database:
   user: elysia
   password: password
   name: elysia
+  # Connection pool size. Optional, defaults to 5.
+  max_connections: 5
 
 storage:
   upload_dir: ./data/uploads

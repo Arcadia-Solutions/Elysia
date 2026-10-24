@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
     let (host, port) = (cfg.server.host.clone(), cfg.server.port);
 
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(cfg.database.max_connections)
         .connect(&cfg.database.url())
         .await
         .expect("failed to connect to database");

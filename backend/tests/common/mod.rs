@@ -35,6 +35,7 @@ pub fn test_config() -> Config {
             user: "elysia".into(),
             password: "secret".into(),
             name: "elysia".into(),
+            max_connections: 5,
         },
         storage: StorageConfig {
             upload_dir: "/tmp/elysia".into(),

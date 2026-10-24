@@ -35,6 +35,13 @@ pub struct DatabaseConfig {
     pub user: String,
     pub password: String,
     pub name: String,
+    /// Size of the connection pool.
+    #[serde(default = "default_max_connections")]
+    pub max_connections: u32,
+}
+
+fn default_max_connections() -> u32 {
+    5
 }
 
 impl DatabaseConfig {
