@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:visible="visible" modal :header="t('account.password_title')" :style="{ width: '25rem' }" @hide="resetForm">
+  <Dialog v-model:visible="visible" modal :header="$t('account.password_title')" :style="{ width: '25rem' }" @hide="resetForm">
     <div class="dialog-fields">
       <Password
         v-model="currentPassword"
@@ -69,12 +69,8 @@ const handleChange = () => {
   api
     .changePassword({ current_password: currentPassword.value, new_password: newPassword.value })
     .then(() => {
-      resetForm()
       visible.value = false
       showToast(t('account.success'), 'success')
-    })
-    .catch((err) => {
-      error.value = err?.response?.data?.error ?? t('register.failed')
     })
     .finally(() => {
       loading.value = false

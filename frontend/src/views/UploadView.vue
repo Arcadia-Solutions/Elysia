@@ -7,11 +7,7 @@
           <h2>{{ $t('upload.step.image') }}</h2>
         </header>
 
-        <div
-          v-if="!urlInput"
-          class="dropzone"
-          :class="{ dragging }"
-        >
+        <div v-if="!urlInput" class="dropzone" :class="{ dragging }">
           <FileUpload
             mode="basic"
             accept="image/*"

@@ -109,11 +109,9 @@
     <small>{{ $t('maintenance.chevereto_import.buttons_help') }}</small>
 
     <template v-if="progress?.started_at">
-      <ProgressBar :value="progress.total ? Math.round((progress.done / progress.total) * 100) : 0" :showValue="false" style="height: 6px" />
+      <RunProgress :progress />
       <small>{{ $t('maintenance.chevereto_import.progress', { ...progress }) }}</small>
-      <small :title="new Date(progress.started_at).toLocaleString()">{{
-        $t('maintenance.chevereto_import.started', { when: timeAgo(new Date(progress.started_at)) })
-      }}</small>
+      <small :title="formatDate(progress.started_at)">{{ $t('maintenance.chevereto_import.started', { when: timeAgo(progress.started_at) }) }}</small>
       <small v-if="progress.running && stopping">{{ $t('maintenance.chevereto_import.stopping') }}</small>
       <Message v-else-if="!progress.running && progress.error" severity="error" size="small">{{ progress.error }}</Message>
       <Message v-else-if="!progress.running && !progress.finished_at" severity="warn" size="small">{{
@@ -152,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
@@ -161,12 +159,13 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
-import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
+import RunProgress from '@/components/RunProgress.vue'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
 import { api } from '@/services/api/http'
-import { timeAgo } from '@/services/format'
+import { formatDate, splitList, timeAgo } from '@/services/format'
+import { pollProgress } from '@/services/poll'
 import {
   CheveretoImportStart,
   type BackendUsers,
@@ -196,26 +195,18 @@ const currentPage = computed(() => Number(route.query.page) || 1)
 const pageSize = computed(() => Number(route.query.page_size) || 50)
 const stopping = ref(false)
 const disabled = computed(() => !!progress.value?.running)
-let timer: ReturnType<typeof setTimeout> | undefined
 
 const loadFailures = (page: number) =>
   api.listCheveretoImportFailures(page, pageSize.value).then((response) => {
     failures.value = response.data
   })
 
-// Polls once a second while a run goes, then reloads the failures it changed.
-const refresh = () => {
-  clearTimeout(timer)
-  api.getCheveretoImportProgress().then((response) => {
-    progress.value = response.data
-    if (response.data.running) {
-      timer = setTimeout(refresh, 1000)
-    } else {
-      stopping.value = false
-    }
-    loadFailures(currentPage.value)
-  })
-}
+// Reloads the failures on every poll, so they show up while the run goes.
+const refresh = pollProgress(
+  () => api.getCheveretoImportProgress().finally(() => loadFailures(currentPage.value)),
+  progress,
+  () => (stopping.value = false),
+)
 
 const start = (from: CheveretoImportStart) => {
   if (from === CheveretoImportStart.Restart && !confirm(t('maintenance.chevereto_import.restart_confirm'))) return
@@ -226,10 +217,7 @@ const start = (from: CheveretoImportStart) => {
       chevereto_database_url: form.value.chevereto_database_url.trim(),
       chevereto_public_url: form.value.chevereto_public_url.trim(),
       backend_database_url: backendDatabaseUrl || null,
-      link_hosts: linkHosts.value
-        .split(',')
-        .map((host) => host.trim())
-        .filter(Boolean),
+      link_hosts: splitList(linkHosts.value),
       backend_users: backendDatabaseUrl && matchUsers.value ? { ...users.value, email_column: emailColumn.value.trim() || null } : null,
       start: from,
     })
@@ -248,7 +236,6 @@ watch(
   { flush: 'post' },
 )
 onMounted(refresh)
-onUnmounted(() => clearTimeout(timer))
 </script>
 
 <style scoped>

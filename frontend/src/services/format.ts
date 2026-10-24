@@ -19,9 +19,9 @@ const relativeTimeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
   ['minute', 60],
 ]
 
-// How long ago (or from now) a date is, in its largest whole unit, e.g. "3 days ago".
-export const timeAgo = (date: Date, now: Date = new Date()): string => {
-  const seconds = Math.round((date.getTime() - now.getTime()) / 1000)
+// How long ago (or from now) an ISO date is, in its largest whole unit, e.g. "3 days ago".
+export const timeAgo = (date: string, now: Date = new Date()): string => {
+  const seconds = Math.round((Date.parse(date) - now.getTime()) / 1000)
   const format = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
   for (const [unit, unitSeconds] of relativeTimeUnits) {
     if (Math.abs(seconds) >= unitSeconds) return format.format(Math.trunc(seconds / unitSeconds), unit)
@@ -31,3 +31,13 @@ export const timeAgo = (date: Date, now: Date = new Date()): string => {
 
 // Resolves a possibly relative link against the current origin.
 export const absoluteUrl = (link: string): string => (link ? new URL(link, window.location.origin).href : '')
+
+// An ISO date as local "2026-10-15 14:00:00".
+export const formatDate = (date: string): string => new Date(date).toLocaleString('sv-SE')
+
+// Comma separated entries, trimmed, empty ones dropped.
+export const splitList = (text: string): string[] =>
+  text
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)

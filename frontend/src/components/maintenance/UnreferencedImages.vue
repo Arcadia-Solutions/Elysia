@@ -15,7 +15,7 @@
       />
     </div>
     <template v-if="progress?.running">
-      <ProgressBar :value="progress.total ? Math.round((progress.done / progress.total) * 100) : 0" :showValue="false" style="height: 6px" />
+      <RunProgress :progress />
       <small>{{ $t(`maintenance.unreferenced_images.progress.${progress.task}`, { done: progress.done, total: progress.total }) }}</small>
     </template>
     <Message v-else-if="progress?.error" severity="error" size="small">{{ progress.error }}</Message>
@@ -28,8 +28,8 @@
       }}
     </p>
     <template v-if="page && page.total_items > 0">
-      <small v-if="page.scanned_at" :title="new Date(page.scanned_at).toLocaleString()">
-        {{ $t('maintenance.unreferenced_images.scanned_at', { when: timeAgo(new Date(page.scanned_at)) }) }}
+      <small v-if="page.scanned_at" :title="formatDate(page.scanned_at)">
+        {{ $t('maintenance.unreferenced_images.scanned_at', { when: timeAgo(page.scanned_at) }) }}
       </small>
       <div class="toolbar">
         <Button
@@ -69,17 +69,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
-import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
+import RunProgress from '@/components/RunProgress.vue'
 import ImageResults from '@/components/ImageResults.vue'
 import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import { api } from '@/services/api/http'
-import { timeAgo } from '@/services/format'
+import { formatDate, splitList, timeAgo } from '@/services/format'
+import { pollProgress } from '@/services/poll'
 import { showToast } from '@/services/toast'
 import { ImagesSortBy, SortOrder, UnreferencedTask, type UnreferencedImagesPage, type UnreferencedProgress } from '@/services/api-schema'
 
@@ -96,7 +97,6 @@ const pageSize = computed(() => Number(route.query.page_size) || 50)
 const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) ?? ImagesSortBy.CreatedAt)
 const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)
 const selected = ref(new Set<string>())
-let timer: ReturnType<typeof setTimeout> | undefined
 
 const load = (number: number) =>
   api.listUnreferencedImages(number, pageSize.value, sortBy.value, order.value).then((response): unknown => {
@@ -106,25 +106,14 @@ const load = (number: number) =>
     page.value = response.data
     // Prefill with the host this instance's links use, relative links use the frontend's.
     if (!hosts.value) hosts.value = response.data.public_host || window.location.host
-    selected.value = new Set()
+    selected.value.clear()
   })
 
-// Polls once a second while a run goes, then reloads the list it changed.
-const refresh = () => {
-  clearTimeout(timer)
-  api.getUnreferencedProgress().then((response) => {
-    const wasRunning = progress.value?.running
-    progress.value = response.data
-    if (response.data.running) {
-      timer = setTimeout(refresh, 1000)
-    } else if (wasRunning) {
-      if (!response.data.error && response.data.task === UnreferencedTask.Trash) {
-        showToast(t('trash.deleted', { count: response.data.done }, response.data.done), 'success')
-      }
-      load(currentPage.value)
-    }
-  })
-}
+// Reloads the list a finished run changed.
+const refresh = pollProgress(api.getUnreferencedProgress, progress, (ended) => {
+  if (!ended.error && ended.task === UnreferencedTask.Trash) showToast(t('trash.deleted', { count: ended.done }, ended.done), 'success')
+  load(currentPage.value)
+})
 
 // Mark the run as started so the first poll sees it end, even when it finishes before that poll.
 // A scan resets the last scan's summary, a trash run keeps it.
@@ -133,12 +122,6 @@ const markStarted = (task: UnreferencedTask) => {
   progress.value = { scanned_columns: 0, referenced_images: 0, ...kept, running: true, task, done: 0, total: 0, error: null }
   refresh()
 }
-
-const splitList = (text: string) =>
-  text
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
 
 const scan = () => {
   if (!databaseUrl.value.trim() || splitList(hosts.value).length === 0 || progress.value?.running) return
@@ -168,7 +151,6 @@ onMounted(() => {
   refresh()
   load(currentPage.value)
 })
-onUnmounted(() => clearTimeout(timer))
 </script>
 
 <style scoped>

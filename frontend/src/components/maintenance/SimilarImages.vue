@@ -9,12 +9,12 @@
       <Button :label="$t('maintenance.similar_images.scan')" icon="pi pi-search" size="small" :loading="progress?.running" @click="scan" />
     </div>
     <template v-if="progress?.running">
-      <ProgressBar :value="progress.total ? Math.round((progress.done / progress.total) * 100) : 0" :showValue="false" style="height: 6px" />
+      <RunProgress :progress />
       <small>{{ $t('maintenance.similar_images.progress', { done: progress.done, total: progress.total }) }}</small>
     </template>
     <Message v-else-if="progress?.error" severity="error" size="small">{{ progress.error }}</Message>
-    <small v-else-if="progress?.scanned_at && page" :title="new Date(progress.scanned_at).toLocaleString()">
-      {{ $t('maintenance.similar_images.scanned_at', { when: timeAgo(new Date(progress.scanned_at)), count: page.total_items }, page.total_items) }}
+    <small v-else-if="progress?.scanned_at && page" :title="formatDate(progress.scanned_at)">
+      {{ $t('maintenance.similar_images.scanned_at', { when: timeAgo(progress.scanned_at), count: page.total_items }, page.total_items) }}
     </small>
     <template v-if="page && page.total_items > 0">
       <div class="toolbar">
@@ -48,7 +48,7 @@
                 <span>
                   {{ image.width }}x{{ image.height }}, {{ formatBytes(image.size) }}, {{ image.ext }}<br />
                   {{ image.uploader_username }},
-                  <span :title="new Date(image.created_at).toLocaleString()">{{ timeAgo(new Date(image.created_at)) }}</span>
+                  <span :title="formatDate(image.created_at)">{{ timeAgo(image.created_at) }}</span>
                 </span>
               </label>
             </div>
@@ -62,18 +62,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
-import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
+import RunProgress from '@/components/RunProgress.vue'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
 import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import { api } from '@/services/api/http'
-import { formatBytes, timeAgo } from '@/services/format'
+import { formatBytes, formatDate, timeAgo } from '@/services/format'
+import { pollProgress } from '@/services/poll'
 import { type PaginatedResultsSimilarImagesGroup, type SimilarProgress } from '@/services/api-schema'
 
 const route = useRoute()
@@ -86,7 +87,6 @@ const maxDistance = ref<number>()
 const progress = ref<SimilarProgress>()
 const page = ref<PaginatedResultsSimilarImagesGroup>()
 const selected = ref(new Set<string>())
-let timer: ReturnType<typeof setTimeout> | undefined
 
 const load = (number: number) =>
   api.listSimilarImages(number, pageSize.value).then((response): unknown => {
@@ -94,23 +94,12 @@ const load = (number: number) =>
     if (response.data.results.length === 0 && number > 1)
       return router.replace({ query: { ...route.query, page: Math.max(1, Math.ceil(response.data.total_items / pageSize.value)) } })
     page.value = response.data
-    selected.value = new Set()
+    selected.value.clear()
   })
 
-// Polls once a second while a scan goes, then reloads the groups it replaced.
-const refresh = () => {
-  clearTimeout(timer)
-  api.getSimilarProgress().then((response) => {
-    const wasRunning = progress.value?.running
-    progress.value = response.data
-    maxDistance.value ??= response.data.max_distance
-    if (response.data.running) {
-      timer = setTimeout(refresh, 1000)
-    } else if (wasRunning) {
-      load(currentPage.value)
-    }
-  })
-}
+// Reloads the groups a finished scan replaced.
+const refresh = pollProgress(api.getSimilarProgress, progress, () => load(currentPage.value))
+watch(progress, (value) => (maxDistance.value ??= value?.max_distance))
 
 const scan = () => {
   if (progress.value?.running || maxDistance.value === undefined) return
@@ -122,11 +111,7 @@ const scan = () => {
   })
 }
 
-const toggleSelected = (id: string) => {
-  const next = new Set(selected.value)
-  if (!next.delete(id)) next.add(id)
-  selected.value = next
-}
+const toggleSelected = (id: string) => selected.value.delete(id) || selected.value.add(id)
 
 const deleteDialogVisible = ref(false)
 const onDeleted = () => {
@@ -143,7 +128,6 @@ onMounted(() => {
   refresh()
   load(currentPage.value)
 })
-onUnmounted(() => clearTimeout(timer))
 </script>
 
 <style scoped>

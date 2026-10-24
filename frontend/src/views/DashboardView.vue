@@ -64,7 +64,7 @@
             <template #body="{ data }">{{ formatCount(data.files) }}</template>
           </Column>
           <Column :header="$t('dashboard.last_upload')">
-            <template #body="{ data }">{{ new Date(data.last_upload).toLocaleString('sv-SE', { timeZone: 'UTC' }) }} UTC</template>
+            <template #body="{ data }">{{ formatDate(data.last_upload) }}</template>
           </Column>
         </DataTable>
       </section>
@@ -87,7 +87,7 @@ import Select from 'primevue/select'
 import { Chart } from 'highcharts-vue'
 import type Highcharts from 'highcharts'
 import { api } from '@/services/api/http'
-import { formatBytes } from '@/services/format'
+import { formatBytes, formatDate } from '@/services/format'
 import { darkMode } from '@/services/theme'
 import { StatsInterval, StatsPeriod, type PeriodTotal, type StatsResponse } from '@/services/api-schema'
 

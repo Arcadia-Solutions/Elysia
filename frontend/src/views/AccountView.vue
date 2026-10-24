@@ -40,11 +40,11 @@
       </div>
       <div class="field">
         <label>{{ $t('account.registered_at') }}</label>
-        <span>{{ new Date(user.created_at).toLocaleString('sv-SE') }} ({{ timeAgo(new Date(user.created_at)) }})</span>
+        <span>{{ formatDate(user.created_at) }} ({{ timeAgo(user.created_at) }})</span>
       </div>
       <div class="field">
         <label>{{ $t('account.last_seen') }}</label>
-        <span>{{ user.last_seen ? `${new Date(user.last_seen).toLocaleString('sv-SE')} (${timeAgo(new Date(user.last_seen))})` : '-' }}</span>
+        <span>{{ user.last_seen ? `${formatDate(user.last_seen)} (${timeAgo(user.last_seen)})` : '-' }}</span>
       </div>
 
       <hr />
@@ -119,7 +119,7 @@ import ApiKeys from '@/components/account/ApiKeys.vue'
 import ChangePasswordDialog from '@/components/account/ChangePasswordDialog.vue'
 import { api } from '@/services/api/http'
 import { showToast } from '@/services/toast'
-import { formatBytes, timeAgo } from '@/services/format'
+import { formatBytes, formatDate, timeAgo } from '@/services/format'
 import type { PublicElysiaSettings, StorageUsage, UserSummary } from '@/services/api-schema'
 
 const { t } = useI18n()

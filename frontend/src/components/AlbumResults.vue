@@ -39,7 +39,7 @@
       <Column v-if="isAdmin()" :field="AlbumsSortBy.OwnerUsername" :header="$t('albums.columns.owner')" sortable />
       <Column :field="AlbumsSortBy.CreatedAt" :header="$t('albums.columns.created_at')" sortable>
         <template #body="{ data }">
-          <span :title="new Date(data.created_at).toLocaleString()">{{ timeAgo(new Date(data.created_at)) }}</span>
+          <span :title="formatDate(data.created_at)">{{ timeAgo(data.created_at) }}</span>
         </template>
       </Column>
       <Column :field="AlbumsSortBy.ImageCount" :header="$t('albums.columns.image_count')" sortable />
@@ -52,7 +52,7 @@ import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import PaginatedResults from '@/components/PaginatedResults.vue'
 import ResultsControls, { display } from '@/components/ResultsControls.vue'
-import { timeAgo } from '@/services/format'
+import { formatDate, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'
 import { AlbumsSortBy, SortOrder, type PaginatedResultsAlbumSummaryResultsInner } from '@/services/api-schema'
 

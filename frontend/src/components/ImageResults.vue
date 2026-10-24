@@ -55,7 +55,7 @@
       <Column field="uploader_username" :header="$t('browse.columns.uploader')" />
       <Column :field="ImagesSortBy.CreatedAt" :header="$t('browse.columns.uploaded_at')" sortable>
         <template #body="{ data }">
-          <span :title="new Date(data.created_at).toLocaleString()">{{ timeAgo(new Date(data.created_at)) }}</span>
+          <span :title="formatDate(data.created_at)">{{ timeAgo(data.created_at) }}</span>
         </template>
       </Column>
       <Column :field="ImagesSortBy.Size" :header="$t('browse.columns.size')" sortable>
@@ -74,7 +74,7 @@ import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import ResultsControls, { display } from '@/components/ResultsControls.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
-import { formatBytes, timeAgo } from '@/services/format'
+import { formatBytes, formatDate, timeAgo } from '@/services/format'
 import { ImagesSortBy, SortOrder, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
 
 const props = defineProps<{
@@ -97,17 +97,12 @@ const emit = defineEmits<{
 // Ids of the selected images, which may span several pages.
 const selected = defineModel<Set<string>>('selected', { required: true })
 
-const toggleSelected = (id: string) => {
-  const next = new Set(selected.value)
-  if (!next.delete(id)) next.add(id)
-  selected.value = next
-}
+const toggleSelected = (id: string) => selected.value.delete(id) || selected.value.add(id)
 
 // The table only knows the current page: keep the other pages' selection.
 const setPageSelection = (rows: PaginatedResultsImageSummaryResultsInner[]) => {
-  const next = new Set([...selected.value].filter((id) => !props.images.some((image) => image.id === id)))
-  for (const row of rows) next.add(row.id)
-  selected.value = next
+  for (const image of props.images) selected.value.delete(image.id)
+  for (const row of rows) selected.value.add(row.id)
 }
 </script>
 

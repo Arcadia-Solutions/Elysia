@@ -39,6 +39,7 @@
     "new_placeholder": "New password (12+ characters)",
     "confirm_placeholder": "Confirm new password",
     "mismatch": "The new passwords do not match.",
+    "failed": "Could not change the password.",
     "submit": "Change password",
     "success": "Password changed.",
     "status": "Status",

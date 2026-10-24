@@ -1,4 +1,3 @@
-import { config } from '@/config'
 import { showToast } from '@/services/toast'
 import { clearSession, getToken } from '@/services/session'
 import {
@@ -17,9 +16,7 @@ import axios from 'axios'
 // No default Content-Type: axios sets application/json for object bodies and
 // multipart/form-data (with boundary) for FormData on its own. A hard default
 // would clobber the multipart boundary on uploads.
-const http = axios.create({
-  baseURL: config.api_base_url,
-})
+const http = axios.create()
 
 http.interceptors.request.use((cfg) => {
   const token = getToken()
@@ -60,8 +57,8 @@ export default http
 // The generated client, bound to our auth-aware axios instance. The generator
 // emits one factory per utoipa tag; merge them so views call methods directly
 // (api.login, api.upload). Operation ids are unique, so nothing collides.
-// basePath is config.api_base_url so request URLs stay relative (vite proxy).
-const factoryArgs = [undefined, config.api_base_url, http] as const
+// An empty basePath keeps request URLs relative (vite proxy).
+const factoryArgs = [undefined, '', http] as const
 export const api = {
   ...AlbumsApiFactory(...factoryArgs),
   ...APIKeysApiFactory(...factoryArgs),

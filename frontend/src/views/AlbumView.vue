@@ -5,7 +5,7 @@
       <small class="details">
         {{ $t('albums.image_count', { count: total }, total) }} ·
         {{ $t('albums.created_by', { owner: album.owner_username }) }}
-        <span :title="new Date(album.created_at).toLocaleString()">{{ timeAgo(new Date(album.created_at)) }}</span>
+        <span :title="formatDate(album.created_at)">{{ timeAgo(album.created_at) }}</span>
       </small>
     </header>
     <!-- Anyone may view an album, only its owner and admins change it. -->
@@ -50,7 +50,7 @@ import Button from 'primevue/button'
 import AlbumDialog from '@/components/AlbumDialog.vue'
 import ImageResults from '@/components/ImageResults.vue'
 import { api } from '@/services/api/http'
-import { timeAgo } from '@/services/format'
+import { formatDate, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
 import { ImagesSortBy, ImagesStatus, SortOrder, type Album, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'

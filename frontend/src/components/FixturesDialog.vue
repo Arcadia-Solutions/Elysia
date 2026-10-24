@@ -21,7 +21,7 @@
         />
       </InputGroup>
       <template v-if="progress?.running">
-        <ProgressBar :value="Math.round((progress.done / progress.total) * 100)" :showValue="false" style="height: 6px" />
+        <RunProgress :progress />
         <small>{{ $t('fixtures.progress', { done: progress.done, total: progress.total }) }}</small>
       </template>
       <Message v-else-if="progress?.error" severity="error" size="small">{{ progress.error }}</Message>
@@ -31,16 +31,17 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputGroup from 'primevue/inputgroup'
 import InputText from 'primevue/inputtext'
-import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
+import RunProgress from '@/components/RunProgress.vue'
 import { api } from '@/services/api/http'
+import { pollProgress } from '@/services/poll'
 import { showToast } from '@/services/toast'
 import type { FixturesParams, FixturesProgress } from '@/services/api-schema'
 
@@ -50,22 +51,12 @@ const visible = defineModel<boolean>('visible', { required: true })
 const params = ref<FixturesParams>({ image_count: 300, user_count: 12, history_days: 3 * 365, password: 'password123' })
 const showPassword = ref(true)
 const progress = ref<FixturesProgress>()
-let timer: ReturnType<typeof setTimeout> | undefined
 
-// Polls once a second while a run goes, so the bar keeps moving even with the dialog closed.
-const refresh = () => {
-  clearTimeout(timer)
-  api.getFixturesProgress().then((response) => {
-    const wasRunning = progress.value?.running
-    progress.value = response.data
-    if (response.data.running) {
-      timer = setTimeout(refresh, 1000)
-    } else if (wasRunning) {
-      if (!response.data.error) showToast(t('fixtures.done', { count: response.data.done }), 'success')
-      emit('done')
-    }
-  })
-}
+// Keeps polling with the dialog closed, so the bar is current when it reopens.
+const refresh = pollProgress(api.getFixturesProgress, progress, (ended) => {
+  if (!ended.error) showToast(t('fixtures.done', { count: ended.done }), 'success')
+  emit('done')
+})
 
 // Mark the run as started so the first poll sees it end, even when it finishes before that poll.
 const generate = () =>
@@ -73,8 +64,6 @@ const generate = () =>
     progress.value = { running: true, done: 0, total: params.value.image_count }
     refresh()
   })
-
-onUnmounted(() => clearTimeout(timer))
 </script>
 
 <style scoped>

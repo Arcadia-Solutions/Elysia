@@ -17,9 +17,11 @@ import { getToken, saveSession } from '@/services/session'
 // nothing left to do on failure.
 onMounted(() => {
   if (!getToken()) return
-  api.getPublicElysiaSettings().then((response) => {
-    localStorage.setItem('public_settings', JSON.stringify(response.data))
-  })
+  api
+    .getPublicElysiaSettings()
+    .then((response) => {
+      localStorage.setItem('public_settings', JSON.stringify(response.data))
+    })
   api
     .me()
     .then((response) => {

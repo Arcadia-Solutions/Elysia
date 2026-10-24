@@ -36,10 +36,10 @@
           <template #body="{ data }">{{ formatBytes(data.storage_used_bytes) }}</template>
         </Column>
         <Column field="created_at" :header="$t('account.registered_at')" sortable>
-          <template #body="{ data }">{{ timeAgo(new Date(data.created_at)) }}</template>
+          <template #body="{ data }">{{ timeAgo(data.created_at) }}</template>
         </Column>
         <Column field="last_seen" :header="$t('account.last_seen')" sortable>
-          <template #body="{ data }">{{ data.last_seen ? timeAgo(new Date(data.last_seen)) : '-' }}</template>
+          <template #body="{ data }">{{ data.last_seen ? timeAgo(data.last_seen) : '-' }}</template>
         </Column>
       </DataTable>
     </PaginatedResults>

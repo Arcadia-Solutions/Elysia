@@ -7,7 +7,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    // pinned to 5174 so it does not collide with Arcadia's frontend on 5173, and URLs
+    // pinned to 5174 so it does not collide with other Vite apps on 5173, and URLs
     // pointing here (e.g. redirect URIs registered elsewhere) stay valid
     port: 5174,
     strictPort: true,

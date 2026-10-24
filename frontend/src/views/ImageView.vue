@@ -11,16 +11,16 @@
         <dd>{{ meta.uploader_username }}</dd>
         <dt>{{ $t('image.uploaded_at') }}</dt>
         <dd>
-          {{ new Date(meta.created_at).toLocaleString('sv-SE') }}
+          {{ formatDate(meta.created_at) }}
           <br />
-          ({{ timeAgo(new Date(meta.created_at)) }})
+          ({{ timeAgo(meta.created_at) }})
         </dd>
         <template v-if="meta.trashed_at">
           <dt>{{ $t('image.trashed_at') }}</dt>
           <dd>
-            {{ new Date(meta.trashed_at).toLocaleString('sv-SE') }}
+            {{ formatDate(meta.trashed_at) }}
             <br />
-            ({{ timeAgo(new Date(meta.trashed_at)) }})
+            ({{ timeAgo(meta.trashed_at) }})
             <br />
             <span class="trashed">{{ $t('image.days_until_deletion', { days: meta.days_until_deletion }, meta.days_until_deletion ?? 0) }}</span>
           </dd>
@@ -86,7 +86,7 @@
       />
       <Button v-if="meta.trashed_at" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
     </aside>
-    <DeleteImagesDialog v-if="meta" v-model:visible="deleteDialogVisible" :ids="[meta.id]" @deleted="router.push({ name: isAdmin() ? 'Browse' : 'Upload' })" />
+    <DeleteImagesDialog v-model:visible="deleteDialogVisible" :ids="[meta.id]" @deleted="router.push({ name: isAdmin() ? 'Browse' : 'Upload' })" />
     <Dialog v-model:visible="albumDialogVisible" modal :header="$t('albums.add')" :style="{ width: '25rem' }">
       <AlbumSelect
         :modelValue="null"
@@ -100,7 +100,6 @@
 </template>
 
 <script setup lang="ts">
-import { formatBytes, timeAgo } from '@/services/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -111,6 +110,7 @@ import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import AlbumSelect from '@/components/AlbumSelect.vue'
 import EmbedLinks from '@/components/EmbedLinks.vue'
 import { api } from '@/services/api/http'
+import { formatBytes, formatDate, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
 import type { ImageAlbum, MetadataResponse } from '@/services/api-schema'

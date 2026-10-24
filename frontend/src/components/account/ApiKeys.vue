@@ -15,11 +15,11 @@
       <span class="muted">
         <code>{{ apiKey.token_prefix }}…</code>
         · {{ $t('api_keys.uploads', { count: apiKey.uploads }) }} · {{ $t('api_keys.last_used') }}
-        {{ apiKey.last_used_at ? timeAgo(new Date(apiKey.last_used_at)) : $t('api_keys.never') }}
+        {{ apiKey.last_used_at ? timeAgo(apiKey.last_used_at) : $t('api_keys.never') }}
       </span>
       <span class="muted">
-        {{ $t('api_keys.created') }} {{ timeAgo(new Date(apiKey.created_at)) }} · {{ $t('api_keys.expires') }}
-        {{ apiKey.expires_at ? timeAgo(new Date(apiKey.expires_at)) : $t('api_keys.never') }}
+        {{ $t('api_keys.created') }} {{ timeAgo(apiKey.created_at) }} · {{ $t('api_keys.expires') }}
+        {{ apiKey.expires_at ? timeAgo(apiKey.expires_at) : $t('api_keys.never') }}
       </span>
     </div>
 
