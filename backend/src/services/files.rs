@@ -79,7 +79,7 @@ pub async fn list_images(
         query.page,
         query.page_size,
         |offset, limit| files::list_page(pool, offset, limit, query, uploader),
-        files::count(pool, query.status, uploader),
+        files::count(pool, query.status, uploader, query.album_id),
         |row| row.total,
     )
     .await

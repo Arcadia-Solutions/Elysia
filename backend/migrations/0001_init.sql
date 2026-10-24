@@ -143,6 +143,30 @@ comment on column file_referrer_views.referrer is 'Lowercased Referer host; empt
 comment on column file_referrer_views.views is 'Times the image was served from /i/ to this referrer';
 comment on column file_referrer_views.thumbnail_views is 'Times the thumbnail was served from /t/ to this referrer';
 
+-- Named sets of images a user curates. Any available image may go in any of
+-- its owner's albums, whoever uploaded it.
+create table albums (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references users(id),
+  name text not null check (char_length(name) between 1 and 64),
+  created_at timestamptz not null default now(),
+  unique (owner_id, name)
+);
+
+comment on table albums is 'Image albums; anyone may view them, only their owner and admins change them';
+comment on column albums.name is 'Display name, 1 to 64 characters, unique per owner';
+
+create table album_images (
+  album_id uuid not null references albums(id) on delete cascade,
+  file_id text not null references files(id) on delete cascade,
+  primary key (album_id, file_id)
+);
+
+comment on table album_images is 'Which files are in which album; a file may be in several albums. Trashed and deleted files stay listed here but are hidden';
+
+-- The image page lists the albums a file is in.
+create index album_images_file_id_idx on album_images (file_id);
+
 create table unreferenced_files (
   file_id text primary key references files(id) on delete cascade,
   scanned_at timestamptz not null

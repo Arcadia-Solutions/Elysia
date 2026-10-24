@@ -49,12 +49,44 @@
           </ul>
           <template v-else>{{ $t('image.processing.none') }}</template>
         </dd>
+        <dt>{{ $t('albums.title') }}</dt>
+        <dd class="albums">
+          <Chip
+            v-for="album in showAllAlbums ? meta.albums : meta.albums.slice(0, 10)"
+            :key="album.id"
+            :removable="album.mine"
+            @remove="removeFromAlbum(album)"
+          >
+            <router-link :to="{ name: 'Album', params: { id: album.id } }">{{ albumLabel(album) }}</router-link>
+          </Chip>
+          <Button v-if="!showAllAlbums && meta.albums.length > 10" label="..." size="small" severity="secondary" text rounded @click="showAllAlbums = true" />
+          <Button
+            v-if="!meta.trashed"
+            icon="pi pi-plus"
+            size="small"
+            severity="secondary"
+            text
+            rounded
+            :title="$t('albums.add')"
+            :aria-label="$t('albums.add')"
+            @click="albumDialogVisible = true"
+          />
+        </dd>
       </dl>
       <!-- Trashed images are not served from their public links. -->
       <EmbedLinks v-if="!meta.trashed" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
       <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" class="delete" @click="trash" />
       <Button v-if="meta.trashed" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
     </aside>
+    <Dialog v-model:visible="albumDialogVisible" modal :header="$t('albums.add')" :style="{ width: '25rem' }">
+      <AlbumSelect
+        :modelValue="null"
+        :mine="false"
+        :exclude="meta.albums.map((album) => album.id)"
+        :placeholder="$t('albums.album')"
+        @update:modelValue="addToAlbum"
+      />
+    </Dialog>
   </div>
 </template>
 
@@ -64,11 +96,14 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import Chip from 'primevue/chip'
+import Dialog from 'primevue/dialog'
+import AlbumSelect from '@/components/AlbumSelect.vue'
 import EmbedLinks from '@/components/EmbedLinks.vue'
 import { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
-import type { MetadataResponse } from '@/services/api-schema'
+import type { ImageAlbum, MetadataResponse } from '@/services/api-schema'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -104,6 +139,28 @@ const restore = () => {
   if (!meta.value) return
   api.restoreImages({ ids: [meta.value.id] }).then(() => {
     showToast(t('trash.restored', 1), 'success')
+    load()
+  })
+}
+
+const albumDialogVisible = ref(false)
+const showAllAlbums = ref(false)
+
+const albumLabel = (album: ImageAlbum) => (album.mine ? album.name : `${album.name} (${album.owner_username})`)
+
+const addToAlbum = (albumId: string | null) => {
+  if (!meta.value || !albumId) return
+  api.addAlbumImages(albumId, { ids: [meta.value.id] }).then(() => {
+    albumDialogVisible.value = false
+    showToast(t('albums.added'), 'success')
+    load()
+  })
+}
+
+const removeFromAlbum = (album: ImageAlbum) => {
+  if (!meta.value) return
+  api.removeAlbumImages(album.id, { ids: [meta.value.id] }).then(() => {
+    showToast(t('albums.removed', 1), 'success')
     load()
   })
 }
@@ -149,6 +206,17 @@ load()
 .list {
   margin: 0;
   padding-left: 18px;
+}
+.albums {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.albums a {
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
 }
 .delete {
   align-self: flex-start;

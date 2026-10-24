@@ -1,3 +1,4 @@
+pub mod albums;
 pub mod auth;
 pub mod chevereto_import;
 pub mod files;

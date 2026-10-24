@@ -2,6 +2,7 @@ import { config } from '@/config'
 import { showToast } from '@/services/toast'
 import { clearSession, getToken } from '@/services/session'
 import {
+  AlbumsApiFactory,
   APIKeysApiFactory,
   AuthApiFactory,
   FixturesApiFactory,
@@ -62,6 +63,7 @@ export default http
 // basePath is config.api_base_url so request URLs stay relative (vite proxy).
 const factoryArgs = [undefined, config.api_base_url, http] as const
 export const api = {
+  ...AlbumsApiFactory(...factoryArgs),
   ...APIKeysApiFactory(...factoryArgs),
   ...AuthApiFactory(...factoryArgs),
   ...FixturesApiFactory(...factoryArgs),

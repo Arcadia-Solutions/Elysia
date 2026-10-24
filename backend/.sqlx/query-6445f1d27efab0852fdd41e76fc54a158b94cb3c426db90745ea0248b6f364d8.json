@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update albums set name = $2 where id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6445f1d27efab0852fdd41e76fc54a158b94cb3c426db90745ea0248b6f364d8"
+}

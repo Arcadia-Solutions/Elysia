@@ -332,10 +332,13 @@ pub struct ImagesQuery {
     pub status: ImagesStatus,
     /// Admin only: just this user's uploads (exact username).
     pub username: Option<String>,
+    /// Just this album's images, whoever uploaded them.
+    #[param(value_type = Option<String>)]
+    pub album_id: Option<Uuid>,
 }
 
 /// Fetch one page of images with the given status in the given order, with the total count,
-/// limited to `uploader`'s files when set. `id` breaks ties so rows never shift across pages.
+/// limited to `uploader`'s files and to the query's album when set. `id` breaks ties so rows never shift across pages.
 // ponytail: CASE ordering can't use an index (full sort per page, as the window
 // count scans every row anyway); add per-column queries + indexes if it gets slow.
 pub async fn list_page(
@@ -354,7 +357,9 @@ pub async fn list_page(
                 count(*) over() as "total!"
          from files f join users u on u.id = f.uploaded_by_user_id
          where f.status = $5
-           and ($6::uuid is null or f.uploaded_by_user_id = $6) order by
+           and ($6::uuid is null or f.uploaded_by_user_id = $6)
+           and ($7::uuid is null or exists (select 1 from album_images
+                                            where album_id = $7 and file_id = f.id)) order by
            case when $3 = 'created_at' and $4 then f.created_at end asc,
            case when $3 = 'created_at' and not $4 then f.created_at end desc,
            case when $3 = 'size' and $4 then f.size end asc,
@@ -377,6 +382,7 @@ pub async fn list_page(
         matches!(query.order, SortOrder::Asc),
         query.status as ImagesStatus,
         uploader,
+        query.album_id,
     )
     .fetch_all(pool)
     .await?)
@@ -500,14 +506,23 @@ pub async fn unreferenced_ids(pool: &PgPool) -> Result<Vec<String>> {
     .await?)
 }
 
-/// Number of files with the given status, limited to `uploader`'s when set; the
-/// count for an out-of-range page, where the window count in `list_page` returns no rows.
-pub async fn count(pool: &PgPool, status: ImagesStatus, uploader: Option<Uuid>) -> Result<i64> {
+/// Number of files with the given status, limited to `uploader`'s and to `album_id`'s
+/// when set; the count for an out-of-range page, where the window count in `list_page`
+/// returns no rows.
+pub async fn count(
+    pool: &PgPool,
+    status: ImagesStatus,
+    uploader: Option<Uuid>,
+    album_id: Option<Uuid>,
+) -> Result<i64> {
     Ok(sqlx::query_scalar!(
         r#"select count(*) as "count!" from files where status = $1
-           and ($2::uuid is null or uploaded_by_user_id = $2)"#,
+           and ($2::uuid is null or uploaded_by_user_id = $2)
+           and ($3::uuid is null or exists (select 1 from album_images
+                                            where album_id = $3 and file_id = files.id))"#,
         status as ImagesStatus,
-        uploader
+        uploader,
+        album_id
     )
     .fetch_one(pool)
     .await?)

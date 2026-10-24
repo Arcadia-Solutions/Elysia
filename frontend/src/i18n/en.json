@@ -178,7 +178,11 @@
     "empty_trash_confirm": "Delete the image in the trash for good? This cannot be undone. | Delete the {count} images in the trash for good? This cannot be undone.",
     "trash_emptied": "Trash emptied",
     "username_placeholder": "Username",
-    "fixtures": "Generate fixtures"
+    "fixtures": "Generate fixtures",
+    "tabs": {
+      "images": "Images",
+      "albums": "Albums"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -454,5 +458,37 @@
     "last": "Last page",
     "page_size": "Page size",
     "per_page": "{count} per page"
+  },
+  "albums": {
+    "title": "Albums",
+    "album": "Album",
+    "none": "No album",
+    "new": "New album",
+    "create": "Create",
+    "rename": "Rename",
+    "name": "Album name",
+    "delete": "Delete album",
+    "delete_confirm": "Delete the album \"{name}\"? Its images are kept.",
+    "deleted": "Album deleted",
+    "empty": "No albums yet",
+    "empty_album": "This album is empty",
+    "add": "Add to an album",
+    "added": "Added to the album",
+    "removed": "Removed from the album | {count} images removed from the album",
+    "remove_selected": "Remove from album | Remove {count} from album",
+    "image_count": "{count} image | {count} images",
+    "created_by": "created by {owner}",
+    "sort": {
+      "name": "Name",
+      "owner_username": "Owner",
+      "created_at": "Date created",
+      "image_count": "Image count"
+    },
+    "columns": {
+      "name": "Name",
+      "owner": "Owner",
+      "created_at": "Created",
+      "image_count": "Images"
+    }
   }
 }

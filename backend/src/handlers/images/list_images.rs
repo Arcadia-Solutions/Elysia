@@ -54,7 +54,8 @@ impl ImageSummary {
     tag = "Images",
     get,
     path = "/api/images",
-    description = "Admins browse all images, or one user's with `username`, other users only their own uploads.",
+    description = "Admins browse all images, or one user's with `username`, other users only their own uploads. \
+        With `album_id`, any album's images whoever uploaded them.",
     params(ImagesQuery),
     security(("bearer" = [])),
     responses(
@@ -88,6 +89,8 @@ pub async fn images(
                 }
             }
         }
+        // An album holds other users' images too.
+        (false, ImagesStatus::Available, None) if query.album_id.is_some() => None,
         (false, ImagesStatus::Available, None) => Some(authenticated.user_id),
         (false, _, _) => return Err(Error::Forbidden),
     };

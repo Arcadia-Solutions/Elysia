@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from album_images where album_id = $1 and file_id = any($2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5ebf76764be2ff4fdaceb3609c82487539fd1fb328274e1a257993a707334dfc"
+}

@@ -8,6 +8,7 @@ import SettingsView from '@/views/SettingsView.vue'
 import AccountView from '@/views/AccountView.vue'
 import ImageView from '@/views/ImageView.vue'
 import BrowseView from '@/views/BrowseView.vue'
+import AlbumView from '@/views/AlbumView.vue'
 import UsersView from '@/views/UsersView.vue'
 import MaintenanceView from '@/views/MaintenanceView.vue'
 import { getToken, isAdmin } from '@/services/session'
@@ -27,6 +28,7 @@ const router = createRouter({
     { path: '/upload', name: 'Upload', component: UploadView },
     { path: '/uploaded', name: 'Uploaded', component: UploadedView },
     { path: '/browse', name: 'Browse', component: BrowseView },
+    { path: '/albums/:id', name: 'Album', component: AlbumView },
     {
       path: '/dashboard',
       name: 'Dashboard',

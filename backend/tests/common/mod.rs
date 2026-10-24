@@ -355,5 +355,6 @@ pub fn page(page: u32) -> elysia::repository::files::ImagesQuery {
         order: SortOrder::Desc,
         status: ImagesStatus::Available,
         username: None,
+        album_id: None,
     }
 }

@@ -1,38 +1,12 @@
 <template>
-  <div class="controls">
-    <Select
-      :modelValue="sortBy"
-      size="small"
-      :options="Object.values(ImagesSortBy).map((value) => ({ label: $t(`browse.sort.${value}`), value }))"
-      option-label="label"
-      option-value="value"
-      @update:modelValue="(value: ImagesSortBy) => emit('sort', value, order)"
-    />
-    <Button
-      :icon="order === SortOrder.Asc ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"
-      size="small"
-      severity="secondary"
-      :title="$t(`browse.order.${order}`)"
-      :aria-label="$t(`browse.order.${order}`)"
-      @click="emit('sort', sortBy, order === SortOrder.Asc ? SortOrder.Desc : SortOrder.Asc)"
-    />
-    <PageSizeSelect :modelValue="pageSize" @update:modelValue="(size: number) => emit('changePageSize', size)" />
-    <SelectButton
-      v-model="display"
-      size="small"
-      :allowEmpty="false"
-      :options="[
-        { icon: 'pi pi-th-large', label: $t('browse.display.grid'), value: 'grid' },
-        { icon: 'pi pi-list', label: $t('browse.display.table'), value: 'table' },
-      ]"
-      option-value="value"
-      data-key="value"
-    >
-      <template #option="{ option }">
-        <i :class="option.icon" :title="option.label" :aria-label="option.label" />
-      </template>
-    </SelectButton>
-  </div>
+  <ResultsControls
+    :sortBy
+    :order
+    :pageSize
+    :sortOptions="Object.values(ImagesSortBy).map((value) => ({ label: $t(`browse.sort.${value}`), value }))"
+    @sort="(value: ImagesSortBy, order: SortOrder) => emit('sort', value, order)"
+    @changePageSize="(size: number) => emit('changePageSize', size)"
+  />
   <PaginatedResults :page :pageSize :totalItems @changePage="(page: number) => emit('changePage', page)">
     <div v-if="display === 'grid'" class="grid" :class="{ selecting: selected.size > 0 }">
       <div v-for="image in images" :key="image.id" class="cell" :class="{ selected: selected.has(image.id) }">
@@ -44,6 +18,7 @@
           <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
         </router-link>
         <button
+          v-if="!readonly"
           type="button"
           class="select-indicator"
           :aria-pressed="selected.has(image.id)"
@@ -66,7 +41,7 @@
       @update:selection="setPageSelection"
       @sort="(event: DataTableSortEvent) => emit('sort', event.sortField as ImagesSortBy, event.sortOrder === 1 ? SortOrder.Asc : SortOrder.Desc)"
     >
-      <Column selectionMode="multiple" />
+      <Column v-if="!readonly" selectionMode="multiple" />
       <Column :header="$t('browse.columns.image')">
         <template #body="{ data }">
           <router-link :to="{ name: 'Image', params: { id: data.id } }">
@@ -95,13 +70,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import Select from 'primevue/select'
-import SelectButton from 'primevue/selectbutton'
-import Button from 'primevue/button'
 import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
-import PageSizeSelect from '@/components/PageSizeSelect.vue'
+import ResultsControls, { display } from '@/components/ResultsControls.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
 import { formatBytes, timeAgo } from '@/services/format'
 import { ImagesSortBy, SortOrder, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
@@ -113,6 +84,8 @@ const props = defineProps<{
   totalItems: number
   sortBy: ImagesSortBy
   order: SortOrder
+  // Hides the selection controls, for lists the caller can't act on.
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -123,10 +96,6 @@ const emit = defineEmits<{
 
 // Ids of the selected images, which may span several pages.
 const selected = defineModel<Set<string>>('selected', { required: true })
-
-// Remembered per browser, shared by every image list.
-const display = ref<'grid' | 'table'>(localStorage.getItem('image_display') === 'table' ? 'table' : 'grid')
-watch(display, (value) => localStorage.setItem('image_display', value))
 
 const toggleSelected = (id: string) => {
   const next = new Set(selected.value)
@@ -143,13 +112,6 @@ const setPageSelection = (rows: PaginatedResultsImageSummaryResultsInner[]) => {
 </script>
 
 <style scoped>
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 30px;
-}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

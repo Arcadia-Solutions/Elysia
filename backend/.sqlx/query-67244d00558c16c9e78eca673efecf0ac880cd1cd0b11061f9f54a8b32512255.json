@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select a.id, a.name, u.username as owner_username,\n                to_char(a.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"created_at!\",\n                stats.image_count as \"image_count!\",\n                count(*) over() as \"total!\"\n         from albums a\n         join users u on u.id = a.owner_id\n         cross join lateral (\n           select count(*) as image_count from album_images ai\n           join files f on f.id = ai.file_id\n           where ai.album_id = a.id and f.status = 'available'\n         ) stats\n         where $5::uuid is null or a.owner_id = $5 order by\n           case when $3 = 'name' and $4 then a.name end asc,\n           case when $3 = 'name' and not $4 then a.name end desc,\n           case when $3 = 'owner_username' and $4 then u.username end asc,\n           case when $3 = 'owner_username' and not $4 then u.username end desc,\n           case when $3 = 'created_at' and $4 then a.created_at end asc,\n           case when $3 = 'created_at' and not $4 then a.created_at end desc,\n           case when $3 = 'image_count' and $4 then stats.image_count end asc,\n           case when $3 = 'image_count' and not $4 then stats.image_count end desc,\n           a.id desc\n         offset $1 limit $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "image_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "67244d00558c16c9e78eca673efecf0ac880cd1cd0b11061f9f54a8b32512255"
+}

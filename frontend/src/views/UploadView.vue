@@ -61,10 +61,15 @@
         />
       </section>
 
-      <section v-if="hasOptions" class="card">
+      <section class="card">
         <header class="card-head">
           <h2>{{ $t('upload.step.options') }}</h2>
         </header>
+
+        <div class="format-row">
+          <label>{{ $t('albums.album') }}</label>
+          <AlbumSelect v-model="albumId" mine :disabled="uploading" :placeholder="$t('albums.none')" />
+        </div>
 
         <div v-if="settings?.allow_overriding_file_format" class="format-row">
           <label>{{ $t('upload.format_override.label') }}</label>
@@ -123,6 +128,7 @@ import Select from 'primevue/select'
 import Slider from 'primevue/slider'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useI18n } from 'vue-i18n'
+import AlbumSelect from '@/components/AlbumSelect.vue'
 import { api } from '@/services/api/http'
 import { TargetFormat, type PublicElysiaSettings } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
@@ -160,20 +166,29 @@ const lossless = ref(false)
 // Per-upload EXIF-stripping choice, initialized from the server default.
 // Only honored when the settings allow overriding.
 const stripExif = ref(!!settings?.strip_exif_by_default)
+// One of the caller's albums the uploads go into, if any.
+const albumId = ref<string | null>(null)
 
 // The format that will actually be applied: the override, or the server default.
 const effectiveFormat = computed(() => (formatOverride.value === 'default' ? settings?.default_target_file_format : formatOverride.value))
 // Quality applies only to lossy-capable formats (every target format but PNG),
 // and only when the settings allow overriding compression.
 const showCompression = computed(() => !!settings?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
-// The options section is empty (and hidden) unless the server exposes at least one knob.
-const hasOptions = computed(() => !!settings?.allow_overriding_file_format || showCompression.value || !!settings?.allow_overriding_strip_exif)
 // PNG is always lossless and AVIF/JPEG never are, so only WebP and JPEG XL get the toggle.
 const showLosslessToggle = computed(() => showCompression.value && ['webp', 'jpegxl'].includes(effectiveFormat.value ?? ''))
 const losslessSelected = computed(() => showLosslessToggle.value && lossless.value)
 // 0 asks the backend for lossless, overriding its default quality.
 const qualityValue = () => (losslessSelected.value ? 0 : showCompression.value ? quality.value : undefined)
 const stripExifValue = () => (settings?.allow_overriding_strip_exif ? stripExif.value : undefined)
+// Puts the uploaded images in the picked album, if any; resolves either way so
+// the result page still opens when that fails (the interceptor toasts it).
+const addToAlbum = (ids: string[]): Promise<void> =>
+  albumId.value && ids.length
+    ? api.addAlbumImages(albumId.value, { ids }).then(
+        () => undefined,
+        () => undefined,
+      )
+    : Promise.resolve()
 
 onMounted(() => {
   window.addEventListener('paste', onPaste)
@@ -252,6 +267,7 @@ const uploadAll = (items: Selected[]) => {
         }),
       Promise.resolve(),
     )
+    .then(() => addToAlbum(ids))
     .then(() => {
       if (urls.length) router.push({ name: 'Uploaded', query: { id: ids, url: urls, thumbnailUrl: thumbnailUrls } })
     })
@@ -320,6 +336,7 @@ const rehost = () => {
   phase.value = 'processing'
   api
     .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue())
+    .then((uploaded) => addToAlbum([uploaded.data.id]).then(() => uploaded))
     .then((uploaded) => {
       router.push({ name: 'Uploaded', query: { id: uploaded.data.id, url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
     })

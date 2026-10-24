@@ -32,6 +32,58 @@ export interface Actions {
     'resize'?: ResizeAction | null;
 }
 /**
+ * An album, without its images.
+ */
+export interface Album {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    'id': string;
+    /**
+     * The caller\'s own album.
+     */
+    'mine': boolean;
+    'name': string;
+    'owner_username': string;
+}
+export interface AlbumNameRequest {
+    /**
+     * 1 to 64 characters, unique among the owner\'s albums.
+     */
+    'name': string;
+}
+/**
+ * One album in the albums list.
+ */
+export interface AlbumSummary {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    'id': string;
+    /**
+     * Available images in the album.
+     */
+    'image_count': number;
+    'name': string;
+    'owner_username': string;
+}
+/**
+ * Column the albums list is sorted by.
+ */
+
+export const AlbumsSortBy = {
+    Name: 'name',
+    OwnerUsername: 'owner_username',
+    CreatedAt: 'created_at',
+    ImageCount: 'image_count'
+} as const;
+
+export type AlbumsSortBy = typeof AlbumsSortBy[keyof typeof AlbumsSortBy];
+
+
+/**
  * What an API key may do, the `api_key_scope` Postgres enum.
  */
 
@@ -367,6 +419,18 @@ export interface FormatTotal {
     'files': number;
     'mime': string;
 }
+/**
+ * An album an image is in, as listed on the image page.
+ */
+export interface ImageAlbum {
+    'id': string;
+    /**
+     * The caller\'s own album, which they may remove the image from.
+     */
+    'mine': boolean;
+    'name': string;
+    'owner_username': string;
+}
 export interface ImageIdsRequest {
     /**
      * Ids of the images to act on.
@@ -462,6 +526,10 @@ export interface MeResponse {
  */
 export interface MetadataResponse {
     /**
+     * Every album the image is in, whoever owns it, the caller\'s first.
+     */
+    'albums': Array<ImageAlbum>;
+    /**
      * Lossy quality applied while processing; null means lossless.
      */
     'applied_quality'?: number | null;
@@ -529,6 +597,31 @@ export interface MetadataResponse {
      */
     'views': number;
     'width': number;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
+export interface PaginatedResultsAlbumSummary {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsAlbumSummaryResultsInner>;
+    'total_items': number;
+}
+/**
+ * One album in the albums list.
+ */
+export interface PaginatedResultsAlbumSummaryResultsInner {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    'id': string;
+    /**
+     * Available images in the album.
+     */
+    'image_count': number;
+    'name': string;
+    'owner_username': string;
 }
 /**
  * One page of a list, with the total across all pages.
@@ -719,7 +812,7 @@ export interface PublicElysiaSettings {
 
 
 /**
- * Image and thumbnail views from one `Referer` host within the period.
+ * Image and thumbnail views from one `Referer` host, of the files uploaded within the period.
  */
 export interface ReferrerTotal {
     /**
@@ -856,7 +949,7 @@ export interface StatsResponse {
      */
     'periods': Array<PeriodTotal>;
     /**
-     * Views per `Referer` host within `period`, most viewed first, the rest summed into a last null row.
+     * Views per `Referer` host of the files uploaded within `period`, most viewed first, the rest summed into a last null row.
      */
     'referrers': Array<ReferrerTotal>;
     /**
@@ -1308,6 +1401,565 @@ export class APIKeysApi extends BaseAPI {
      */
     public revokeApiKey(id: string, options?: RawAxiosRequestConfig) {
         return APIKeysApiFp(this.configuration).revokeApiKey(id, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * AlbumsApi - axios parameter creator
+ */
+export const AlbumsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Add images to an album, whoever uploaded them. Its owner or an admin only. Unknown, trashed and already added ids are skipped.
+         * @param {string} id Album id
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        addAlbumImages: async (id: string, imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('addAlbumImages', 'id', id)
+            // verify required parameter 'imageIdsRequest' is not null or undefined
+            assertParamExists('addAlbumImages', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/albums/{id}/images`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Create an album owned by the caller.
+         * @param {AlbumNameRequest} albumNameRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createAlbum: async (albumNameRequest: AlbumNameRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'albumNameRequest' is not null or undefined
+            assertParamExists('createAlbum', 'albumNameRequest', albumNameRequest)
+            const localVarPath = `/api/albums`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(albumNameRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Delete an album; its images are kept. Its owner or an admin only.
+         * @param {string} id Album id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteAlbum: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('deleteAlbum', 'id', id)
+            const localVarPath = `/api/albums/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Any album\'s details; its images are listed by `/api/images` with `album_id`.
+         * @param {string} id Album id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAlbum: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('getAlbum', 'id', id)
+            const localVarPath = `/api/albums/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Admins list all albums, or one user\'s with `username`, other users only their own. `mine` lists only the caller\'s albums, also for admins.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {AlbumsSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [username] Admin only: just this user\&#39;s albums (exact username).
+         * @param {boolean} [mine] Just the caller\&#39;s albums, also for admins.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listAlbums: async (page: number, pageSize: number, sortBy: AlbumsSortBy, order: SortOrder, username?: string, mine?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listAlbums', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listAlbums', 'pageSize', pageSize)
+            // verify required parameter 'sortBy' is not null or undefined
+            assertParamExists('listAlbums', 'sortBy', sortBy)
+            // verify required parameter 'order' is not null or undefined
+            assertParamExists('listAlbums', 'order', order)
+            const localVarPath = `/api/albums`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
+            }
+
+            if (sortBy !== undefined) {
+                localVarQueryParameter['sort_by'] = sortBy;
+            }
+
+            if (order !== undefined) {
+                localVarQueryParameter['order'] = order;
+            }
+
+            if (username !== undefined) {
+                localVarQueryParameter['username'] = username;
+            }
+
+            if (mine !== undefined) {
+                localVarQueryParameter['mine'] = mine;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Remove images from an album; the images themselves are kept. Its owner or an admin only. Ids not in the album are skipped.
+         * @param {string} id Album id
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        removeAlbumImages: async (id: string, imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('removeAlbumImages', 'id', id)
+            // verify required parameter 'imageIdsRequest' is not null or undefined
+            assertParamExists('removeAlbumImages', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/albums/{id}/images/remove`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Rename an album. Its owner or an admin only.
+         * @param {string} id Album id
+         * @param {AlbumNameRequest} albumNameRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        renameAlbum: async (id: string, albumNameRequest: AlbumNameRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('renameAlbum', 'id', id)
+            // verify required parameter 'albumNameRequest' is not null or undefined
+            assertParamExists('renameAlbum', 'albumNameRequest', albumNameRequest)
+            const localVarPath = `/api/albums/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(albumNameRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * AlbumsApi - functional programming interface
+ */
+export const AlbumsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = AlbumsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Add images to an album, whoever uploaded them. Its owner or an admin only. Unknown, trashed and already added ids are skipped.
+         * @param {string} id Album id
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async addAlbumImages(id: string, imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.addAlbumImages(id, imageIdsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.addAlbumImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Create an album owned by the caller.
+         * @param {AlbumNameRequest} albumNameRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createAlbum(albumNameRequest: AlbumNameRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Album>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createAlbum(albumNameRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.createAlbum']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Delete an album; its images are kept. Its owner or an admin only.
+         * @param {string} id Album id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async deleteAlbum(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.deleteAlbum(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.deleteAlbum']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Any album\'s details; its images are listed by `/api/images` with `album_id`.
+         * @param {string} id Album id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAlbum(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Album>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAlbum(id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.getAlbum']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Admins list all albums, or one user\'s with `username`, other users only their own. `mine` lists only the caller\'s albums, also for admins.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {AlbumsSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [username] Admin only: just this user\&#39;s albums (exact username).
+         * @param {boolean} [mine] Just the caller\&#39;s albums, also for admins.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listAlbums(page: number, pageSize: number, sortBy: AlbumsSortBy, order: SortOrder, username?: string, mine?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsAlbumSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listAlbums(page, pageSize, sortBy, order, username, mine, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.listAlbums']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Remove images from an album; the images themselves are kept. Its owner or an admin only. Ids not in the album are skipped.
+         * @param {string} id Album id
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async removeAlbumImages(id: string, imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.removeAlbumImages(id, imageIdsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.removeAlbumImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Rename an album. Its owner or an admin only.
+         * @param {string} id Album id
+         * @param {AlbumNameRequest} albumNameRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async renameAlbum(id: string, albumNameRequest: AlbumNameRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.renameAlbum(id, albumNameRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.renameAlbum']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * AlbumsApi - factory interface
+ */
+export const AlbumsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = AlbumsApiFp(configuration)
+    return {
+        /**
+         * Add images to an album, whoever uploaded them. Its owner or an admin only. Unknown, trashed and already added ids are skipped.
+         * @param {string} id Album id
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        addAlbumImages(id: string, imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.addAlbumImages(id, imageIdsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Create an album owned by the caller.
+         * @param {AlbumNameRequest} albumNameRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createAlbum(albumNameRequest: AlbumNameRequest, options?: RawAxiosRequestConfig): AxiosPromise<Album> {
+            return localVarFp.createAlbum(albumNameRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Delete an album; its images are kept. Its owner or an admin only.
+         * @param {string} id Album id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteAlbum(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.deleteAlbum(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Any album\'s details; its images are listed by `/api/images` with `album_id`.
+         * @param {string} id Album id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAlbum(id: string, options?: RawAxiosRequestConfig): AxiosPromise<Album> {
+            return localVarFp.getAlbum(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Admins list all albums, or one user\'s with `username`, other users only their own. `mine` lists only the caller\'s albums, also for admins.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize 
+         * @param {AlbumsSortBy} sortBy 
+         * @param {SortOrder} order 
+         * @param {string} [username] Admin only: just this user\&#39;s albums (exact username).
+         * @param {boolean} [mine] Just the caller\&#39;s albums, also for admins.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listAlbums(page: number, pageSize: number, sortBy: AlbumsSortBy, order: SortOrder, username?: string, mine?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsAlbumSummary> {
+            return localVarFp.listAlbums(page, pageSize, sortBy, order, username, mine, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Remove images from an album; the images themselves are kept. Its owner or an admin only. Ids not in the album are skipped.
+         * @param {string} id Album id
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        removeAlbumImages(id: string, imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.removeAlbumImages(id, imageIdsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Rename an album. Its owner or an admin only.
+         * @param {string} id Album id
+         * @param {AlbumNameRequest} albumNameRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        renameAlbum(id: string, albumNameRequest: AlbumNameRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.renameAlbum(id, albumNameRequest, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * AlbumsApi - object-oriented interface
+ */
+export class AlbumsApi extends BaseAPI {
+    /**
+     * Add images to an album, whoever uploaded them. Its owner or an admin only. Unknown, trashed and already added ids are skipped.
+     * @param {string} id Album id
+     * @param {ImageIdsRequest} imageIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public addAlbumImages(id: string, imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).addAlbumImages(id, imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Create an album owned by the caller.
+     * @param {AlbumNameRequest} albumNameRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public createAlbum(albumNameRequest: AlbumNameRequest, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).createAlbum(albumNameRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Delete an album; its images are kept. Its owner or an admin only.
+     * @param {string} id Album id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public deleteAlbum(id: string, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).deleteAlbum(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Any album\'s details; its images are listed by `/api/images` with `album_id`.
+     * @param {string} id Album id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getAlbum(id: string, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).getAlbum(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Admins list all albums, or one user\'s with `username`, other users only their own. `mine` lists only the caller\'s albums, also for admins.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize 
+     * @param {AlbumsSortBy} sortBy 
+     * @param {SortOrder} order 
+     * @param {string} [username] Admin only: just this user\&#39;s albums (exact username).
+     * @param {boolean} [mine] Just the caller\&#39;s albums, also for admins.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listAlbums(page: number, pageSize: number, sortBy: AlbumsSortBy, order: SortOrder, username?: string, mine?: boolean, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).listAlbums(page, pageSize, sortBy, order, username, mine, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Remove images from an album; the images themselves are kept. Its owner or an admin only. Ids not in the album are skipped.
+     * @param {string} id Album id
+     * @param {ImageIdsRequest} imageIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public removeAlbumImages(id: string, imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).removeAlbumImages(id, imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Rename an album. Its owner or an admin only.
+     * @param {string} id Album id
+     * @param {AlbumNameRequest} albumNameRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public renameAlbum(id: string, albumNameRequest: AlbumNameRequest, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).renameAlbum(id, albumNameRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -1915,17 +2567,18 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads. With `album_id`, any album\'s images whoever uploaded them.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
          * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+         * @param {string} [albumId] Just this album\&#39;s images, whoever uploaded them.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images: async (page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        images: async (page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, albumId?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'page' is not null or undefined
             assertParamExists('images', 'page', page)
             // verify required parameter 'pageSize' is not null or undefined
@@ -1970,6 +2623,10 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (username !== undefined) {
                 localVarQueryParameter['username'] = username;
+            }
+
+            if (albumId !== undefined) {
+                localVarQueryParameter['album_id'] = albumId;
             }
 
 
@@ -2278,18 +2935,19 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads. With `album_id`, any album\'s images whoever uploaded them.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
          * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+         * @param {string} [albumId] Just this album\&#39;s images, whoever uploaded them.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsImageSummary>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, pageSize, sortBy, order, status, username, options);
+        async images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, albumId?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsImageSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.images(page, pageSize, sortBy, order, status, username, albumId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ImagesApi.images']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -2402,18 +3060,19 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.emptyTrash(options).then((request) => request(axios, basePath));
         },
         /**
-         * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+         * Admins browse all images, or one user\'s with `username`, other users only their own uploads. With `album_id`, any album\'s images whoever uploaded them.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
          * @param {ImagesSortBy} sortBy 
          * @param {SortOrder} order 
          * @param {ImagesStatus} status Available or trashed images.
          * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+         * @param {string} [albumId] Just this album\&#39;s images, whoever uploaded them.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsImageSummary> {
-            return localVarFp.images(page, pageSize, sortBy, order, status, username, options).then((request) => request(axios, basePath));
+        images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, albumId?: string, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsImageSummary> {
+            return localVarFp.images(page, pageSize, sortBy, order, status, username, albumId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2501,18 +3160,19 @@ export class ImagesApi extends BaseAPI {
     }
 
     /**
-     * Admins browse all images, or one user\'s with `username`, other users only their own uploads.
+     * Admins browse all images, or one user\'s with `username`, other users only their own uploads. With `album_id`, any album\'s images whoever uploaded them.
      * @param {number} page 1-based page number.
      * @param {number} pageSize 
      * @param {ImagesSortBy} sortBy 
      * @param {SortOrder} order 
      * @param {ImagesStatus} status Available or trashed images.
      * @param {string} [username] Admin only: just this user\&#39;s uploads (exact username).
+     * @param {string} [albumId] Just this album\&#39;s images, whoever uploaded them.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, options?: RawAxiosRequestConfig) {
-        return ImagesApiFp(this.configuration).images(page, pageSize, sortBy, order, status, username, options).then((request) => request(this.axios, this.basePath));
+    public images(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, status: ImagesStatus, username?: string, albumId?: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).images(page, pageSize, sortBy, order, status, username, albumId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

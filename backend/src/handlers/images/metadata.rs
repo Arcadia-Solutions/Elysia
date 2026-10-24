@@ -9,6 +9,7 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::error::Result;
 use crate::middlewares::AuthUser;
+use crate::repository::albums::{self, ImageAlbum};
 use crate::repository::files::{ReferrerViews, find_referrer_views};
 use crate::services::files::{self, image_url, thumbnail_url};
 
@@ -55,6 +56,8 @@ pub struct MetadataResponse {
     /// Whole days left before the trashed image is deleted for good, rounded
     /// up. Null while available.
     pub days_until_deletion: Option<i32>,
+    /// Every album the image is in, whoever owns it, the caller's first.
+    pub albums: Vec<ImageAlbum>,
 }
 
 #[utoipa::path(
@@ -77,6 +80,7 @@ pub async fn metadata(
 ) -> Result<HttpResponse> {
     let row = files::get_metadata(pool.get_ref(), &id.into_inner(), user.is_admin).await?;
     let referrers = find_referrer_views(pool.get_ref(), &row.id).await?;
+    let albums = albums::for_file(pool.get_ref(), &row.id, user.user_id).await?;
     let public_url = &config.server.public_url;
     let trashed = row.trashed_at.is_some();
     Ok(HttpResponse::Ok().json(MetadataResponse {
@@ -107,6 +111,7 @@ pub async fn metadata(
         views: row.views,
         thumbnail_views: row.thumbnail_views,
         referrers,
+        albums,
         uploader_username: row.uploader_username,
         created_at: row.created_at,
     }))

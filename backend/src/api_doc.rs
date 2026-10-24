@@ -1,6 +1,7 @@
 use utoipa::OpenApi;
 
 use crate::handlers::images::upload::UploadOptionsQuery;
+use crate::repository::albums::AlbumsSortBy;
 use crate::repository::files::{ImagesSortBy, ImagesStatus, SortOrder};
 use crate::repository::stats::{StatsInterval, StatsPeriod};
 use crate::repository::users::UsersSortBy;
@@ -27,6 +28,13 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::images::trash_images::trash_images,
         crate::handlers::images::empty_trash::empty_trash,
         crate::handlers::images::restore_images::restore_images,
+        crate::handlers::albums::list_albums::list_albums,
+        crate::handlers::albums::create_album::create_album,
+        crate::handlers::albums::get_album::get_album,
+        crate::handlers::albums::rename_album::rename_album,
+        crate::handlers::albums::delete_album::delete_album,
+        crate::handlers::albums::add_album_images::add_album_images,
+        crate::handlers::albums::remove_album_images::remove_album_images,
         crate::handlers::stats::overview::stats_overview,
         crate::handlers::fixtures::generate_fixtures::generate_fixtures,
         crate::handlers::fixtures::get_fixtures_progress::get_fixtures_progress,
@@ -50,6 +58,6 @@ use crate::repository::users::UsersSortBy;
     // Query parameter types are inlined into each path; list them so the
     // generated client still gets them as named types. The rest is collected
     // from the paths.
-    components(schemas(UploadOptionsQuery, StatsInterval, StatsPeriod, ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy))
+    components(schemas(UploadOptionsQuery, AlbumsSortBy, StatsInterval, StatsPeriod, ImagesSortBy, ImagesStatus, SortOrder, UsersSortBy))
 )]
 pub struct ApiDoc;
