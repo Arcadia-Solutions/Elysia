@@ -757,5 +757,8 @@ fn gif_frame_larger_than_its_screen_is_rejected() {
         target_file_size: 0,
         requested_quality: None,
     };
-    assert!(matches!(process(&gif, &options), Err(ProcessError::Undecodable)));
+    assert!(matches!(
+        process(&gif, &options),
+        Err(ProcessError::Undecodable)
+    ));
 }
