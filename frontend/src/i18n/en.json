@@ -140,7 +140,6 @@
       "available": "No images uploaded yet",
       "trashed": "The trash is empty"
     },
-    "load_error": "Could not load images",
     "sort": {
       "created_at": "Date added",
       "size": "Size",

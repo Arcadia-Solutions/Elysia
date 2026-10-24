@@ -121,16 +121,11 @@ const suggestUsernames = (search: string) => {
 const setUsername = (value: string) => router.push({ query: { ...route.query, username: value.trim() || undefined, page: undefined } })
 
 const load = (target: number) => {
-  api
-    .images(target, pageSize.value, sortBy.value, order.value, status.value, username.value)
-    .then((response) => {
-      images.value = response.data.results
-      page.value = response.data.page
-      total.value = response.data.total_items
-    })
-    .catch(() => {
-      showToast(t('browse.load_error'), 'error')
-    })
+  api.images(target, pageSize.value, sortBy.value, order.value, status.value, username.value).then((response) => {
+    images.value = response.data.results
+    page.value = response.data.page
+    total.value = response.data.total_items
+  })
 }
 
 // A new order starts back at the first page.
