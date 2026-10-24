@@ -44,6 +44,7 @@ pub fn test_config() -> Config {
             sso: None,
         },
         telemetry: TelemetryConfig::default(),
+        rate_limit: None,
     }
 }
 

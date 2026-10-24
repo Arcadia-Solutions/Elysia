@@ -1,8 +1,10 @@
 use actix_files::NamedFile;
+use actix_web::middleware::from_fn;
 use actix_web::web::{ServiceConfig, get, post};
 use actix_web::{HttpRequest, HttpResponse};
 
 use crate::error::{Error, Result};
+use crate::middlewares::rate_limit::limit_unauthenticated;
 use crate::settings::{RefererHost, SharedElysiaSettings, referer_host};
 
 pub mod empty_trash;
@@ -31,8 +33,16 @@ pub fn config(cfg: &mut ServiceConfig) {
 
 /// Public image links, outside `/api`.
 pub fn config_public(cfg: &mut ServiceConfig) {
-    cfg.route("/i/{filename}", get().to(serve::serve))
-        .route("/t/{filename}", get().to(serve_thumbnail::serve_thumbnail));
+    cfg.route(
+        "/i/{filename}",
+        get().to(serve::serve).wrap(from_fn(limit_unauthenticated)),
+    )
+    .route(
+        "/t/{filename}",
+        get()
+            .to(serve_thumbnail::serve_thumbnail)
+            .wrap(from_fn(limit_unauthenticated)),
+    );
 }
 
 /// Split a `/i/` or `/t/` path segment `<id>.<ext>` into its id and extension.

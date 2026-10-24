@@ -1,30 +1,11 @@
-use elysia::config::{
-    AuthConfig, Config, DatabaseConfig, ServerConfig, SsoConfig, StorageConfig, TelemetryConfig,
-};
+mod common;
+
+use elysia::config::{Config, SsoConfig};
 
 fn test_config_with_secret(secret: &str) -> Config {
-    Config {
-        server: ServerConfig {
-            host: "127.0.0.1".into(),
-            port: 8080,
-            public_url: "http://elysia.test".into(),
-        },
-        database: DatabaseConfig {
-            host: "localhost".into(),
-            port: 5432,
-            user: "elysia".into(),
-            password: "secret".into(),
-            name: "elysia".into(),
-        },
-        storage: StorageConfig {
-            upload_dir: "/tmp/elysia".into(),
-        },
-        auth: AuthConfig {
-            jwt_secret: secret.into(),
-            sso: None,
-        },
-        telemetry: TelemetryConfig::default(),
-    }
+    let mut config = common::test_config();
+    config.auth.jwt_secret = secret.into();
+    config
 }
 
 #[test]

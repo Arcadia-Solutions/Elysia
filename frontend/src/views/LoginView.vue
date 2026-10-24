@@ -57,8 +57,8 @@ const handleLogin = () => {
         .then((settings) => localStorage.setItem('public_settings', JSON.stringify(settings.data)))
         .finally(() => router.push('/'))
     })
-    .catch(() => {
-      error.value = t('login.failed')
+    .catch((err) => {
+      error.value = err?.response?.status === 429 ? err.response.data.error : t('login.failed')
     })
     .finally(() => {
       loading.value = false

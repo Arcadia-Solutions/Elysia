@@ -9,6 +9,8 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::error::{Error, Result};
+use crate::middlewares::RateLimits;
+use crate::middlewares::rate_limit::FailedAuthLimit;
 use crate::repository::api_keys::{self, ApiKeyScope};
 use crate::repository::users::{self, AuthProvider};
 use crate::services::sso::SharedSsoState;
@@ -74,48 +76,62 @@ fn authenticate(
 ) -> Pin<Box<dyn Future<Output = Result<AuthUser>>>> {
     let (config, pool) = config_and_pool(request);
     let sso_state = request.app_data::<SharedSsoState>().cloned();
+    let rate_limits = request.app_data::<Data<RateLimits>>().cloned();
+    let failed_auth = FailedAuthLimit::new(request);
     let token = bearer_token(request);
     Box::pin(async move {
+        // No token is not a failed guess, so it is not charged.
         let token = token.ok_or(Error::Unauthorized)?;
-        let (user_id, api_key_id) = if token.starts_with(auth::API_KEY_TOKEN_PREFIX) {
-            let api_key = api_keys::find_active(pool.get_ref(), &auth::hash_api_key_token(&token))
+        let result = async {
+            let (user_id, api_key_id) = if token.starts_with(auth::API_KEY_TOKEN_PREFIX) {
+                // A JWT is checked without a query, an API key is not.
+                failed_auth.check_blocked()?;
+                let api_key =
+                    api_keys::find_active(pool.get_ref(), &auth::hash_api_key_token(&token))
+                        .await?
+                        .ok_or(Error::Unauthorized)?;
+                if !api_key.scope.allows(required_scope) {
+                    return Err(Error::Forbidden);
+                }
+                (api_key.user_id, Some(api_key.id))
+            } else {
+                let claims = auth::decode_jwt(&token, &config.auth.jwt_secret)?;
+                (claims.user_id()?, None)
+            };
+            // Before the user lookup, so a flood stops costing queries.
+            if let Some(rate_limits) = &rate_limits {
+                rate_limits.check_user(user_id)?;
+            }
+            let row = users::find_by_id(pool.get_ref(), user_id)
                 .await?
                 .ok_or(Error::Unauthorized)?;
-            if !api_key.scope.allows(required_scope) {
-                return Err(Error::Forbidden);
-            }
-            (api_key.user_id, Some(api_key.id))
-        } else {
-            let claims = auth::decode_jwt(&token, &config.auth.jwt_secret)?;
-            (claims.user_id()?, None)
-        };
-        let row = users::find_by_id(pool.get_ref(), user_id)
-            .await?
-            .ok_or(Error::Unauthorized)?;
-        if row.banned {
-            return Err(Error::Unauthorized);
-        }
-        // SSO rows are only as live as the provider's status endpoint says
-        // (the local banned flag is not set from there). Fail closed when
-        // SSO got disabled or the row has no subject.
-        if row.provider == AuthProvider::Sso {
-            let (Some(sso), Some(sso_state), Some(subject)) = (
-                config.auth.sso.as_ref(),
-                sso_state,
-                row.external_sub.as_deref(),
-            ) else {
-                return Err(Error::Unauthorized);
-            };
-            if !sso_service::user_active(&sso_state, sso, row.id, subject).await {
+            if row.banned {
                 return Err(Error::Unauthorized);
             }
+            // SSO rows are only as live as the provider's status endpoint says
+            // (the local banned flag is not set from there). Fail closed when
+            // SSO got disabled or the row has no subject.
+            if row.provider == AuthProvider::Sso {
+                let (Some(sso), Some(sso_state), Some(subject)) = (
+                    config.auth.sso.as_ref(),
+                    sso_state,
+                    row.external_sub.as_deref(),
+                ) else {
+                    return Err(Error::Unauthorized);
+                };
+                if !sso_service::user_active(&sso_state, sso, row.id, subject).await {
+                    return Err(Error::Unauthorized);
+                }
+            }
+            users::update_last_seen(pool.get_ref(), row.id, api_key_id).await?;
+            Ok(AuthUser {
+                user_id: row.id,
+                is_admin: row.is_admin && api_key_id.is_none(),
+                api_key_id,
+            })
         }
-        users::update_last_seen(pool.get_ref(), row.id, api_key_id).await?;
-        Ok(AuthUser {
-            user_id: row.id,
-            is_admin: row.is_admin && api_key_id.is_none(),
-            api_key_id,
-        })
+        .await;
+        failed_auth.charge(result)
     })
 }
 
@@ -183,12 +199,15 @@ impl FromRequest for UploadUser {
             });
         };
         let (config, pool) = config_and_pool(request);
+        let rate_limits = request.app_data::<Data<RateLimits>>().cloned();
+        let failed_auth = FailedAuthLimit::new(request);
         let subject = header_value(request, "On-Behalf-Of-Sub");
         let username = header_value(request, "On-Behalf-Of-Username").unwrap_or_default();
         Box::pin(async move {
-            let sso = config.auth.sso.as_ref().ok_or(Error::Unauthorized)?;
+            failed_auth.check_blocked()?;
+            let sso = failed_auth.charge(config.auth.sso.as_ref().ok_or(Error::Unauthorized))?;
             if !(client_id == sso.client_id && secrets_match(&client_secret, &sso.client_secret)) {
-                return Err(Error::Unauthorized);
+                return failed_auth.charge(Err(Error::Unauthorized));
             }
             let subject = subject
                 .filter(|subject| !subject.is_empty())
@@ -203,6 +222,9 @@ impl FromRequest for UploadUser {
                 None,
             )
             .await?;
+            if let Some(rate_limits) = &rate_limits {
+                rate_limits.check_user(row.id)?;
+            }
             if row.banned {
                 return Err(Error::Unauthorized);
             }

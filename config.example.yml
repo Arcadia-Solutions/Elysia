@@ -46,3 +46,29 @@ auth:
 # http://localhost:3001, see the Telemetry chapter of the docs.
 # telemetry:
 #   otlp_endpoint: http://localhost:4317
+
+# Optional rate limits; without this section nothing is limited. When set,
+# every key is required. Per minute and refilled continuously; 0 disables one.
+# Over a limit the API answers 429 with a Retry-After header.
+# rate_limit:
+#   # Routes that need no login (images, thumbnails, login, registration, SSO,
+#   # public settings), per client IP. IPv6 clients are grouped by /64. Failed
+#   # authentications spend it too; once it runs out, API keys and the SSO
+#   # client credentials from that IP are refused without being checked.
+#   # A page showing many thumbnails spends one request per thumbnail.
+#   unauthenticated_requests_per_minute_per_ip: 600
+#   # Login, registration and password change attempts per client IP, counted
+#   # on top of the budgets above and below. Keep it low: it is what slows
+#   # down password guessing.
+#   login_attempts_per_minute_per_ip: 10
+#   # API routes that need a login, per user, across all their sessions, API
+#   # keys and IPs.
+#   authenticated_requests_per_minute_per_user: 300
+#   # Proxies whose X-Forwarded-For header is believed. The client IP is the
+#   # rightmost entry that is not one of them. These cover loopback and private
+#   # ranges, where the bundled web UI proxy connects from; any client in them
+#   # can pick its own key, so keep the backend unreachable except through the
+#   # proxy. If another proxy (e.g. Cloudflare) sits in front of the web UI,
+#   # Caddy drops its X-Forwarded-For too: list it in Caddy's trusted_proxies,
+#   # see the Installation chapter of the docs.
+#   trusted_proxies: ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128", "fc00::/7"]

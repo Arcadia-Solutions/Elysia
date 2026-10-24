@@ -1,4 +1,5 @@
-use actix_web::{HttpResponse, ResponseError, http::StatusCode};
+use actix_web::http::{StatusCode, header::RETRY_AFTER};
+use actix_web::{HttpResponse, ResponseError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -20,6 +21,10 @@ pub enum Error {
     #[error("{0}")]
     BadRequest(String),
 
+    /// Carries the seconds until the next request is allowed.
+    #[error("too many requests, retry in {0} seconds")]
+    TooManyRequests(u64),
+
     #[error("internal server error")]
     Internal,
 
@@ -40,6 +45,7 @@ impl Error {
             Error::NotFound => "not_found",
             Error::UnsupportedMediaType => "unsupported_media_type",
             Error::BadRequest(_) => "bad_request",
+            Error::TooManyRequests(_) => "too_many_requests",
             Error::Internal => "internal",
             Error::Io(_) => "io",
             Error::Db(_) => "db",
@@ -58,6 +64,7 @@ impl ResponseError for Error {
             Error::Conflict => StatusCode::CONFLICT,
             Error::NotFound => StatusCode::NOT_FOUND,
             Error::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            Error::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
             Error::Io(_) | Error::Db(_) | Error::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -68,6 +75,10 @@ impl ResponseError for Error {
             tracing::error!("request failed: {self}");
         }
         crate::telemetry::record_http_error(self.kind(), status_code.as_u16());
-        HttpResponse::build(status_code).json(serde_json::json!({ "error": self.to_string() }))
+        let mut response = HttpResponse::build(status_code);
+        if let Error::TooManyRequests(retry_after_seconds) = self {
+            response.insert_header((RETRY_AFTER, retry_after_seconds.to_string()));
+        }
+        response.json(serde_json::json!({ "error": self.to_string() }))
     }
 }

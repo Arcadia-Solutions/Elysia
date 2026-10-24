@@ -9,6 +9,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use elysia::api_doc::ApiDoc;
 use elysia::config::Config;
+use elysia::middlewares::RateLimits;
 use elysia::repository::settings as settings_repo;
 use elysia::routes;
 use elysia::scheduler;
@@ -46,6 +47,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("failed to load elysia settings");
 
+    let rate_limits = Data::new(RateLimits::new(cfg.rate_limit.as_ref()));
     let cfg = Data::new(cfg);
     let pool = Data::new(pool);
     let storage = Data::new(storage);
@@ -54,8 +56,13 @@ async fn main() -> std::io::Result<()> {
     let views = Data::new(ViewCounter::default());
 
     let scheduler_handle = tokio::spawn({
-        let (pool, storage, views) = (pool.clone(), storage.clone(), views.clone());
-        async move { scheduler::handle(&pool, &storage, &views).await }
+        let (pool, storage, views, rate_limits) = (
+            pool.clone(),
+            storage.clone(),
+            views.clone(),
+            rate_limits.clone(),
+        );
+        async move { scheduler::handle(&pool, &storage, &views, &rate_limits).await }
     });
     let (shutdown_pool, shutdown_views) = (pool.clone(), views.clone());
 
@@ -71,6 +78,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(elysia_settings.clone())
             .app_data(sso_state.clone())
             .app_data(views.clone())
+            .app_data(rate_limits.clone())
             .configure(routes::init)
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")

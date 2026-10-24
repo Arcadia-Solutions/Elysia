@@ -17,10 +17,27 @@ the `ELYSIA_BACKEND` environment variable of the frontend container.
 Uploaded files live in the `elysia_uploads` volume, the database in
 `elysia_pgdata`.
 
+### Behind another proxy
+
+The rate limits key on the client IP. If another proxy (Cloudflare, a load
+balancer...) sits in front of the web UI, the web UI's Caddy throws away the
+`X-Forwarded-For` it sends, and every user ends up sharing that proxy's
+address. Trust it in the `frontend/Caddyfile` global options, then add its
+ranges to `rate_limit.trusted_proxies` in `config.yml` if they are public:
+
+```caddyfile
+{
+	servers {
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22
+	}
+}
+```
+
 ## Configuration
 
 `config.yml` only holds what the backend needs to boot: listen address, public
-URL, database, upload directory, session secret, single sign-on and telemetry.
+URL, database, upload directory, session secret, single sign-on, telemetry
+and rate limits.
 Every key is described in `config.example.yml`. Everything else (upload limits,
 image processing, registration, quotas, allowed referrers...) is edited at
 runtime from the web UI, see [Administration](administration.md).

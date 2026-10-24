@@ -62,6 +62,20 @@ polls.
 A bearer token is either a session JWT or an API key. Admin rights and bans are
 re-read from the database on every request, so they apply immediately.
 
+### Rate limiting
+
+`middlewares/rate_limit.rs` keeps in-memory `governor` buckets: one per client
+IP for the routes that need no login (images included), a stricter one per IP on login,
+registration and password change (both middlewares wrapped on those routes, so a new
+unauthenticated route has to wrap `limit_unauthenticated` too), and one per
+user, checked in the auth extractors right after the token is resolved. A failed
+authentication spends the per-IP unauthenticated budget; once it is out, API
+keys and the SSO client credentials from that IP are refused before being
+checked, so a right guess cannot slip through. Without the `rate_limit` config
+section nothing is limited. The scheduler drops idle
+buckets every minute. The buckets are per process, so they assume a single
+backend instance, like the view counter.
+
 ## Frontend
 
 Pages live in `src/views`, reusable components in `src/components`, and every

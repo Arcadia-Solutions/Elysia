@@ -1,3 +1,4 @@
+use ipnet::IpNet;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -8,6 +9,8 @@ pub struct Config {
     pub auth: AuthConfig,
     #[serde(default)]
     pub telemetry: TelemetryConfig,
+    /// Absent, nothing is rate limited.
+    pub rate_limit: Option<RateLimitConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,6 +55,23 @@ pub struct StorageConfig {
 pub struct TelemetryConfig {
     /// OTLP gRPC collector, e.g. `http://localhost:4317`.
     pub otlp_endpoint: Option<String>,
+}
+
+/// Per-minute request budgets, refilled continuously. 0 disables a limit.
+#[derive(Debug, Deserialize)]
+pub struct RateLimitConfig {
+    /// Routes that need no login (images, thumbnails, login, registration,
+    /// SSO, public settings) and failed authentications, keyed by client IP
+    /// (IPv6 by /64).
+    pub unauthenticated_requests_per_minute_per_ip: u32,
+    /// Login, registration and password change attempts, keyed by client IP,
+    /// on top of the unauthenticated or authenticated budget.
+    pub login_attempts_per_minute_per_ip: u32,
+    /// API routes that need a login, keyed by user, whatever the token or IP.
+    pub authenticated_requests_per_minute_per_user: u32,
+    /// Reverse proxies whose `X-Forwarded-For` is believed. The client IP is
+    /// the rightmost entry not in these ranges.
+    pub trusted_proxies: Vec<IpNet>,
 }
 
 #[derive(Debug, Deserialize)]

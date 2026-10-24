@@ -1,4 +1,7 @@
+use actix_web::middleware::from_fn;
 use actix_web::web::{ServiceConfig, get, resource};
+
+use crate::middlewares::rate_limit::limit_unauthenticated;
 
 pub mod get_elysia_settings;
 pub mod get_elysia_unauth_settings;
@@ -18,6 +21,8 @@ pub fn config(cfg: &mut ServiceConfig) {
     )
     .route(
         "/elysia-unauth-settings",
-        get().to(get_elysia_unauth_settings::get_elysia_unauth_settings),
+        get()
+            .to(get_elysia_unauth_settings::get_elysia_unauth_settings)
+            .wrap(from_fn(limit_unauthenticated)),
     );
 }
