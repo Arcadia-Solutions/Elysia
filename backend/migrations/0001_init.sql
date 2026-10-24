@@ -262,8 +262,7 @@ comment on column elysia_settings.uploads_enabled is 'When false, every upload i
 comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of available and trashed files each non-admin user may hold, unless overridden per user; 0 is unlimited';
 comment on column elysia_settings.record_referrer_views is 'When true, views are split per Referer host in file_referrer_views; when false, every view is counted under no referrer';
 
--- Default row: processing off, 10 MiB upload ceiling (valid against the same
--- rules the API enforces on every save).
+-- Default row
 insert into elysia_settings
   (id, max_file_size_bytes, max_width_pixels, max_height_pixels,
    target_width_pixels, target_height_pixels, default_target_file_format,
@@ -271,5 +270,7 @@ insert into elysia_settings
    default_compression, allow_overriding_compression,
    strip_exif_by_default, allow_overriding_strip_exif,
    thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
-   allow_registration)
-values ('singleton', 10485760, 0, 0, 0, 0, null, false, 0, 0, true, false, true, 0, 0, 80, true);
+   allow_registration, allowed_referrers, uploads_enabled,
+   default_storage_quota_bytes, record_referrer_views)
+values ('singleton', 26214400, 10000, 10000, 0, 0, 'webp', false, 0, 75, false,
+  true, true, 500, 500, 80, false, '{}', true, 0, false);

@@ -100,9 +100,19 @@ async fn get_returns_the_seeded_defaults(pool: PgPool) {
         .insert_header((name, value))
         .to_request();
     let settings: ElysiaSettings = actix_test::call_and_read_body_json(&app, request).await;
-    // The migration seeds a 10 MiB ceiling with processing off.
-    assert_eq!(settings.max_file_size_bytes, 10 * 1024 * 1024);
-    assert!(settings.default_target_file_format.is_none());
+    // The migration seeds a 25 MiB ceiling, WebP at quality 75, thumbnails on,
+    // EXIF stripped and registration closed, and that row is valid.
+    assert_eq!(settings.max_file_size_bytes, 25 * 1024 * 1024);
+    assert_eq!(
+        settings.default_target_file_format,
+        Some(TargetFormat::Webp)
+    );
+    assert_eq!(settings.default_compression, 75);
+    assert!(!settings.allow_overriding_compression);
+    assert!(settings.thumbnails_enabled());
+    assert!(settings.strip_exif_by_default);
+    assert!(!settings.allow_registration);
+    settings.validate().unwrap();
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -147,7 +157,7 @@ async fn put_rejects_contradictory_settings(pool: PgPool) {
 
     // The rejected save left the stored row untouched.
     let reloaded = settings_repo::load(&pool).await.unwrap();
-    assert!(reloaded.default_target_file_format.is_none());
+    assert_eq!(reloaded.max_file_size_bytes, 25 * 1024 * 1024);
 }
 
 #[test]
