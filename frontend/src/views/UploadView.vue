@@ -16,27 +16,42 @@
           @dragleave.prevent="dragging = false"
           @drop.prevent="onDrop"
         >
-          <FileUpload mode="basic" accept="image/*" :auto="false" customUpload :chooseLabel="$t('upload.choose')" @select="onSelect" :disabled="uploading" />
+          <FileUpload
+            mode="basic"
+            accept="image/*"
+            multiple
+            :auto="false"
+            customUpload
+            :chooseLabel="$t('upload.choose')"
+            @select="onSelect"
+            :disabled="uploading"
+          />
           <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
         </div>
 
-        <div v-if="selectedPreview" class="preview-wrap">
-          <img :src="selectedPreview" :alt="$t('upload.preview_alt')" class="preview" />
-          <Button
-            icon="pi pi-times"
-            size="small"
-            rounded
-            severity="secondary"
-            class="clear-btn"
-            :title="$t('upload.clear')"
-            :aria-label="$t('upload.clear')"
-            :disabled="uploading"
-            @click="clearSelection"
-          />
+        <div v-if="selected.length" class="previews">
+          <div v-for="(item, i) in selected" :key="item.preview" class="preview-wrap">
+            <img :src="item.preview" :alt="$t('upload.preview_alt')" class="preview" />
+            <Button
+              icon="pi pi-times"
+              size="small"
+              rounded
+              severity="secondary"
+              class="clear-btn"
+              :title="$t('upload.clear')"
+              :aria-label="$t('upload.clear')"
+              :disabled="uploading"
+              @click="remove(i)"
+            />
+            <div v-if="item.status === 'uploading' || item.status === 'processing' || item.status === 'done'" class="item-progress">
+              <ProgressBar v-if="item.status === 'processing'" mode="indeterminate" />
+              <ProgressBar v-else :value="item.progress" :showValue="false" />
+            </div>
+          </div>
         </div>
 
         <InputText
-          v-if="!selectedFile"
+          v-if="!selected.length"
           v-model="urlInput"
           size="small"
           :placeholder="$t('upload.url_placeholder')"
@@ -83,15 +98,12 @@
         </div>
       </section>
 
-      <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selectedFile && !urlInput)" />
+      <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selected.length && !urlInput)" />
 
       <Transition name="fade">
-        <div v-if="uploading" class="progress">
-          <ProgressBar v-if="phase === 'uploading'" :value="progress" :showValue="false" style="height: 6px" />
-          <ProgressBar v-else mode="indeterminate" style="height: 6px" />
-          <span class="progress-label">
-            {{ phase === 'uploading' ? $t('upload.uploading', { pct: progress }) : $t('upload.processing') }}
-          </span>
+        <div v-if="phase === 'processing'" class="progress">
+          <ProgressBar mode="indeterminate" style="height: 6px" />
+          <span class="progress-label">{{ $t('upload.processing') }}</span>
         </div>
       </Transition>
     </template>
@@ -117,15 +129,17 @@ import { showToast } from '@/services/toast'
 
 const { t } = useI18n()
 const router = useRouter()
-// 'uploading' = bytes in flight (determinate bar), 'processing' = backend
+// 'uploading' = files in flight (each shows its own bar), 'processing' = backend
+// fetching a rehosted URL (one page-wide bar)
 const phase = ref<'idle' | 'uploading' | 'processing'>('idle')
-const progress = ref(0)
 const uploading = computed(() => phase.value !== 'idle')
 const dragging = ref(false)
 const urlInput = ref('')
-// File chosen but not yet uploaded, with an object URL for the preview.
-const selectedFile = ref<File | null>(null)
-const selectedPreview = ref('')
+// Files chosen but not yet uploaded, each with an object URL for its preview
+// and its upload state: 'uploading' = bytes in flight (progress in %),
+// 'processing' = bytes sent, backend working.
+type Selected = { file: File; preview: string; status: 'pending' | 'uploading' | 'processing' | 'done' | 'failed'; progress: number }
+const selected = ref<Selected[]>([])
 // Cached by App.vue on load and on login.
 const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
 // Per-upload output format; 'default' uses the server's default (a non-empty
@@ -204,68 +218,94 @@ const validate = (file: File): Promise<string | null> => {
     .catch(() => null) // undecodable: let the backend judge it
 }
 
-const handleFile = (file: File | undefined) => {
-  if (!file) return
-  validate(file).then((error) => {
-    if (error) {
-      showToast(error, 'error')
-      return
-    }
-    phase.value = 'uploading'
-    progress.value = 0
-    api
-      .upload(file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue(), {
-        onUploadProgress: (event) => {
-          if (!event.total) return
-          progress.value = Math.round((event.loaded / event.total) * 100)
-          // Bytes all sent: backend is now processing, switch to indeterminate.
-          if (progress.value >= 100) phase.value = 'processing'
-        },
-      })
-      .then((uploaded) => {
-        router.push({ name: 'Uploaded', query: { url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
-      })
-      .finally(() => {
-        phase.value = 'idle'
-        clearSelection()
-      })
-  })
+// Uploads the files one after another so the backend sees a single upload at
+// a time. A failed file (toasted by the http interceptor) is skipped; the
+// result page lists the ones that made it.
+const uploadAll = (items: Selected[]) => {
+  const ids: string[] = []
+  const urls: string[] = []
+  const thumbnailUrls: string[] = []
+  phase.value = 'uploading'
+  items
+    .reduce(
+      (chain, item) =>
+        chain.then(() => {
+          item.status = 'uploading'
+          return api
+            .upload(item.file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue(), {
+              onUploadProgress: (event) => {
+                item.progress = event.total ? Math.round((event.loaded / event.total) * 100) : 0
+                // Bytes all sent: backend is now processing, switch to indeterminate.
+                if (item.progress >= 100) item.status = 'processing'
+              },
+            })
+            .then((uploaded) => {
+              item.status = 'done'
+              item.progress = 100
+              ids.push(uploaded.data.id)
+              urls.push(uploaded.data.url)
+              thumbnailUrls.push(uploaded.data.thumbnail_url)
+            })
+            .catch(() => {
+              item.status = 'failed'
+            })
+        }),
+      Promise.resolve(),
+    )
+    .then(() => {
+      if (urls.length) router.push({ name: 'Uploaded', query: { id: ids, url: urls, thumbnailUrl: thumbnailUrls } })
+    })
+    .finally(() => {
+      phase.value = 'idle'
+      clearSelection()
+    })
 }
 
 const clearSelection = () => {
-  if (selectedPreview.value) URL.revokeObjectURL(selectedPreview.value)
-  selectedFile.value = null
-  selectedPreview.value = ''
+  selected.value.forEach((item) => URL.revokeObjectURL(item.preview))
+  selected.value = []
 }
 
-const pick = (file: File | undefined) => {
-  if (!file) return
-  clearSelection()
-  selectedFile.value = file
-  selectedPreview.value = URL.createObjectURL(file)
+const remove = (index: number) => {
+  URL.revokeObjectURL(selected.value[index].preview)
+  selected.value.splice(index, 1)
 }
+
+// Adds the files that pass the limits, in the order given, toasting the
+// reason for each rejected one.
+const pick = (files: File[]) => {
+  Promise.all(files.map(validate)).then((errors) =>
+    files.forEach((file, i) => {
+      if (errors[i]) return showToast(`${file.name}: ${errors[i]}`, 'error')
+      selected.value.push({ file, preview: URL.createObjectURL(file), status: 'pending', progress: 0 })
+    }),
+  )
+}
+
+// Drops and pastes skip the file input's `accept` check, so filter them here.
+const imageFiles = (files: FileList | undefined) => Array.from(files ?? []).filter((file) => file.type.startsWith('image/'))
 
 const onSelect = (event: FileUploadSelectEvent) => {
-  pick(event.files[0])
+  pick(event.files)
 }
 
 const onDrop = (event: DragEvent) => {
   dragging.value = false
-  pick(event.dataTransfer?.files?.[0])
+  pick(imageFiles(event.dataTransfer?.files))
 }
 
 // Page-wide paste: grab a pasted image file, leave text pastes (e.g. into the URL field) alone.
 const onPaste = (event: ClipboardEvent) => {
-  const file = event.clipboardData?.files?.[0]
-  if (uploading.value || settings?.uploads_enabled === false || !file?.type.startsWith('image/')) return
+  const files = imageFiles(event.clipboardData?.files)
+  if (uploading.value || settings?.uploads_enabled === false || !files.length) return
   event.preventDefault()
   urlInput.value = ''
-  pick(file)
+  pick(files)
 }
 
-// One button: upload the chosen file, else rehost the pasted URL.
+// One button: upload the chosen files, else rehost the pasted URL.
 const submit = () => {
-  if (selectedFile.value) return handleFile(selectedFile.value)
+  if (selected.value.length) return uploadAll(selected.value)
   rehost()
 }
 
@@ -281,7 +321,7 @@ const rehost = () => {
   api
     .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue())
     .then((uploaded) => {
-      router.push({ name: 'Uploaded', query: { url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
+      router.push({ name: 'Uploaded', query: { id: uploaded.data.id, url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
     })
     .finally(() => {
       phase.value = 'idle'
@@ -339,8 +379,30 @@ const rehost = () => {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }
+.previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+.previews:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
 .preview-wrap {
   position: relative;
+}
+.item-progress {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.item-progress :deep(.p-progressbar) {
+  height: 6px;
+}
+.item-progress :deep(.p-progressbar-value) {
+  transition: width 0.3s ease;
 }
 .clear-btn {
   position: absolute;
@@ -381,9 +443,6 @@ const rehost = () => {
   flex-direction: column;
   gap: 8px;
 }
-.progress :deep(.p-progressbar-value) {
-  transition: width 0.3s ease;
-}
 .progress-label {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
@@ -401,7 +460,8 @@ const rehost = () => {
   transform: translateY(-4px);
 }
 .preview {
-  max-width: 100%;
+  display: block;
+  width: 100%;
   border-radius: 6px;
 }
 </style>

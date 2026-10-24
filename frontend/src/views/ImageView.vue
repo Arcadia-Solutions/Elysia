@@ -50,10 +50,8 @@
           <template v-else>{{ $t('image.processing.none') }}</template>
         </dd>
       </dl>
-      <template v-for="group in linkGroups" :key="group.title">
-        <h3>{{ group.title }}</h3>
-        <CopyLink v-for="row in group.rows" :key="row.label" :label="row.label" :value="row.value" />
-      </template>
+      <!-- Trashed images are not served from their public links. -->
+      <EmbedLinks v-if="!meta.trashed" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
       <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" class="delete" @click="trash" />
       <Button v-if="meta.trashed" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
     </aside>
@@ -61,12 +59,12 @@
 </template>
 
 <script setup lang="ts">
-import { absoluteUrl, formatBytes, timeAgo } from '@/services/format'
+import { formatBytes, timeAgo } from '@/services/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import CopyLink from '@/components/CopyLink.vue'
+import EmbedLinks from '@/components/EmbedLinks.vue'
 import { api } from '@/services/api/http'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
@@ -92,34 +90,6 @@ const processing = computed(() => {
     steps.push(t('image.processing.compressed', { quality: image.applied_quality }))
   }
   return steps
-})
-
-// Copyable direct links and embed snippets. The thumbnail embeds link to the full image.
-const linkGroups = computed(() => {
-  // Trashed images are not served from their public links.
-  if (!meta.value || meta.value.trashed) return []
-  const full = absoluteUrl(meta.value.url)
-  const thumb = absoluteUrl(meta.value.thumbnail_url)
-  return [
-    {
-      title: t('image.links.full'),
-      rows: [
-        { label: t('image.links.link'), value: full },
-        { label: t('image.links.markdown'), value: `![](${full})` },
-        { label: t('image.links.bbcode'), value: `[img]${full}[/img]` },
-        { label: t('image.links.html'), value: `<img src="${full}">` },
-      ],
-    },
-    {
-      title: t('image.links.thumbnail'),
-      rows: [
-        { label: t('image.links.link'), value: thumb },
-        { label: t('image.links.markdown'), value: `[![](${thumb})](${full})` },
-        { label: t('image.links.bbcode'), value: `[url=${full}][img]${thumb}[/img][/url]` },
-        { label: t('image.links.html'), value: `<a href="${full}"><img src="${thumb}"></a>` },
-      ],
-    },
-  ]
 })
 
 const trash = () => {
@@ -179,11 +149,6 @@ load()
 .list {
   margin: 0;
   padding-left: 18px;
-}
-.side h3 {
-  margin: 8px 0 2px;
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 .delete {
   align-self: flex-start;

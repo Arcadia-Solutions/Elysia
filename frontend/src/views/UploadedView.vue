@@ -1,9 +1,12 @@
 <template>
   <div class="uploaded-wrap">
-    <img :src="link" :alt="$t('upload.preview_alt')" class="preview" />
-    <CopyLink :label="$t('upload.image_link')" :value="absoluteUrl(link)" />
-    <CopyLink :label="$t('upload.thumbnail_link')" :value="absoluteUrl(String(route.query.thumbnailUrl ?? ''))" />
-    <Button :label="$t('upload.another')" size="small" severity="secondary" @click="router.push({ name: 'Upload' })" />
+    <div class="previews">
+      <router-link v-for="image in images" :key="image.url" :to="{ name: 'Image', params: { id: image.id } }" target="_blank">
+        <img :src="image.url" :alt="$t('upload.preview_alt')" class="preview" />
+      </router-link>
+    </div>
+    <EmbedLinks :images="images" />
+    <Button :label="$t('upload.another')" size="small" severity="secondary" class="another" @click="router.push({ name: 'Upload' })" />
   </div>
 </template>
 
@@ -11,8 +14,7 @@
 import { computed, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import CopyLink from '@/components/CopyLink.vue'
-import { absoluteUrl } from '@/services/format'
+import EmbedLinks from '@/components/EmbedLinks.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,22 +25,41 @@ onBeforeMount(() => {
   if (!route.query.url) router.replace({ name: 'Upload' })
 })
 
-const link = computed(() => String(route.query.url ?? ''))
+// A single upload yields scalar query params, several yield arrays.
+const images = computed(() => {
+  const ids = [route.query.id ?? []].flat()
+  const thumbnails = [route.query.thumbnailUrl ?? []].flat()
+  return [route.query.url ?? []].flat().map((url, i) => ({ id: String(ids[i] ?? ''), url: String(url), thumbnailUrl: String(thumbnails[i] ?? '') }))
+})
 </script>
 
 <style scoped>
 .uploaded-wrap {
   max-width: 600px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 24px 16px;
   min-height: 80vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
+  gap: 4px;
+}
+.previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.previews:has(> :only-child) {
+  grid-template-columns: 1fr;
 }
 .preview {
-  max-width: 100%;
+  display: block;
+  width: 100%;
   border-radius: 6px;
+}
+.another {
+  margin-top: 12px;
 }
 </style>

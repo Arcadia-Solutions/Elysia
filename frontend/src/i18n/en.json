@@ -63,8 +63,8 @@
     "storage_quota_saved": "Storage quota of {username} saved"
   },
   "upload": {
-    "choose": "Choose image",
-    "drop_hint": "or drop or paste an image here",
+    "choose": "Choose images",
+    "drop_hint": "or drop or paste images here",
     "url_placeholder": "Paste an image link to rehost",
     "disabled": "Uploads are temporarily disabled.",
     "upload": "Upload",
@@ -75,17 +75,14 @@
     "too_tall": "Image is too tall (max {max}px)",
     "logout": "Logout",
     "copy": "Copy",
-    "image_link": "Image link",
-    "thumbnail_link": "Thumbnail link",
     "copied": "Copied",
     "copy_failed": "Could not copy",
-    "another": "Upload another one",
+    "another": "Upload more",
     "preview_alt": "preview",
     "step": {
-      "image": "Pick an image",
+      "image": "Pick images",
       "options": "Options"
     },
-    "uploading": "Uploading… {pct}%",
     "processing": "Processing…",
     "format_override": {
       "label": "Output format",
