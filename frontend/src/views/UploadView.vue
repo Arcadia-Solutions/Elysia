@@ -11,10 +11,6 @@
           v-if="!urlInput"
           class="dropzone"
           :class="{ dragging }"
-          @dragover.prevent
-          @dragenter.prevent="dragging = true"
-          @dragleave.prevent="dragging = false"
-          @drop.prevent="onDrop"
         >
           <FileUpload
             mode="basic"
@@ -194,8 +190,16 @@ const addToAlbum = (ids: string[]): Promise<void> =>
 
 onMounted(() => {
   window.addEventListener('paste', onPaste)
+  window.addEventListener('dragover', onDragOver)
+  window.addEventListener('dragleave', onDragLeave)
+  window.addEventListener('drop', onDrop)
 })
-onUnmounted(() => window.removeEventListener('paste', onPaste))
+onUnmounted(() => {
+  window.removeEventListener('paste', onPaste)
+  window.removeEventListener('dragover', onDragOver)
+  window.removeEventListener('dragleave', onDragLeave)
+  window.removeEventListener('drop', onDrop)
+})
 
 const readDimensions = (file: File): Promise<{ width: number; height: number }> =>
   new Promise((resolve, reject) => {
@@ -307,15 +311,32 @@ const onSelect = (event: FileUploadSelectEvent) => {
   pick(event.files)
 }
 
+// Page-wide drop, like paste. Only file drags are claimed, so dragging text
+// into the URL field still works; claiming them also stops the browser from
+// navigating away to a file dropped outside the drop zone.
+const canAdd = () => !uploading.value && settings?.uploads_enabled !== false
+const onDragOver = (event: DragEvent) => {
+  if (!event.dataTransfer?.types.includes('Files')) return
+  event.preventDefault()
+  dragging.value = canAdd()
+}
+// A null relatedTarget means the pointer left the window.
+const onDragLeave = (event: DragEvent) => {
+  if (!event.relatedTarget) dragging.value = false
+}
 const onDrop = (event: DragEvent) => {
+  if (!event.dataTransfer?.types.includes('Files')) return
+  event.preventDefault()
   dragging.value = false
-  pick(imageFiles(event.dataTransfer?.files))
+  if (!canAdd()) return
+  urlInput.value = ''
+  pick(imageFiles(event.dataTransfer.files))
 }
 
 // Page-wide paste: grab a pasted image file, leave text pastes (e.g. into the URL field) alone.
 const onPaste = (event: ClipboardEvent) => {
   const files = imageFiles(event.clipboardData?.files)
-  if (uploading.value || settings?.uploads_enabled === false || !files.length) return
+  if (!canAdd() || !files.length) return
   event.preventDefault()
   urlInput.value = ''
   pick(files)
