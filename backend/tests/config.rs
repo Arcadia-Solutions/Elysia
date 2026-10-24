@@ -42,6 +42,14 @@ fn rejects_sso_with_relative_image_links() {
 }
 
 #[test]
+#[should_panic(expected = "outbound_proxy")]
+fn rejects_an_invalid_outbound_proxy() {
+    let mut config = test_config_with_secret("a-long-random-secret-with-32-plus-characters");
+    config.outbound_proxy = Some("not a url".into());
+    config.validate();
+}
+
+#[test]
 fn loads_the_config_file_with_environment_overrides() {
     let dir = std::env::temp_dir().join(format!("elysia-config-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

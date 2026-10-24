@@ -11,6 +11,9 @@ pub struct Config {
     pub telemetry: TelemetryConfig,
     /// Absent, nothing is rate limited.
     pub rate_limit: Option<RateLimitConfig>,
+    /// Proxy every outbound HTTP request goes through, e.g.
+    /// `http://user:pass@proxy:3128`. Absent, requests go out directly.
+    pub outbound_proxy: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -127,6 +130,9 @@ impl Config {
     /// Refuse to boot with a placeholder or short session secret, or with SSO
     /// but relative image links, which break on the provider's site.
     pub fn validate(&self) {
+        if let Some(proxy) = &self.outbound_proxy {
+            reqwest::Proxy::all(proxy).expect("outbound_proxy must be a valid proxy url");
+        }
         if self.auth.sso.is_some() && self.server.public_url.is_empty() {
             panic!(
                 "server.public_url must be set when auth.sso is: the SSO provider stores the image links Elysia returns"
@@ -185,5 +191,30 @@ impl Config {
                 panic!("config.yml not found in cwd or any parent (set ELYSIA_CONFIG to override)");
             }
         }
+    }
+}
+
+static OUTBOUND_PROXY: std::sync::OnceLock<reqwest::Proxy> = std::sync::OnceLock::new();
+
+/// Route every client built by [`http_client_builder`] through `proxy`. Call
+/// once at startup, before any client is built.
+pub fn set_outbound_proxy(proxy: &str) {
+    let proxy = reqwest::Proxy::all(proxy).expect("outbound_proxy must be a valid proxy url");
+    OUTBOUND_PROXY
+        .set(proxy)
+        .expect("outbound proxy already set");
+}
+
+/// The configured outbound proxy, if any.
+pub fn outbound_proxy() -> Option<&'static reqwest::Proxy> {
+    OUTBOUND_PROXY.get()
+}
+
+/// Client builder honoring the configured outbound proxy.
+pub fn http_client_builder() -> reqwest::ClientBuilder {
+    let builder = reqwest::Client::builder();
+    match outbound_proxy() {
+        Some(proxy) => builder.proxy(proxy.clone()),
+        None => builder,
     }
 }

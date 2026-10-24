@@ -22,6 +22,9 @@ use elysia::telemetry;
 async fn main() -> std::io::Result<()> {
     let cfg = Config::load();
     cfg.validate();
+    if let Some(proxy) = &cfg.outbound_proxy {
+        elysia::config::set_outbound_proxy(proxy);
+    }
     telemetry::init(&cfg.telemetry);
     let (host, port) = (cfg.server.host.clone(), cfg.server.port);
 

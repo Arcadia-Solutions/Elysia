@@ -45,6 +45,7 @@ pub fn test_config() -> Config {
         },
         telemetry: TelemetryConfig::default(),
         rate_limit: None,
+        outbound_proxy: None,
     }
 }
 

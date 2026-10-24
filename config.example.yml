@@ -47,6 +47,13 @@ auth:
 # telemetry:
 #   otlp_endpoint: http://localhost:4317
 
+# Optional proxy every outbound HTTP request goes through: URL uploads, SSO
+# provider calls and the Chevereto importer. http(s) only. Without it, requests
+# go out directly. With it, URL uploads lose their hostname check: the proxy
+# resolves names in Elysia's place, so it must refuse private and loopback
+# addresses itself, or users can make Elysia fetch from your internal network.
+# outbound_proxy: http://user:password@proxy.internal:3128
+
 # Optional rate limits; without this section nothing is limited. When set,
 # every key is required. Per minute and refilled continuously; 0 disables one.
 # Over a limit the API answers 429 with a Retry-After header.

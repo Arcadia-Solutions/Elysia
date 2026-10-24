@@ -177,13 +177,22 @@ fn describe_actions(
 /// literal hosts skip the resolver. Callers check the first URL themselves.
 /// The admin-run Chevereto importer and the tests use a plain client instead,
 /// as they legitimately fetch from loopback or LAN hosts.
+/// With an outbound proxy, the proxy resolves hostnames in our place, so only
+/// IP literals are vetted here and the proxy must refuse non-public addresses.
 pub fn http_client() -> &'static reqwest::Client {
     static CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
-        reqwest::Client::builder()
+        let builder = crate::config::http_client_builder();
+        // The resolver would only see the proxy's own hostname, likely private.
+        // Without a configured proxy, an environment one (HTTP_PROXY) would
+        // resolve and connect in our place, past the guard.
+        let builder = match crate::config::outbound_proxy() {
+            Some(_) => builder,
+            None => builder
+                .no_proxy()
+                .dns_resolver(std::sync::Arc::new(PublicResolver)),
+        };
+        builder
             .timeout(std::time::Duration::from_secs(30))
-            // A proxy would resolve and connect in our place, past the guard.
-            .no_proxy()
-            .dns_resolver(std::sync::Arc::new(PublicResolver))
             .redirect(reqwest::redirect::Policy::custom(|attempt| {
                 if attempt.previous().len() >= 10 {
                     attempt.error("too many redirects")

@@ -49,7 +49,7 @@ struct StatusEntry {
 impl Default for SsoState {
     fn default() -> Self {
         Self {
-            client: reqwest::Client::builder()
+            client: crate::config::http_client_builder()
                 .timeout(Duration::from_secs(15))
                 .build()
                 .expect("failed to build SSO HTTP client"),

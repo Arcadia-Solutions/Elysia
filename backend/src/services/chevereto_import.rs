@@ -956,7 +956,7 @@ async fn prepare(
         None => None,
     };
 
-    let http_client = reqwest::Client::builder()
+    let http_client = crate::config::http_client_builder()
         .timeout(Duration::from_secs(60))
         .build()
         .map_err(|_| Error::Internal)?;
