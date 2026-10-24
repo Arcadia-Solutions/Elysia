@@ -47,8 +47,6 @@ pub struct MetadataResponse {
     /// Whether the caller may trash the image: an admin, or its uploader during
     /// the hour after upload. False once trashed.
     pub can_delete: bool,
-    /// Whether the image is in the trash.
-    pub trashed: bool,
     /// When the image was trashed, as a UTC ISO-8601 string. Null while available.
     pub trashed_at: Option<String>,
     /// Who trashed the image. Null while available.
@@ -82,18 +80,16 @@ pub async fn metadata(
     let referrers = find_referrer_views(pool.get_ref(), &row.id).await?;
     let albums = albums::for_file(pool.get_ref(), &row.id, user.user_id).await?;
     let public_url = &config.server.public_url;
-    let trashed = row.trashed_at.is_some();
     Ok(HttpResponse::Ok().json(MetadataResponse {
         url: image_url(public_url, &row.id, &row.ext),
         thumbnail_url: thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
-        can_delete: !trashed
+        can_delete: row.trashed_at.is_none()
             && files::may_trash(
                 user.user_id,
                 user.is_admin,
                 row.uploaded_by_user_id,
                 row.recent,
             ),
-        trashed,
         trashed_at: row.trashed_at,
         trashed_by_username: row.trashed_by_username,
         days_until_deletion: row.days_until_deletion,

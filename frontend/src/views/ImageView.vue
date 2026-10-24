@@ -61,7 +61,7 @@
           </Chip>
           <Button v-if="!showAllAlbums && meta.albums.length > 10" label="..." size="small" severity="secondary" text rounded @click="showAllAlbums = true" />
           <Button
-            v-if="!meta.trashed"
+            v-if="!meta.trashed_at"
             icon="pi pi-plus"
             size="small"
             severity="secondary"
@@ -74,9 +74,9 @@
         </dd>
       </dl>
       <!-- Trashed images are not served from their public links. -->
-      <EmbedLinks v-if="!meta.trashed" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
+      <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
       <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" class="delete" @click="trash" />
-      <Button v-if="meta.trashed" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
+      <Button v-if="meta.trashed_at" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
     </aside>
     <Dialog v-model:visible="albumDialogVisible" modal :header="$t('albums.add')" :style="{ width: '25rem' }">
       <AlbumSelect

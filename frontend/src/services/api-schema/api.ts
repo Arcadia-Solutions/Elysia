@@ -576,10 +576,6 @@ export interface MetadataResponse {
      */
     'thumbnail_views': number;
     /**
-     * Whether the image is in the trash.
-     */
-    'trashed': boolean;
-    /**
      * When the image was trashed, as a UTC ISO-8601 string. Null while available.
      */
     'trashed_at'?: string | null;
