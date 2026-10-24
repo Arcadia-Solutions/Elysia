@@ -882,6 +882,9 @@ export interface ScanParams {
      */
     'hosts': Array<string>;
 }
+export interface SetUserAdminRequest {
+    'is_admin': boolean;
+}
 export interface SetUserBannedRequest {
     'banned': boolean;
 }
@@ -4561,6 +4564,45 @@ export const UsersApiAxiosParamCreator = function (configuration?: Configuration
             };
         },
         /**
+         * Grant or revoke admin rights, local or SSO. Takes effect on the user\'s next request. Admins cannot change their own rights, so at least one admin always remains.
+         * @param {string} id User id
+         * @param {SetUserAdminRequest} setUserAdminRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setUserAdmin: async (id: string, setUserAdminRequest: SetUserAdminRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('setUserAdmin', 'id', id)
+            // verify required parameter 'setUserAdminRequest' is not null or undefined
+            assertParamExists('setUserAdmin', 'setUserAdminRequest', setUserAdminRequest)
+            const localVarPath = `/api/users/{id}/admin`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(setUserAdminRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
          * @param {string} id User id
          * @param {SetUserBannedRequest} setUserBannedRequest 
@@ -4676,6 +4718,19 @@ export const UsersApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Grant or revoke admin rights, local or SSO. Takes effect on the user\'s next request. Admins cannot change their own rights, so at least one admin always remains.
+         * @param {string} id User id
+         * @param {SetUserAdminRequest} setUserAdminRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async setUserAdmin(id: string, setUserAdminRequest: SetUserAdminRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.setUserAdmin(id, setUserAdminRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['UsersApi.setUserAdmin']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
          * @param {string} id User id
          * @param {SetUserBannedRequest} setUserBannedRequest 
@@ -4733,6 +4788,16 @@ export const UsersApiFactory = function (configuration?: Configuration, basePath
             return localVarFp.listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(axios, basePath));
         },
         /**
+         * Grant or revoke admin rights, local or SSO. Takes effect on the user\'s next request. Admins cannot change their own rights, so at least one admin always remains.
+         * @param {string} id User id
+         * @param {SetUserAdminRequest} setUserAdminRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setUserAdmin(id: string, setUserAdminRequest: SetUserAdminRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.setUserAdmin(id, setUserAdminRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Ban or unban a user, local or SSO. A banned user\'s sessions, logins and delegated uploads are refused at once. Admins cannot ban themselves.
          * @param {string} id User id
          * @param {SetUserBannedRequest} setUserBannedRequest 
@@ -4781,6 +4846,17 @@ export class UsersApi extends BaseAPI {
      */
     public listUsers(page: number, pageSize: number, sortBy: UsersSortBy, order: SortOrder, search?: string, options?: RawAxiosRequestConfig) {
         return UsersApiFp(this.configuration).listUsers(page, pageSize, sortBy, order, search, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Grant or revoke admin rights, local or SSO. Takes effect on the user\'s next request. Admins cannot change their own rights, so at least one admin always remains.
+     * @param {string} id User id
+     * @param {SetUserAdminRequest} setUserAdminRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public setUserAdmin(id: string, setUserAdminRequest: SetUserAdminRequest, options?: RawAxiosRequestConfig) {
+        return UsersApiFp(this.configuration).setUserAdmin(id, setUserAdminRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

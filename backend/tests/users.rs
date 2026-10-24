@@ -183,4 +183,42 @@ async fn admin_lists_and_bans_users(pool: PgPool) {
         .await;
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
+
+    // Admins grant and revoke admin rights, but never their own.
+    let set_admin = |id: uuid::Uuid, is_admin: bool, token: &str| {
+        let request =
+            actix_test::TestRequest::put().set_json(serde_json::json!({ "is_admin": is_admin }));
+        call(request, format!("/api/users/{id}/admin"), token)
+    };
+    for (id, expected) in [
+        (admin.id, StatusCode::BAD_REQUEST),
+        (uuid::Uuid::new_v4(), StatusCode::NOT_FOUND),
+        (local.id, StatusCode::NO_CONTENT),
+    ] {
+        let response = actix_test::call_service(&app, set_admin(id, true, &admin_token)).await;
+        assert_eq!(response.status(), expected);
+    }
+    let users_uri = "/api/users?page=1&page_size=50&sort_by=username&order=asc";
+    let response = actix_test::call_service(
+        &app,
+        call(
+            actix_test::TestRequest::get(),
+            users_uri.into(),
+            &local_token,
+        ),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let response = actix_test::call_service(&app, set_admin(local.id, false, &admin_token)).await;
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    let response = actix_test::call_service(
+        &app,
+        call(
+            actix_test::TestRequest::get(),
+            users_uri.into(),
+            &local_token,
+        ),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }

@@ -83,6 +83,13 @@
           :severity="user.banned ? 'secondary' : 'danger'"
           @click="toggleBan"
         />
+        <Button
+          :label="$t(user.is_admin ? 'account.revoke_admin' : 'account.grant_admin')"
+          :icon="user.is_admin ? 'pi pi-user-minus' : 'pi pi-shield'"
+          size="small"
+          severity="secondary"
+          @click="toggleAdmin"
+        />
       </div>
     </template>
 
@@ -178,6 +185,18 @@ const toggleBan = () => {
   api.setUserBanned(user.value.id, { banned }).then(() => {
     if (user.value) user.value.banned = banned
     showToast(t(banned ? 'account.banned_toast' : 'account.unbanned_toast', { username }), 'success')
+  })
+}
+
+const toggleAdmin = () => {
+  if (!user.value) return
+  const is_admin = !user.value.is_admin
+  const { id, username } = user.value
+  if (is_admin && !confirm(t('account.grant_admin_confirm', { username }))) return
+  api.setUserAdmin(id, { is_admin }).then(() => {
+    // Reload: admins default to unlimited storage.
+    loadUser(id)
+    showToast(t(is_admin ? 'account.granted_admin_toast' : 'account.revoked_admin_toast', { username }), 'success')
   })
 }
 </script>

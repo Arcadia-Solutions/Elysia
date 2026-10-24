@@ -175,6 +175,18 @@ pub async fn set_banned(pool: &PgPool, user_id: Uuid, banned: bool) -> Result<bo
     Ok(result.rows_affected() == 1)
 }
 
+/// Grant or revoke admin rights. False when no user has this id.
+pub async fn set_admin(pool: &PgPool, user_id: Uuid, is_admin: bool) -> Result<bool> {
+    let result = sqlx::query!(
+        r#"update users set is_admin = $2 where id = $1"#,
+        user_id,
+        is_admin
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() == 1)
+}
+
 /// Set or clear (`None` follows the global default) a user's storage quota
 /// override. False when no user has this id.
 pub async fn set_storage_quota(

@@ -55,6 +55,7 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::settings::put_elysia_settings::put_elysia_settings,
         crate::handlers::users::list_users::list_users,
         crate::handlers::users::get_user::get_user,
+        crate::handlers::users::set_user_admin::set_user_admin,
         crate::handlers::users::set_user_banned::set_user_banned,
         crate::handlers::users::set_user_storage_quota::set_user_storage_quota,
     ),
