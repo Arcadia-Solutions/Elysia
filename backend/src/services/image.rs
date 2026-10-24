@@ -90,6 +90,62 @@ pub fn decode(input: &[u8]) -> Result<Option<Decoded>, ProcessError> {
     Ok(Some((image, icc_profile)))
 }
 
+/// 64-bit DCT perceptual hash (pHash): the 8x8 lowest frequencies of the image
+/// shrunk to 32x32 grayscale, each bit but the first set when above their
+/// median. Visually similar images differ in few bits: compare with
+/// `(a ^ b).count_ones()`.
+pub fn perceptual_hash(image: &DynamicImage) -> i64 {
+    const SIZE: usize = 32;
+    const KEPT: usize = 8;
+    let pixels = image.thumbnail_exact(SIZE as u32, SIZE as u32).to_luma32f();
+    let cosines: [[f32; SIZE]; KEPT] = std::array::from_fn(|frequency| {
+        std::array::from_fn(|position| {
+            ((2 * position + 1) as f32 * frequency as f32 * std::f32::consts::PI
+                / (2 * SIZE) as f32)
+                .cos()
+        })
+    });
+    // Separable 2D DCT-II, only for the kept frequencies: rows first, then columns.
+    let mut row_frequencies = [[0f32; KEPT]; SIZE];
+    for (row, frequencies) in row_frequencies.iter_mut().enumerate() {
+        for (frequency, value) in frequencies.iter_mut().enumerate() {
+            *value = (0..SIZE)
+                .map(|column| {
+                    pixels.get_pixel(column as u32, row as u32).0[0] * cosines[frequency][column]
+                })
+                .sum();
+        }
+    }
+    let mut coefficients = [0f32; KEPT * KEPT];
+    for (index, coefficient) in coefficients.iter_mut().enumerate() {
+        let (vertical, horizontal) = (index / KEPT, index % KEPT);
+        *coefficient = (0..SIZE)
+            .map(|row| row_frequencies[row][horizontal] * cosines[vertical][row])
+            .sum();
+    }
+    // The DC coefficient (index 0), the mean brightness, dwarfs the others: it
+    // is left out of the median and its bit is never set.
+    let mut sorted = coefficients;
+    sorted[1..].sort_by(f32::total_cmp);
+    let median = sorted[1 + (KEPT * KEPT - 1) / 2];
+    coefficients
+        .iter()
+        .enumerate()
+        .skip(1)
+        .filter(|(_, coefficient)| **coefficient > median)
+        .fold(0u64, |hash, (index, _)| hash | 1 << index) as i64
+}
+
+/// `perceptual_hash` of encoded bytes, upright, the first frame of an animated
+/// GIF. None when undecodable.
+pub fn perceptual_hash_of(bytes: &[u8]) -> Option<i64> {
+    let image = match decode(bytes).ok()? {
+        Some((image, _)) => image,
+        None => image::load_from_memory(bytes).ok()?,
+    };
+    Some(perceptual_hash(&image))
+}
+
 /// EXIF orientation of the file at `path`, read without a pixel decode.
 /// `NoTransforms` when absent or unreadable.
 pub fn orientation(path: &std::path::Path) -> Orientation {

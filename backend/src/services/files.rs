@@ -434,8 +434,8 @@ pub async fn store_upload(
         };
 
     // The processed main output (`None` = passthrough or animated GIF) and, when
-    // the target-format pipeline runs, its thumbnail decoded from the same pixels.
-    let (processed, mut thumbnail) = match target_file_format {
+    // the target-format pipeline runs, its thumbnail and perceptual hash from the same pixels.
+    let (processed, mut thumbnail, phash) = match target_file_format {
         Some(format) => {
             let input = source_bytes.clone();
             let process_options = image::ProcessOptions {
@@ -452,8 +452,9 @@ pub async fn store_upload(
             tokio::task::spawn_blocking(move || {
                 let _permit = permit;
                 let Some((image, icc_profile)) = image::decode(&input)? else {
-                    return Ok::<_, image::ProcessError>((None, None));
+                    return Ok::<_, image::ProcessError>((None, None, None));
                 };
+                let phash = image::perceptual_hash(&image);
                 let source = thumbnail_options.is_some().then(|| image.clone());
                 let processed =
                     image::process_decoded(image, icc_profile.as_deref(), &process_options)?;
@@ -467,13 +468,13 @@ pub async fn store_upload(
                     }
                     _ => None,
                 };
-                Ok((Some(processed), thumbnail))
+                Ok((Some(processed), thumbnail, Some(phash)))
             })
             .await
             .map_err(|_| Error::Io(std::io::Error::other("image processing task failed")))?
             .map_err(process_error)?
         }
-        None => (None, None),
+        None => (None, None, None),
     };
 
     let output = match processed {
@@ -537,6 +538,21 @@ pub async fn store_upload(
         return Err(storage_quota_exceeded());
     }
 
+    // Passthrough and animated GIFs skipped the pipeline decode: hash the
+    // thumbnail when there is one, a cheaper decode than the stored file.
+    let phash = match phash {
+        Some(phash) => phash,
+        None => {
+            let bytes = match &thumbnail {
+                Some(bytes) => bytes.clone(),
+                None => tokio::fs::read(output.temp.path()).await?,
+            };
+            compute_perceptual_hash(bytes)
+                .await?
+                .ok_or(Error::UnsupportedMediaType)?
+        }
+    };
+
     let original_name = original_name.as_deref();
 
     // Files hit disk before the row exists, so a failed persist never leaves a
@@ -575,6 +591,7 @@ pub async fn store_upload(
                 requested_quality,
                 applied_quality: output.applied_quality,
                 has_thumbnail: thumbnail.is_some(),
+                phash,
                 uploaded_by_user_id,
                 api_key_id,
             },
@@ -793,6 +810,17 @@ async fn processing_permit() -> tokio::sync::SemaphorePermit<'static> {
         .acquire()
         .await
         .expect("processing semaphore is never closed")
+}
+
+/// `image::perceptual_hash_of` off the async worker threads.
+async fn compute_perceptual_hash(bytes: Vec<u8>) -> Result<Option<i64>> {
+    let permit = processing_permit().await;
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        image::perceptual_hash_of(&bytes)
+    })
+    .await
+    .map_err(|_| Error::Io(std::io::Error::other("perceptual hash task failed")))
 }
 
 /// Resize the source into the thumbnail box and encode it as lossy WebP.

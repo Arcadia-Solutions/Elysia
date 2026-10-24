@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select to_char(now() at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"replaced_at!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "replaced_at!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ccf0f7f5c4ca7e299f053343660ac7ffa2973e62d111de1b7427483c0f563321"
+}

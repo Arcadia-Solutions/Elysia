@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into similar_files (file_id, group_id)\n         select * from unnest($1::text[], $2::int[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "41d1ecd907fc87be7ccc9074de82fa4d517b9e09ee0c48d7858160b307300fca"
+}

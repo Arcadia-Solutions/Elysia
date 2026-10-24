@@ -1,0 +1,151 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with groups as (\n           select group_id from similar_files join files on id = file_id\n           where status = 'available' group by group_id having count(*) > 1\n         ), page as (\n           select group_id, count(*) over() as total from groups\n           order by group_id offset $1 limit $2\n         )\n         select page.group_id, page.total as \"total!\",\n                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,\n                f.views, u.username as uploader_username,\n                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"created_at!\"\n         from page\n         join similar_files s on s.group_id = page.group_id\n         join files f on f.id = s.file_id\n         join users u on u.id = f.uploaded_by_user_id\n         where f.status = 'available'\n         order by page.group_id, f.width::bigint * f.height desc, f.size desc, f.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "group_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "similar_files",
+            "name": "group_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "ext",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "ext"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "original_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "original_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "size",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "size"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "width",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "width"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "height",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "height"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "has_thumbnail",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "has_thumbnail"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "views",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "views"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "uploader_username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "a9c067470396317b50a98d4b96e0f83351234fc37d9c7bacf03d3daf23904861"
+}

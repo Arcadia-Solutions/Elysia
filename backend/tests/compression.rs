@@ -636,7 +636,7 @@ fn pipeline_lossy_is_smaller_than_lossless() {
 #[test]
 fn pipeline_rejects_undecodable_bytes() {
     assert!(matches!(
-        process(&tiny_png(2, 2), &pipeline_options(TargetFormat::Webp)),
+        process(b"\x89PNG\r\n\x1a\n", &pipeline_options(TargetFormat::Webp)),
         Err(ProcessError::Undecodable)
     ));
 }

@@ -102,37 +102,6 @@ pub fn webp_settings() -> ElysiaSettings {
     }
 }
 
-/// PNG/zlib CRC-32 (IEEE), computed over the chunk type + data.
-pub fn crc32(bytes: &[u8]) -> u32 {
-    let mut crc: u32 = 0xFFFF_FFFF;
-    for &byte in bytes {
-        crc ^= byte as u32;
-        for _ in 0..8 {
-            crc = if crc & 1 != 0 {
-                (crc >> 1) ^ 0xEDB8_8320
-            } else {
-                crc >> 1
-            };
-        }
-    }
-    !crc
-}
-
-/// Smallest thing `infer` reads as a PNG and `imagesize` reads dimensions
-/// from: the 8-byte signature plus a valid IHDR chunk, no image data.
-pub fn tiny_png(width: u32, height: u32) -> Vec<u8> {
-    let mut ihdr = b"IHDR".to_vec();
-    ihdr.extend_from_slice(&width.to_be_bytes());
-    ihdr.extend_from_slice(&height.to_be_bytes());
-    ihdr.extend_from_slice(&[8, 6, 0, 0, 0]); // bit depth, color type, compression, filter, interlace
-
-    let mut bytes = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
-    bytes.extend_from_slice(&13u32.to_be_bytes()); // IHDR data length
-    bytes.extend_from_slice(&ihdr);
-    bytes.extend_from_slice(&crc32(&ihdr).to_be_bytes());
-    bytes
-}
-
 /// Create a local user in `pool` and mint a session token for them. Used by
 /// tests that need an authenticated (non-admin) caller.
 pub async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
@@ -335,6 +304,11 @@ pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usiz
                 requested_quality: None,
                 applied_quality: None,
                 has_thumbnail: false,
+                // Spread like real hashes, so seeded files never look alike.
+                phash: std::hash::BuildHasher::hash_one(
+                    &std::hash::BuildHasherDefault::<std::hash::DefaultHasher>::default(),
+                    &id,
+                ) as i64,
                 uploaded_by_user_id: uploader,
                 api_key_id: None,
             },

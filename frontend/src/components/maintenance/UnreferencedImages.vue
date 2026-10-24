@@ -58,9 +58,9 @@
         :totalItems="page.total_items"
         :sortBy
         :order
-        @changePage="load"
-        @changePageSize="(size: number) => ((pageSize = size), load(1))"
-        @sort="setSort"
+        @changePage="(number: number) => router.push({ query: { ...route.query, page: number } })"
+        @changePageSize="(size: number) => router.push({ query: { ...route.query, page: undefined, page_size: size } })"
+        @sort="(sort_by: ImagesSortBy, order: SortOrder) => router.push({ query: { tab: route.query.tab, page_size: route.query.page_size, sort_by, order } })"
       />
     </template>
     <p v-else-if="page && !progress?.running" class="summary">{{ $t('maintenance.unreferenced_images.empty') }}</p>
@@ -68,7 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -81,32 +82,30 @@ import { showToast } from '@/services/toast'
 import { ImagesSortBy, SortOrder, UnreferencedTask, type UnreferencedImagesPage, type UnreferencedProgress } from '@/services/api-schema'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const databaseUrl = ref('')
 const hosts = ref('')
 const exclude = ref('')
 const progress = ref<UnreferencedProgress>()
 const page = ref<UnreferencedImagesPage>()
-const pageSize = ref(50)
-const sortBy = ref<ImagesSortBy>(ImagesSortBy.CreatedAt)
-const order = ref<SortOrder>(SortOrder.Desc)
+const currentPage = computed(() => Number(route.query.page) || 1)
+const pageSize = computed(() => Number(route.query.page_size) || 50)
+const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) ?? ImagesSortBy.CreatedAt)
+const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)
 const selected = ref(new Set<string>())
 let timer: ReturnType<typeof setTimeout> | undefined
 
 const load = (number: number) =>
   api.listUnreferencedImages(number, pageSize.value, sortBy.value, order.value).then((response): unknown => {
-    // Trashing the last rows of the last page empties it.
-    if (response.data.results.length === 0 && number > 1) return load(number - 1)
+    // Trashing or a new scan can empty the page: go to the last one.
+    if (response.data.results.length === 0 && number > 1)
+      return router.replace({ query: { ...route.query, page: Math.max(1, Math.ceil(response.data.total_items / pageSize.value)) } })
     page.value = response.data
     // Prefill with the host this instance's links use, relative links use the frontend's.
     if (!hosts.value) hosts.value = response.data.public_host || window.location.host
     selected.value = new Set()
   })
-
-const setSort = (newSortBy: ImagesSortBy, newOrder: SortOrder) => {
-  sortBy.value = newSortBy
-  order.value = newOrder
-  load(1)
-}
 
 // Polls once a second while a run goes, then reloads the list it changed.
 const refresh = () => {
@@ -120,7 +119,7 @@ const refresh = () => {
       if (!response.data.error && response.data.task === UnreferencedTask.Trash) {
         showToast(t('trash.deleted', { count: response.data.done }, response.data.done), 'success')
       }
-      load(1)
+      load(currentPage.value)
     }
   })
 }
@@ -151,7 +150,7 @@ const trashSelected = () => {
   if (!confirm(t('trash.delete_confirm', { count }, count))) return
   api.trashImages({ ids: [...selected.value] }).then(() => {
     showToast(t('trash.deleted', { count }, count), 'success')
-    load(page.value?.page ?? 1)
+    load(currentPage.value)
   })
 }
 
@@ -161,9 +160,15 @@ const trashAll = () => {
   api.trashUnreferencedImages().then(() => markStarted(UnreferencedTask.Trash))
 }
 
+// Post flush: switching tabs unmounts this one before it would reload.
+watch(
+  () => route.query,
+  () => load(currentPage.value),
+  { flush: 'post' },
+)
 onMounted(() => {
   refresh()
-  load(1)
+  load(currentPage.value)
 })
 onUnmounted(() => clearTimeout(timer))
 </script>

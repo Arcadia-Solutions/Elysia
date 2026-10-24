@@ -24,6 +24,8 @@ pub struct NewFile<'a> {
     pub requested_quality: Option<i32>,
     pub applied_quality: Option<i32>,
     pub has_thumbnail: bool,
+    /// Perceptual hash, see `image::perceptual_hash`.
+    pub phash: i64,
     pub uploaded_by_user_id: Uuid,
     /// The API key the file was uploaded with, if any.
     pub api_key_id: Option<Uuid>,
@@ -45,8 +47,8 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         r#"insert into files
          (id, ext, mime, original_name, size, width, height, hash,
           original_hash, original_ext, original_width, original_height,
-          requested_quality, applied_quality, has_thumbnail, uploaded_by_user_id, api_key_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"#,
+          requested_quality, applied_quality, has_thumbnail, phash, uploaded_by_user_id, api_key_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"#,
         f.id,
         f.ext,
         f.mime,
@@ -62,6 +64,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.requested_quality,
         f.applied_quality,
         f.has_thumbnail,
+        f.phash,
         f.uploaded_by_user_id,
         f.api_key_id,
     )
@@ -503,6 +506,115 @@ pub async fn unreferenced_ids(pool: &PgPool) -> Result<Vec<String>> {
          where status = 'available' order by id"#
     )
     .fetch_all(pool)
+    .await?)
+}
+
+/// An available file's perceptual hash.
+pub struct PhashRow {
+    pub id: String,
+    pub phash: i64,
+}
+
+/// Every available file's perceptual hash, by id.
+pub async fn phashes(pool: &PgPool) -> Result<Vec<PhashRow>> {
+    Ok(sqlx::query_as!(
+        PhashRow,
+        r#"select id, phash from files where status = 'available' order by id"#
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Replace the similar images scan result: `ids[i]` is in group `group_ids[i]`.
+/// Returns when it was replaced (RFC 3339, UTC).
+pub async fn replace_similar(pool: &PgPool, ids: &[String], group_ids: &[i32]) -> Result<String> {
+    let mut transaction = pool.begin().await?;
+    sqlx::query!(r#"delete from similar_files"#)
+        .execute(&mut *transaction)
+        .await?;
+    sqlx::query!(
+        r#"insert into similar_files (file_id, group_id)
+         select * from unnest($1::text[], $2::int[])"#,
+        ids,
+        group_ids
+    )
+    .execute(&mut *transaction)
+    .await?;
+    let replaced_at = sqlx::query_scalar!(
+        r#"select to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "replaced_at!""#
+    )
+    .fetch_one(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+    Ok(replaced_at)
+}
+
+/// The images of one page of the last similar images scan's groups, by group,
+/// counting only groups still holding two available images and listing only
+/// those. The largest image of a group comes first. Each row is its group id
+/// and the image, whose `total` counts groups, not images.
+pub async fn similar_page(
+    pool: &PgPool,
+    offset: i64,
+    limit: i64,
+) -> Result<Vec<(i32, ImageListRow)>> {
+    let rows = sqlx::query!(
+        r#"with groups as (
+           select group_id from similar_files join files on id = file_id
+           where status = 'available' group by group_id having count(*) > 1
+         ), page as (
+           select group_id, count(*) over() as total from groups
+           order by group_id offset $1 limit $2
+         )
+         select page.group_id, page.total as "total!",
+                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,
+                f.views, u.username as uploader_username,
+                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as "created_at!"
+         from page
+         join similar_files s on s.group_id = page.group_id
+         join files f on f.id = s.file_id
+         join users u on u.id = f.uploaded_by_user_id
+         where f.status = 'available'
+         order by page.group_id, f.width::bigint * f.height desc, f.size desc, f.id"#,
+        offset,
+        limit
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| {
+            (
+                row.group_id,
+                ImageListRow {
+                    id: row.id,
+                    ext: row.ext,
+                    original_name: row.original_name,
+                    size: row.size,
+                    width: row.width,
+                    height: row.height,
+                    has_thumbnail: row.has_thumbnail,
+                    views: row.views,
+                    uploader_username: row.uploader_username,
+                    created_at: row.created_at,
+                    total: row.total,
+                },
+            )
+        })
+        .collect())
+}
+
+/// Number of the last similar images scan's groups still holding two available
+/// images; the count for an out-of-range page, where `similar_page` returns no rows.
+pub async fn similar_group_count(pool: &PgPool) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        r#"select count(*) as "count!" from (
+           select group_id from similar_files join files on id = file_id
+           where status = 'available' group by group_id having count(*) > 1
+         ) as groups"#
+    )
+    .fetch_one(pool)
     .await?)
 }
 

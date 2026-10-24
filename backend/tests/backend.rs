@@ -113,9 +113,9 @@ async fn upload_rejects_file_over_size_limit(pool: PgPool) {
     // The declared length is within the multipart overhead, so the cap trips
     // while the body streams.
     let mut settings = test_settings();
-    settings.max_file_size_bytes = 5; // the png is 33 bytes
+    settings.max_file_size_bytes = 5;
     let (_, token) = test_user(&pool, "streamer").await;
-    let (status, body) = upload_with_token(pool, settings, tiny_png(2, 2), "", &token).await;
+    let (status, body) = upload_with_token(pool, settings, real_png(2, 2), "", &token).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert!(
         body["error"]
@@ -135,7 +135,7 @@ async fn upload_rejects_declared_oversized_body_up_front(pool: PgPool) {
         pool,
         test_config(),
         settings,
-        tiny_png(2, 2),
+        real_png(2, 2),
         "",
         &[
             ("Authorization", format!("Bearer {token}")),
@@ -159,7 +159,7 @@ async fn upload_without_auth_is_rejected(pool: PgPool) {
         pool,
         test_config(),
         test_settings(),
-        tiny_png(2, 2),
+        real_png(2, 2),
         "",
         &[],
     )
@@ -173,7 +173,7 @@ async fn upload_rejects_image_over_width_limit(pool: PgPool) {
     let mut settings = test_settings();
     settings.max_width_pixels = 1; // the image is 2 wide
     assert_eq!(
-        upload_status(pool, settings, tiny_png(2, 1)).await,
+        upload_status(pool, settings, real_png(2, 1)).await,
         StatusCode::BAD_REQUEST
     );
 }
@@ -184,7 +184,7 @@ async fn upload_rejects_image_over_height_limit(pool: PgPool) {
     let mut settings = test_settings();
     settings.max_height_pixels = 1; // the image is 2 tall
     assert_eq!(
-        upload_status(pool, settings, tiny_png(1, 2)).await,
+        upload_status(pool, settings, real_png(1, 2)).await,
         StatusCode::BAD_REQUEST
     );
 }
@@ -194,7 +194,7 @@ async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
     let mut settings = test_settings();
     settings.uploads_enabled = false;
     assert_eq!(
-        upload_status(pool, settings, tiny_png(2, 2)).await,
+        upload_status(pool, settings, real_png(2, 2)).await,
         StatusCode::FORBIDDEN
     );
 }
@@ -208,7 +208,7 @@ async fn upload_respects_storage_quota(pool: PgPool) {
     let mut settings = test_settings();
     settings.default_storage_quota_bytes = 1000;
     let (status, body) =
-        upload_with_token(pool.clone(), settings.clone(), tiny_png(2, 2), "", &token).await;
+        upload_with_token(pool.clone(), settings.clone(), real_png(2, 2), "", &token).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "storage quota exceeded");
 
@@ -217,14 +217,14 @@ async fn upload_respects_storage_quota(pool: PgPool) {
         .await
         .unwrap();
     let (status, body) =
-        upload_with_token(pool.clone(), settings.clone(), tiny_png(2, 2), "", &token).await;
+        upload_with_token(pool.clone(), settings.clone(), real_png(2, 2), "", &token).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "storage quota exceeded");
 
     users::set_storage_quota(&pool, user.id, Some(0))
         .await
         .unwrap();
-    let (status, _) = upload_with_token(pool, settings, tiny_png(2, 2), "", &token).await;
+    let (status, _) = upload_with_token(pool, settings, real_png(2, 2), "", &token).await;
     assert_eq!(status, StatusCode::OK);
 }
 
@@ -256,7 +256,7 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
     settings.max_width_pixels = 16;
     settings.max_height_pixels = 16;
     assert_eq!(
-        upload_status(pool, settings, tiny_png(2, 2)).await,
+        upload_status(pool, settings, real_png(2, 2)).await,
         StatusCode::OK
     );
 }
@@ -264,7 +264,7 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn rehost_stores_a_fetched_image(pool: PgPool) {
     let (storage, _dir) = temp_storage();
-    let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(2, 2));
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(2, 2));
     let uploader = test_user(&pool, "rehoster").await.0.id;
     let stored = store_from_url(
         &pool,
@@ -289,7 +289,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
     // and no second copy lands on disk.
     let (storage, dir) = temp_storage();
     let settings = test_settings();
-    let image = tiny_png(2, 2);
+    let image = real_png(2, 2);
     let uploader = test_user(&pool, "deduplicator").await.0.id;
 
     let first = store_from_url(
@@ -382,7 +382,7 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
 async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     // A hostname, so the guarded client's resolver is what refuses it.
-    let url = serve_once("HTTP/1.1 200 OK", "image/png", tiny_png(1, 1))
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(1, 1))
         .replace("127.0.0.1", "localhost");
     let uploader = test_user(&pool, "ssrfchecker").await.0.id;
     let result = store_from_url(
@@ -517,6 +517,7 @@ fn sample_file(id: &str, uploaded_by_user_id: uuid::Uuid) -> NewFile<'_> {
         requested_quality: None,
         applied_quality: None,
         has_thumbnail: false,
+        phash: 0,
         uploaded_by_user_id,
         api_key_id: None,
     }

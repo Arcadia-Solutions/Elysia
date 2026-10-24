@@ -379,6 +379,15 @@
       "empty": "No unreferenced images from the last scan",
       "trash_all": "Delete all ({count})"
     },
+    "similar_images": {
+      "title": "Similar images",
+      "help": "Finds available images that look alike, such as recompressed, resized or converted copies, by comparing their perceptual hashes (64 bits, computed on upload). Images differing in at most the maximum distance are grouped, also through each other. Nothing is changed until you delete some, which moves them to the trash.",
+      "max_distance": "Maximum distance (0 to 16 bits; 0 only matches identical looking images, about 10 also matches edited copies)",
+      "scan": "Scan",
+      "progress": "{done} / {total} images compared",
+      "scanned_at": "Scanned {when}, {count} group | Scanned {when}, {count} groups",
+      "empty": "No similar images from the last scan"
+    },
     "chevereto_import": {
       "title": "Chevereto import",
       "help": "Copies every image of a Chevereto v4 instance into Elysia in the background. Images are read from Chevereto's MySQL database and downloaded over HTTP, then go through the normal upload pipeline (thumbnails, EXIF stripping, dedup) with the size and pixel limits lifted. Each image keeps its upload date and, when uploaders are matched, its uploader. Chevereto must use its default paths (upload_image_path 'images', route_image 'image') or the import refuses to run. Database urls are not stored: fill them in again to resume.",

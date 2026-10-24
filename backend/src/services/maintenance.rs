@@ -7,7 +7,6 @@
 use std::collections::HashSet;
 use std::future::Future;
 use std::num::NonZeroU32;
-use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use actix_web::web::Data;
@@ -19,7 +18,7 @@ use uuid::Uuid;
 
 use crate::error::{Error, Result};
 use crate::repository::files::{self, ImageListRow, ImagesSortBy, SortOrder};
-use crate::services::{files as files_service, paginate};
+use crate::services::{Job, JobProgress, files as files_service, paginate};
 use crate::storage::Storage;
 
 /// Unreferenced images returned per page.
@@ -103,9 +102,17 @@ pub struct UnreferencedProgress {
     pub referenced_images: usize,
 }
 
-// ponytail: one run at a time per process, results reset on restart (the
-// list itself is in the database).
-static PROGRESS: Mutex<UnreferencedProgress> = Mutex::new(UnreferencedProgress {
+impl JobProgress for UnreferencedProgress {
+    fn running(&mut self) -> &mut bool {
+        &mut self.running
+    }
+
+    fn error(&mut self) -> &mut Option<String> {
+        &mut self.error
+    }
+}
+
+static JOB: Job<UnreferencedProgress> = Job::new(UnreferencedProgress {
     running: false,
     task: UnreferencedTask::Scan,
     done: 0,
@@ -116,11 +123,11 @@ static PROGRESS: Mutex<UnreferencedProgress> = Mutex::new(UnreferencedProgress {
 });
 
 fn update(change: impl FnOnce(&mut UnreferencedProgress)) {
-    change(&mut PROGRESS.lock().expect("maintenance lock poisoned"));
+    JOB.update(change);
 }
 
 pub fn progress() -> UnreferencedProgress {
-    PROGRESS.lock().expect("maintenance lock poisoned").clone()
+    JOB.progress()
 }
 
 /// Run `job` in the background. Fails if a run is already going.
@@ -128,33 +135,19 @@ fn spawn(
     task: UnreferencedTask,
     job: impl Future<Output = Result<()>> + Send + 'static,
 ) -> Result<()> {
-    {
-        let mut progress = PROGRESS.lock().expect("maintenance lock poisoned");
-        if progress.running {
-            return Err(Error::Conflict);
-        }
-        progress.running = true;
-        progress.task = task;
-        progress.done = 0;
-        progress.total = 0;
-        progress.error = None;
-        if let UnreferencedTask::Scan = task {
-            progress.scanned_columns = 0;
-            progress.referenced_images = 0;
-        }
-    }
-    tokio::spawn(async move {
-        // Run in its own task so a panic still clears `running` below.
-        let result = tokio::spawn(job).await.unwrap_or(Err(Error::Internal));
-        if let Err(error) = &result {
-            tracing::error!("unreferenced images {task:?} failed: {error}");
-        }
-        update(|progress| {
-            progress.running = false;
-            progress.error = result.err().map(|error| error.to_string());
-        });
-    });
-    Ok(())
+    JOB.spawn(
+        format!("unreferenced images {task:?}"),
+        |progress| {
+            progress.task = task;
+            progress.done = 0;
+            progress.total = 0;
+            if let UnreferencedTask::Scan = task {
+                progress.scanned_columns = 0;
+                progress.referenced_images = 0;
+            }
+        },
+        job,
+    )
 }
 
 #[derive(Clone, Copy)]

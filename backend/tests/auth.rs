@@ -357,7 +357,7 @@ async fn upload_records_the_uploading_user(pool: PgPool) {
         b"Content-Disposition: form-data; name=\"file\"; filename=\"x.png\"\r\n\
           Content-Type: image/png\r\n\r\n",
     );
-    body.extend_from_slice(&tiny_png(2, 2));
+    body.extend_from_slice(&real_png(2, 2));
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
     let request = actix_test::TestRequest::post()
         .uri("/api/upload")

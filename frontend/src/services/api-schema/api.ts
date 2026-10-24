@@ -678,6 +678,21 @@ export interface PaginatedResultsImageSummaryResultsInner {
 /**
  * One page of a list, with the total across all pages.
  */
+export interface PaginatedResultsSimilarImagesGroup {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsSimilarImagesGroupResultsInner>;
+    'total_items': number;
+}
+/**
+ * Images that look alike, largest first.
+ */
+export interface PaginatedResultsSimilarImagesGroupResultsInner {
+    'images': Array<ImageSummary>;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
 export interface PaginatedResultsUserSummary {
     'page': number;
     'page_size': number;
@@ -875,6 +890,44 @@ export interface SetUserStorageQuotaRequest {
      * Quota in bytes; null follows the global default, 0 is unlimited.
      */
     'storage_quota_bytes'?: number | null;
+}
+/**
+ * Images that look alike, largest first.
+ */
+export interface SimilarImagesGroup {
+    'images': Array<ImageSummary>;
+}
+/**
+ * State of the current or last scan.
+ */
+export interface SimilarProgress {
+    /**
+     * Images compared with all the others so far.
+     */
+    'done': number;
+    /**
+     * Why the last scan stopped early, if it did.
+     */
+    'error'?: string | null;
+    /**
+     * `max_distance` of the current or last scan, a default before the first.
+     */
+    'max_distance': number;
+    'running': boolean;
+    /**
+     * When the last successful scan finished, RFC 3339, UTC. None before the first since the server started.
+     */
+    'scanned_at'?: string | null;
+    /**
+     * Images to compare.
+     */
+    'total': number;
+}
+export interface SimilarScanParams {
+    /**
+     * Most bits two perceptual hashes (64 bits) may differ in for their images to be grouped: 0 only matches visually identical images, around 10 also matches recompressed or slightly edited copies.
+     */
+    'max_distance': number;
 }
 /**
  * Sort direction.
@@ -3285,6 +3338,35 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             };
         },
         /**
+         * Progress of the current or last similar images scan.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSimilarProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/similar-images/progress`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Progress of the current or last unreferenced images scan or trash run.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3326,6 +3408,49 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             // verify required parameter 'pageSize' is not null or undefined
             assertParamExists('listCheveretoImportFailures', 'pageSize', pageSize)
             const localVarPath = `/api/maintenance/chevereto-import/failures`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * A page of the last scan\'s groups of similar images, only those still holding two available images. `total_items` counts groups.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize Groups per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listSimilarImages: async (page: number, pageSize: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listSimilarImages', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listSimilarImages', 'pageSize', pageSize)
+            const localVarPath = `/api/maintenance/similar-images`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3407,6 +3532,41 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
+         * @param {SimilarScanParams} similarScanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        scanSimilarImages: async (similarScanParams: SimilarScanParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'similarScanParams' is not null or undefined
+            assertParamExists('scanSimilarImages', 'similarScanParams', similarScanParams)
+            const localVarPath = `/api/maintenance/similar-images/scan`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(similarScanParams, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -3562,6 +3722,17 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Progress of the current or last similar images scan.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getSimilarProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SimilarProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getSimilarProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.getSimilarProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Progress of the current or last unreferenced images scan or trash run.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3586,6 +3757,19 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * A page of the last scan\'s groups of similar images, only those still holding two available images. `total_items` counts groups.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize Groups per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listSimilarImages(page: number, pageSize: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsSimilarImagesGroup>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listSimilarImages(page, pageSize, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.listSimilarImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
@@ -3598,6 +3782,18 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.listUnreferencedImages(page, pageSize, sortBy, order, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.listUnreferencedImages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
+         * @param {SimilarScanParams} similarScanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async scanSimilarImages(similarScanParams: SimilarScanParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.scanSimilarImages(similarScanParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.scanSimilarImages']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -3664,6 +3860,14 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
             return localVarFp.getCheveretoImportProgress(options).then((request) => request(axios, basePath));
         },
         /**
+         * Progress of the current or last similar images scan.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSimilarProgress(options?: RawAxiosRequestConfig): AxiosPromise<SimilarProgress> {
+            return localVarFp.getSimilarProgress(options).then((request) => request(axios, basePath));
+        },
+        /**
          * Progress of the current or last unreferenced images scan or trash run.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3682,6 +3886,16 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
             return localVarFp.listCheveretoImportFailures(page, pageSize, options).then((request) => request(axios, basePath));
         },
         /**
+         * A page of the last scan\'s groups of similar images, only those still holding two available images. `total_items` counts groups.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize Groups per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listSimilarImages(page: number, pageSize: number, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsSimilarImagesGroup> {
+            return localVarFp.listSimilarImages(page, pageSize, options).then((request) => request(axios, basePath));
+        },
+        /**
          * A page of the last scan\'s unreferenced images that are still available.
          * @param {number} page 1-based page number.
          * @param {number} pageSize 
@@ -3692,6 +3906,15 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
          */
         listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig): AxiosPromise<UnreferencedImagesPage> {
             return localVarFp.listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
+         * @param {SimilarScanParams} similarScanParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        scanSimilarImages(similarScanParams: SimilarScanParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.scanSimilarImages(similarScanParams, options).then((request) => request(axios, basePath));
         },
         /**
          * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
@@ -3744,6 +3967,15 @@ export class MaintenanceApi extends BaseAPI {
     }
 
     /**
+     * Progress of the current or last similar images scan.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getSimilarProgress(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).getSimilarProgress(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Progress of the current or last unreferenced images scan or trash run.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3764,6 +3996,17 @@ export class MaintenanceApi extends BaseAPI {
     }
 
     /**
+     * A page of the last scan\'s groups of similar images, only those still holding two available images. `total_items` counts groups.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize Groups per page.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listSimilarImages(page: number, pageSize: number, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).listSimilarImages(page, pageSize, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * A page of the last scan\'s unreferenced images that are still available.
      * @param {number} page 1-based page number.
      * @param {number} pageSize 
@@ -3774,6 +4017,16 @@ export class MaintenanceApi extends BaseAPI {
      */
     public listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
         return MaintenanceApiFp(this.configuration).listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
+     * @param {SimilarScanParams} similarScanParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public scanSimilarImages(similarScanParams: SimilarScanParams, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).scanSimilarImages(similarScanParams, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

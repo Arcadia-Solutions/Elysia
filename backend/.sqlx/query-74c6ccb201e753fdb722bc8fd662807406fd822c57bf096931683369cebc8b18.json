@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select count(*) as \"count!\" from (\n           select group_id from similar_files join files on id = file_id\n           where status = 'available' group by group_id having count(*) > 1\n         ) as groups",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "74c6ccb201e753fdb722bc8fd662807406fd822c57bf096931683369cebc8b18"
+}

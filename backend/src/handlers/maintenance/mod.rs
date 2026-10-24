@@ -1,9 +1,12 @@
 use actix_web::web::{ServiceConfig, get, post};
 
 pub mod get_chevereto_import_progress;
+pub mod get_similar_progress;
 pub mod get_unreferenced_progress;
 pub mod list_chevereto_import_failures;
+pub mod list_similar_images;
 pub mod list_unreferenced_images;
+pub mod scan_similar_images;
 pub mod scan_unreferenced_images;
 pub mod start_chevereto_import;
 pub mod stop_chevereto_import;
@@ -25,6 +28,18 @@ pub fn config(cfg: &mut ServiceConfig) {
     .route(
         "/unreferenced-images/progress",
         get().to(get_unreferenced_progress::get_unreferenced_progress),
+    )
+    .route(
+        "/similar-images",
+        get().to(list_similar_images::list_similar_images),
+    )
+    .route(
+        "/similar-images/scan",
+        post().to(scan_similar_images::scan_similar_images),
+    )
+    .route(
+        "/similar-images/progress",
+        get().to(get_similar_progress::get_similar_progress),
     )
     .route(
         "/chevereto-import",

@@ -169,6 +169,7 @@ async fn insert_png(pool: &PgPool, id: &str, hash: &str, uploader: Uuid) {
             requested_quality: None,
             applied_quality: None,
             has_thumbnail: false,
+            phash: 0,
             uploaded_by_user_id: uploader,
             api_key_id: None,
         },

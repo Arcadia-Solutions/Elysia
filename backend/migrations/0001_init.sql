@@ -82,6 +82,7 @@ create table files (
   requested_quality int,
   applied_quality int,
   has_thumbnail boolean not null default false,
+  phash bigint not null,
   views bigint not null default 0,
   thumbnail_views bigint not null default 0,
   uploaded_by_user_id uuid not null references users(id),
@@ -114,6 +115,7 @@ comment on column files.original_height is 'Source image height in pixels before
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
 comment on column files.applied_quality is 'Effective quality used; null means lossless';
 comment on column files.has_thumbnail is 'True when a separate <first 2 id chars>/<id>.t.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
+comment on column files.phash is '64-bit DCT perceptual hash, close for visually similar images (compare with the Hamming distance), computed on upload';
 comment on column files.views is 'Times the image was served from /i/';
 comment on column files.thumbnail_views is 'Times the thumbnail was served from /t/';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
@@ -174,6 +176,16 @@ create table unreferenced_files (
 
 comment on table unreferenced_files is 'Result of the last unreferenced images scan: available files no column of the scanned database linked to.';
 comment on column unreferenced_files.scanned_at is 'When the scan started';
+
+create table similar_files (
+  file_id text primary key references files(id) on delete cascade,
+  group_id int not null
+);
+
+comment on table similar_files is 'Result of the last similar images scan: available files whose perceptual hash is close to another one''s, grouped';
+comment on column similar_files.group_id is 'Files sharing it look alike';
+
+create index similar_files_group_id_idx on similar_files (group_id);
 
 -- Chevereto import started from the web UI (Maintenance). A single row, seeded
 -- below; only updated afterwards.

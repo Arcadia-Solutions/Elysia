@@ -78,7 +78,7 @@ async fn api_keys_are_scoped_tracked_and_revoked(pool: PgPool) {
         let (status, _) = common::upload_with_token(
             pool.clone(),
             common::test_settings(),
-            common::tiny_png(width, 1),
+            common::real_png(width, 1),
             "",
             token,
         )
@@ -117,7 +117,7 @@ async fn api_keys_are_scoped_tracked_and_revoked(pool: PgPool) {
     let (status, _) = common::upload_with_token(
         pool.clone(),
         common::test_settings(),
-        common::tiny_png(3, 3),
+        common::real_png(3, 3),
         "",
         &upload_token,
     )
@@ -179,7 +179,7 @@ async fn expired_keys_behave_like_revoked_ones(pool: PgPool) {
     let (status, _) = common::upload_with_token(
         pool.clone(),
         common::test_settings(),
-        common::tiny_png(1, 1),
+        common::real_png(1, 1),
         "",
         &generated.token,
     )

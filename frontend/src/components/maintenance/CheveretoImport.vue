@@ -125,9 +125,17 @@
     <template v-if="failures && failures.total_items > 0">
       <h3>{{ $t('maintenance.chevereto_import.failures') }}</h3>
       <div class="toolbar">
-        <PageSizeSelect v-model="pageSize" @update:modelValue="loadFailures(1)" />
+        <PageSizeSelect
+          :modelValue="pageSize"
+          @update:modelValue="(size: number) => router.push({ query: { ...route.query, page: undefined, page_size: size } })"
+        />
       </div>
-      <PaginatedResults :page="failures.page" :pageSize :totalItems="failures.total_items" @changePage="loadFailures">
+      <PaginatedResults
+        :page="failures.page"
+        :pageSize
+        :totalItems="failures.total_items"
+        @changePage="(number: number) => router.push({ query: { ...route.query, page: number } })"
+      >
         <DataTable :value="failures.results" dataKey="image_id" size="small">
           <Column field="image_id" :header="$t('maintenance.chevereto_import.image_id')" />
           <Column :header="$t('maintenance.chevereto_import.fetch_url')">
@@ -144,7 +152,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -181,7 +190,10 @@ const users = ref<BackendUsers>({ table: 'users', username_column: 'username', s
 const emailColumn = ref('email')
 const progress = ref<CheveretoImportProgress>()
 const failures = ref<PaginatedResultsCheveretoImportFailure>()
-const pageSize = ref(50)
+const route = useRoute()
+const router = useRouter()
+const currentPage = computed(() => Number(route.query.page) || 1)
+const pageSize = computed(() => Number(route.query.page_size) || 50)
 const stopping = ref(false)
 const disabled = computed(() => !!progress.value?.running)
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -201,7 +213,7 @@ const refresh = () => {
     } else {
       stopping.value = false
     }
-    loadFailures(failures.value?.page ?? 1)
+    loadFailures(currentPage.value)
   })
 }
 
@@ -229,6 +241,12 @@ const stop = () =>
     stopping.value = true
   })
 
+// Post flush: switching tabs unmounts this one before it would reload.
+watch(
+  () => route.query,
+  () => loadFailures(currentPage.value),
+  { flush: 'post' },
+)
 onMounted(refresh)
 onUnmounted(() => clearTimeout(timer))
 </script>
