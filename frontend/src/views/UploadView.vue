@@ -25,7 +25,9 @@
             :chooseLabel="$t('upload.choose')"
             @select="onSelect"
             :disabled="uploading"
-          />
+          >
+            <template #filelabel><span hidden /></template>
+          </FileUpload>
           <span class="drop-hint">{{ $t('upload.drop_hint') }}</span>
         </div>
 
