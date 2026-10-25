@@ -678,6 +678,22 @@ export interface PaginatedResultsImageSummaryResultsInner {
 /**
  * One page of a list, with the total across all pages.
  */
+export interface PaginatedResultsReportedImage {
+    'page': number;
+    'page_size': number;
+    'results': Array<PaginatedResultsReportedImageResultsInner>;
+    'total_items': number;
+}
+/**
+ * A reported image with every report on it, oldest first.
+ */
+export interface PaginatedResultsReportedImageResultsInner {
+    'image': ImageSummary;
+    'reports': Array<Report>;
+}
+/**
+ * One page of a list, with the total across all pages.
+ */
 export interface PaginatedResultsSimilarImagesGroup {
     'page': number;
     'page_size': number;
@@ -860,6 +876,30 @@ export interface RegisterResponse {
     'id': string;
     'is_admin': boolean;
     'username': string;
+}
+/**
+ * One user\'s report on an image.
+ */
+export interface Report {
+    /**
+     * RFC 3339, UTC.
+     */
+    'created_at': string;
+    'reason': string;
+    'reporter_username': string;
+}
+export interface ReportImageRequest {
+    /**
+     * Why the image should be looked at, 1 to 500 characters.
+     */
+    'reason': string;
+}
+/**
+ * A reported image with every report on it, oldest first.
+ */
+export interface ReportedImage {
+    'image': ImageSummary;
+    'reports': Array<Report>;
 }
 /**
  * Dimensions before and after, as `[width, height]`.
@@ -2736,6 +2776,45 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Flag an image for the admins\' moderation queue. Reporting the same image again adds another report.
+         * @param {string} id File id
+         * @param {ReportImageRequest} reportImageRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        reportImage: async (id: string, reportImageRequest: ReportImageRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('reportImage', 'id', id)
+            // verify required parameter 'reportImageRequest' is not null or undefined
+            assertParamExists('reportImage', 'reportImageRequest', reportImageRequest)
+            const localVarPath = `/api/i/{id}/report`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(reportImageRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
          * @param {ImageIdsRequest} imageIdsRequest 
          * @param {*} [options] Override http request option.
@@ -3027,6 +3106,19 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Flag an image for the admins\' moderation queue. Reporting the same image again adds another report.
+         * @param {string} id File id
+         * @param {ReportImageRequest} reportImageRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async reportImage(id: string, reportImageRequest: ReportImageRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.reportImage(id, reportImageRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.reportImage']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
          * @param {ImageIdsRequest} imageIdsRequest 
          * @param {*} [options] Override http request option.
@@ -3146,6 +3238,16 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.metadata(id, options).then((request) => request(axios, basePath));
         },
         /**
+         * Flag an image for the admins\' moderation queue. Reporting the same image again adds another report.
+         * @param {string} id File id
+         * @param {ReportImageRequest} reportImageRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        reportImage(id: string, reportImageRequest: ReportImageRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.reportImage(id, reportImageRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Move trashed images back out of the trash, so they are served again. Unknown or not trashed ids are skipped, as are images whose bytes were uploaded again since they were trashed.
          * @param {ImageIdsRequest} imageIdsRequest 
          * @param {*} [options] Override http request option.
@@ -3245,6 +3347,17 @@ export class ImagesApi extends BaseAPI {
      */
     public metadata(id: string, options?: RawAxiosRequestConfig) {
         return ImagesApiFp(this.configuration).metadata(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Flag an image for the admins\' moderation queue. Reporting the same image again adds another report.
+     * @param {string} id File id
+     * @param {ReportImageRequest} reportImageRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public reportImage(id: string, reportImageRequest: ReportImageRequest, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).reportImage(id, reportImageRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -4078,6 +4191,182 @@ export class MaintenanceApi extends BaseAPI {
      */
     public trashUnreferencedImages(options?: RawAxiosRequestConfig) {
         return MaintenanceApiFp(this.configuration).trashUnreferencedImages(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * ReportsApi - axios parameter creator
+ */
+export const ReportsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Delete every report on these images, keeping the images. Unreported ids are skipped.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        dismissReports: async (imageIdsRequest: ImageIdsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'imageIdsRequest' is not null or undefined
+            assertParamExists('dismissReports', 'imageIdsRequest', imageIdsRequest)
+            const localVarPath = `/api/reports/dismiss`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(imageIdsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * A page of the moderation queue: reported available images, the most reported first. Trashing an image takes it out of the queue, restoring it brings its reports back. `total_items` counts images.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize Reported images per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listReports: async (page: number, pageSize: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'page' is not null or undefined
+            assertParamExists('listReports', 'page', page)
+            // verify required parameter 'pageSize' is not null or undefined
+            assertParamExists('listReports', 'pageSize', pageSize)
+            const localVarPath = `/api/reports`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['page_size'] = pageSize;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * ReportsApi - functional programming interface
+ */
+export const ReportsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = ReportsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Delete every report on these images, keeping the images. Unreported ids are skipped.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async dismissReports(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.dismissReports(imageIdsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ReportsApi.dismissReports']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * A page of the moderation queue: reported available images, the most reported first. Trashing an image takes it out of the queue, restoring it brings its reports back. `total_items` counts images.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize Reported images per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listReports(page: number, pageSize: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaginatedResultsReportedImage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listReports(page, pageSize, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ReportsApi.listReports']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * ReportsApi - factory interface
+ */
+export const ReportsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = ReportsApiFp(configuration)
+    return {
+        /**
+         * Delete every report on these images, keeping the images. Unreported ids are skipped.
+         * @param {ImageIdsRequest} imageIdsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        dismissReports(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.dismissReports(imageIdsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * A page of the moderation queue: reported available images, the most reported first. Trashing an image takes it out of the queue, restoring it brings its reports back. `total_items` counts images.
+         * @param {number} page 1-based page number.
+         * @param {number} pageSize Reported images per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listReports(page: number, pageSize: number, options?: RawAxiosRequestConfig): AxiosPromise<PaginatedResultsReportedImage> {
+            return localVarFp.listReports(page, pageSize, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * ReportsApi - object-oriented interface
+ */
+export class ReportsApi extends BaseAPI {
+    /**
+     * Delete every report on these images, keeping the images. Unreported ids are skipped.
+     * @param {ImageIdsRequest} imageIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public dismissReports(imageIdsRequest: ImageIdsRequest, options?: RawAxiosRequestConfig) {
+        return ReportsApiFp(this.configuration).dismissReports(imageIdsRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * A page of the moderation queue: reported available images, the most reported first. Trashing an image takes it out of the queue, restoring it brings its reports back. `total_items` counts images.
+     * @param {number} page 1-based page number.
+     * @param {number} pageSize Reported images per page.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public listReports(page: number, pageSize: number, options?: RawAxiosRequestConfig) {
+        return ReportsApiFp(this.configuration).listReports(page, pageSize, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

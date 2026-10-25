@@ -2,6 +2,7 @@ pub mod albums;
 pub mod api_keys;
 pub mod chevereto_import;
 pub mod files;
+pub mod reports;
 pub mod settings;
 pub mod stats;
 pub mod users;

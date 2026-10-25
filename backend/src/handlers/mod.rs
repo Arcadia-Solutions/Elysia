@@ -4,6 +4,7 @@ pub mod auth;
 pub mod fixtures;
 pub mod images;
 pub mod maintenance;
+pub mod reports;
 pub mod settings;
 pub mod stats;
 pub mod users;

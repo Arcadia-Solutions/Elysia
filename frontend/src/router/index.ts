@@ -11,6 +11,7 @@ import BrowseView from '@/views/BrowseView.vue'
 import AlbumView from '@/views/AlbumView.vue'
 import UsersView from '@/views/UsersView.vue'
 import MaintenanceView from '@/views/MaintenanceView.vue'
+import ReportsView from '@/views/ReportsView.vue'
 import { getToken, isAdmin } from '@/services/session'
 
 const router = createRouter({
@@ -38,6 +39,7 @@ const router = createRouter({
     },
     { path: '/settings', name: 'Settings', component: SettingsView, meta: { requiresAdmin: true } },
     { path: '/users', name: 'Users', component: UsersView, meta: { requiresAdmin: true } },
+    { path: '/reports', name: 'Reports', component: ReportsView, meta: { requiresAdmin: true } },
     { path: '/maintenance', name: 'Maintenance', component: MaintenanceView, meta: { requiresAdmin: true } },
     { path: '/users/:id', name: 'User', component: AccountView, meta: { requiresAdmin: true } },
     { path: '/account', name: 'Account', component: AccountView },

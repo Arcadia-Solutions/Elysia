@@ -10,6 +10,7 @@ use crate::settings::{RefererHost, SharedElysiaSettings, referer_host};
 pub mod empty_trash;
 pub mod list_images;
 pub mod metadata;
+pub mod report_image;
 pub mod restore_images;
 pub mod serve;
 pub mod serve_thumbnail;
@@ -28,7 +29,8 @@ pub fn config(cfg: &mut ServiceConfig) {
             "/images/trash/restore",
             post().to(restore_images::restore_images),
         )
-        .route("/i/{id}", get().to(metadata::metadata));
+        .route("/i/{id}", get().to(metadata::metadata))
+        .route("/i/{id}/report", post().to(report_image::report_image));
 }
 
 /// Public image links, outside `/api`.

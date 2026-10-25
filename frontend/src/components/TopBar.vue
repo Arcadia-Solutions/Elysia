@@ -61,6 +61,7 @@ const navItems = computed(() =>
     { icon: 'pi pi-images', to: '/browse', label: 'browse.title' },
     { icon: 'pi pi-chart-line', to: '/dashboard', label: 'dashboard.title', admin: true },
     { icon: 'pi pi-users', to: '/users', label: 'users.title', admin: true },
+    { icon: 'pi pi-flag', to: '/reports', label: 'reports.title', admin: true },
     { icon: 'pi pi-wrench', to: '/maintenance', label: 'maintenance.title', admin: true },
     { icon: 'pi pi-cog', to: '/settings', label: 'settings.title', admin: true },
     { icon: 'pi pi-user', to: '/account', label: 'account.title' },

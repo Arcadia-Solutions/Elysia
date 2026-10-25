@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with deleted as (\n           update files set status = 'deleted', deleted_by_id = $2,\n             deletion_source = case when $2::uuid is null then 'scheduler' else 'manual' end::deletion_source\n           where id = any($1) and status = 'trashed'\n           returning id\n         )\n         delete from reports where file_id in (select id from deleted)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "536cc0e8772f7c4db6e3ee65547ffb031fa2d7e62d72c1d4c49b029ec261d60a"
+}

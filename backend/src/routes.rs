@@ -1,7 +1,7 @@
 use actix_web::web::{ServiceConfig, scope};
 
 use crate::handlers::{
-    albums, api_keys, auth, fixtures, images, maintenance, settings, stats, users,
+    albums, api_keys, auth, fixtures, images, maintenance, reports, settings, stats, users,
 };
 
 pub fn init(cfg: &mut ServiceConfig) {
@@ -14,6 +14,7 @@ pub fn init(cfg: &mut ServiceConfig) {
             .service(scope("/fixtures").configure(fixtures::config))
             .service(scope("/stats").configure(stats::config))
             .service(scope("/maintenance").configure(maintenance::config))
+            .service(scope("/reports").configure(reports::config))
             .configure(images::config)
             .configure(settings::config),
     )

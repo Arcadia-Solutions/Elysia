@@ -75,18 +75,26 @@
       </dl>
       <!-- Trashed images are not served from their public links. -->
       <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
-      <Button
-        v-if="meta.can_delete"
-        :label="$t('trash.delete', 1)"
-        icon="pi pi-trash"
-        severity="danger"
-        size="small"
-        class="delete"
-        @click="deleteDialogVisible = true"
-      />
-      <Button v-if="meta.trashed_at" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" class="delete" @click="restore" />
+      <div class="actions">
+        <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" @click="deleteDialogVisible = true" />
+        <Button
+          v-if="!meta.trashed_at"
+          :label="$t('reports.report')"
+          icon="pi pi-flag"
+          severity="secondary"
+          size="small"
+          @click="reportDialogVisible = true"
+        />
+        <Button v-if="meta.trashed_at" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" @click="restore" />
+      </div>
     </aside>
     <DeleteImagesDialog v-model:visible="deleteDialogVisible" :ids="[meta.id]" @deleted="router.push({ name: isAdmin() ? 'Browse' : 'Upload' })" />
+    <Dialog v-model:visible="reportDialogVisible" modal :header="$t('reports.report')" :style="{ width: '25rem' }" @show="reason = ''">
+      <form class="report-form" @submit.prevent="report">
+        <Textarea v-model="reason" :placeholder="$t('reports.reason')" :maxlength="500" rows="4" size="small" autoResize required />
+        <Button type="submit" :label="$t('reports.report')" icon="pi pi-flag" size="small" :disabled="!reason.trim()" />
+      </form>
+    </Dialog>
     <Dialog v-model:visible="albumDialogVisible" modal :header="$t('albums.add')" :style="{ width: '25rem' }">
       <AlbumSelect
         :modelValue="null"
@@ -106,6 +114,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Chip from 'primevue/chip'
 import Dialog from 'primevue/dialog'
+import Textarea from 'primevue/textarea'
 import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import AlbumSelect from '@/components/AlbumSelect.vue'
 import EmbedLinks from '@/components/EmbedLinks.vue'
@@ -143,6 +152,18 @@ const restore = () => {
   if (!meta.value) return
   api.restoreImages({ ids: [meta.value.id] }).then(() => {
     showToast(t('trash.restored', 1), 'success')
+    load()
+  })
+}
+
+const reportDialogVisible = ref(false)
+const reason = ref('')
+
+const report = () => {
+  if (!meta.value) return
+  api.reportImage(meta.value.id, { reason: reason.value }).then(() => {
+    reportDialogVisible.value = false
+    showToast(t('reports.sent'), 'success')
     load()
   })
 }
@@ -222,9 +243,17 @@ load()
   color: inherit;
   text-decoration: none;
 }
-.delete {
-  align-self: flex-start;
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 16px;
+}
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
 }
 .trashed {
   color: var(--p-red-500);

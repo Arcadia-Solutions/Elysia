@@ -734,16 +734,20 @@ pub async fn mark_restored(
 }
 
 /// Flag trashed files as deleted, once wiped from disk: by the user
-/// `deleted_by_id` when set, by the scheduler otherwise.
+/// `deleted_by_id` when set, by the scheduler otherwise. Drops their reports.
 pub async fn mark_deleted(
     pool: &PgPool,
     ids: &[String],
     deleted_by_id: Option<Uuid>,
 ) -> Result<()> {
     sqlx::query!(
-        r#"update files set status = 'deleted', deleted_by_id = $2,
-           deletion_source = case when $2::uuid is null then 'scheduler' else 'manual' end::deletion_source
-         where id = any($1) and status = 'trashed'"#,
+        r#"with deleted as (
+           update files set status = 'deleted', deleted_by_id = $2,
+             deletion_source = case when $2::uuid is null then 'scheduler' else 'manual' end::deletion_source
+           where id = any($1) and status = 'trashed'
+           returning id
+         )
+         delete from reports where file_id in (select id from deleted)"#,
         ids,
         deleted_by_id as Option<Uuid>
     )

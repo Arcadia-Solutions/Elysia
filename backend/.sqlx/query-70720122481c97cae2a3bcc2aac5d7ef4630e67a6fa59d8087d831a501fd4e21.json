@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select count(distinct file_id) as \"count!\"\n         from reports join files on files.id = file_id where files.status = 'available'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "70720122481c97cae2a3bcc2aac5d7ef4630e67a6fa59d8087d831a501fd4e21"
+}

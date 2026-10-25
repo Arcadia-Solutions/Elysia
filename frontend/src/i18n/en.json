@@ -327,6 +327,16 @@
       "help": "When on, views are split by the site they came from. When off, every view is counted as \"no referrer\". WARNING: without allowed referrers, any site (or a forged Referer header) adds new rows, so storage can grow without bound."
     }
   },
+  "reports": {
+    "title": "Reports",
+    "report": "Report",
+    "reason": "Why should an admin look at this image?",
+    "sent": "Image reported",
+    "empty": "No reported images",
+    "uploaded_by": "Uploaded by {username}",
+    "dismiss": "Dismiss",
+    "dismissed": "Reports dismissed"
+  },
   "users": {
     "title": "Users",
     "profile": "User profile",

@@ -1,6 +1,6 @@
 # Administration
 
-Admins get three extra pages in the web UI: Settings, Users and Maintenance,
+Admins get four extra pages in the web UI: Settings, Users, Reports and Maintenance,
 plus a storage dashboard and access to every user's uploads from Browse.
 
 ## Settings
@@ -48,6 +48,15 @@ once.
 Storage quotas count both available and trashed files. Users without an
 override get the default quota from Settings; admins without an override are
 unlimited. 0 means unlimited.
+
+## Reports
+
+Any user can report an image from its page, with a reason, as many times as
+they want. The Reports page
+lists every reported image, the most reported first, with who reported it and
+why. Deleting an image takes it out of the list (restoring it brings its
+reports back), dismissing drops its reports and keeps the image. Once a trashed
+image is deleted for good, its reports are dropped too.
 
 ## Trash
 

@@ -169,6 +169,20 @@ comment on table album_images is 'Which files are in which album; a file may be 
 -- The image page lists the albums a file is in.
 create index album_images_file_id_idx on album_images (file_id);
 
+create table reports (
+  id bigint generated always as identity primary key,
+  file_id text not null references files(id) on delete cascade,
+  reporter_id uuid not null references users(id),
+  reason text not null check (char_length(reason) between 1 and 500),
+  created_at timestamptz not null default now()
+);
+
+comment on table reports is 'Users flagging an image for admins, a user may report an image several times; dismissing or deleting an image deletes its reports. Reports on trashed files stay but are hidden from the queue';
+
+-- The moderation queue groups reports by file.
+create index reports_file_id_idx on reports (file_id);
+comment on column reports.reason is 'Why the reporter flagged the image, 1 to 500 characters';
+
 create table unreferenced_files (
   file_id text primary key references files(id) on delete cascade,
   scanned_at timestamptz not null
