@@ -182,7 +182,7 @@ pub fn process_decoded(
             // PNG has no lossy mode; refuse rather than silently encode lossless.
             if matches!(options.format, TargetFormat::Png) {
                 return Err(ProcessError::Encode(
-                    "png has no lossy mode; drop lossy_compression_value".into(),
+                    "png has no lossy mode; set lossy_compression_value to 0".into(),
                 ));
             }
             (

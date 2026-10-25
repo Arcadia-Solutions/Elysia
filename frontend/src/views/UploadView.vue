@@ -181,8 +181,9 @@ const showCompression = computed(() => !!settings?.allow_overriding_compression 
 // PNG is always lossless and AVIF/JPEG never are, so only WebP and JPEG XL get the toggle.
 const showLosslessToggle = computed(() => showCompression.value && ['webp', 'jpegxl'].includes(effectiveFormat.value ?? ''))
 const losslessSelected = computed(() => showLosslessToggle.value && lossless.value)
-// 0 asks the backend for lossless, overriding its default quality.
-const qualityValue = () => (losslessSelected.value ? 0 : showCompression.value ? quality.value : undefined)
+// 0 asks the backend for lossless, overriding its default quality, which PNG refuses.
+const qualityValue = () =>
+  losslessSelected.value || (settings?.allow_overriding_compression && effectiveFormat.value === 'png') ? 0 : showCompression.value ? quality.value : undefined
 const stripExifValue = () => (settings?.allow_overriding_strip_exif ? stripExif.value : undefined)
 const expiryDaysValue = () => (settings?.allow_overriding_expiry ? (expiryDays.value ?? undefined) : undefined)
 // Puts the uploaded images in the picked album, if any; resolves either way so

@@ -1,0 +1,80 @@
+name: E2E
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "!**.md"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "!**.md"
+      - ".github/workflows/e2e.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: "true"
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: elysia
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: elysia_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # rav1e (via ravif) assembles x86 SIMD with nasm at build time.
+      - name: Install nasm
+        run: sudo apt-get update && sudo apt-get install -y nasm
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-workspaces: ./backend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # Built ahead so the Playwright web server only has to start it.
+      - name: Build backend
+        working-directory: ./backend
+        run: cargo build
+
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7

@@ -8,13 +8,14 @@
     "dev": "vite",
     "build": "vue-tsc -p tsconfig.app.json --noEmit --composite false && vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc -p tsconfig.app.json --noEmit --composite false",
+    "type-check": "vue-tsc -p tsconfig.app.json --noEmit --composite false && vue-tsc -p tsconfig.node.json --noEmit",
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore --ignore-pattern '**/api-schema/**'",
     "lint:eslint": "eslint . --fix",
     "lint": "npm run lint:oxlint && npm run lint:eslint",
-    "format": "prettier --write src/",
-    "check-format": "prettier --check src",
-    "gen:api": "openapi-generator-cli generate -g typescript-axios -i ${OPENAPI_SPEC:-http://localhost:8090/api-docs/openapi.json} -o ./src/services/api-schema --config openapi-generator.config.json --skip-validate-spec"
+    "format": "prettier --write src/ e2e/ playwright.config.ts",
+    "check-format": "prettier --check src e2e playwright.config.ts",
+    "gen:api": "openapi-generator-cli generate -g typescript-axios -i ${OPENAPI_SPEC:-http://localhost:8090/api-docs/openapi.json} -o ./src/services/api-schema --config openapi-generator.config.json --skip-validate-spec",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@primeuix/themes": "^1.0.0",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.25.2",
+    "@playwright/test": "^1.64.1",
     "@tsconfig/node22": "^22.0.0",
     "@types/node": "^22.13.10",
     "@vitejs/plugin-vue": "^5.2.1",

@@ -1,0 +1,16 @@
+# Backend config of the e2e tests. Create the database once with
+# `docker compose exec db createdb -U elysia elysia_e2e`.
+server:
+  host: 127.0.0.1
+  port: 8091
+database:
+  host: localhost
+  port: 5432
+  user: elysia
+  password: password
+  name: elysia_e2e
+storage:
+  upload_dir: /tmp/elysia-e2e-uploads
+  min_free_bytes: 0
+auth:
+  jwt_secret: 'e2e-tests-secret-of-a-reasonable-length'

@@ -1,6 +1,6 @@
 target/
 data/
-config.yml
+/config.yml
 import.yml
 node_modules
 .env

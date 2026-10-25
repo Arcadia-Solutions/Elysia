@@ -597,6 +597,18 @@ async fn upload_accepts_compression_when_feature_on(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_to_png_with_default_compression_is_rejected(pool: PgPool) {
+    let settings = ElysiaSettings {
+        default_compression: 75,
+        allow_overriding_file_format: true,
+        ..webp_settings()
+    };
+    let status =
+        upload_status_with_query(pool, settings, real_png(8, 8), "target_file_format=png").await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
 #[test]
 fn pipeline_converts_png_to_webp() {
     let out = process(&real_png(8, 8), &pipeline_options(TargetFormat::Webp))
