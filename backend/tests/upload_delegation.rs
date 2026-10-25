@@ -61,7 +61,7 @@ async fn delegated_upload_is_attributed_to_the_sso_user(pool: PgPool) {
     );
 
     // Same row an SSO login of subject 42 would use.
-    let row = users::upsert_sso_user(&pool, ISSUER, "42", "ignored", None)
+    let row = users::upsert_sso_user(&pool, ISSUER, "42", "ignored", None, false)
         .await
         .unwrap();
     assert_eq!(row.username, "arcadia-bob");
@@ -95,7 +95,7 @@ async fn delegation_is_refused_without_valid_credentials(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn delegation_respects_local_ban(pool: PgPool) {
-    let row = users::upsert_sso_user(&pool, ISSUER, "42", "arcadia-bob", None)
+    let row = users::upsert_sso_user(&pool, ISSUER, "42", "arcadia-bob", None, false)
         .await
         .unwrap();
     users::set_banned(&pool, row.id, true).await.unwrap();

@@ -251,7 +251,7 @@ async fn storage_usage_counts_trash_and_exempts_admins(pool: PgPool) {
     assert_eq!((usage.used_bytes, usage.quota_bytes), (100, Some(1000)));
 
     // Admins are unlimited without an override.
-    let admin = users::create_local_user(&pool, "quota-admin", None, "hash", true)
+    let admin = users::create_local_user(&pool, "quota-admin", None, "hash", true, false)
         .await
         .unwrap();
     let usage = users::storage_usage(&pool, admin.id, 1000).await.unwrap();

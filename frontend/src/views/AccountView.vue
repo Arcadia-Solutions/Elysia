@@ -46,6 +46,10 @@
         <label>{{ $t('account.last_seen') }}</label>
         <span>{{ user.last_seen ? `${formatDate(user.last_seen)} (${timeAgo(user.last_seen)})` : '-' }}</span>
       </div>
+      <div class="field">
+        <label>{{ $t('account.legal_accepted_at') }}</label>
+        <span>{{ user.legal_accepted_at ? formatDate(user.legal_accepted_at) : '-' }}</span>
+      </div>
 
       <hr />
 

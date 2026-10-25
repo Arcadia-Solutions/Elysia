@@ -8,8 +8,8 @@ plus a storage dashboard and access to every user's uploads from Browse.
 The Settings page holds everything that can change without a restart: upload
 limits, image processing (output format, resizing, compression, EXIF
 stripping, thumbnails), which of those an uploader may override, open
-registration, allowed referrers, the default storage quota and a switch to
-pause all uploads. A save applies immediately. Each field is explained in the
+registration, allowed referrers, the default storage quota, a switch to
+pause all uploads, and the terms of service and privacy policy. A save applies immediately. Each field is explained in the
 page itself.
 
 Contradictory combinations are refused on save. The ones worth knowing in
@@ -35,6 +35,19 @@ Off by default: every view is counted as "no referrer". When on, views are
 split by `Referer` host, one row per file and host. Without allowed referrers
 anyone can send arbitrary `Referer` values and grow that table without bound,
 so only turn it on together with an allowlist.
+
+### Terms of service and privacy policy
+
+Plain text, shown as is at `/terms` and `/privacy` to anyone, logged in or not.
+Each one is linked at the bottom of the login, register and single sign-on
+pages once filled; leave it empty to hide it.
+
+While either is set, registering requires ticking an acceptance checkbox, and
+the acceptance time is stored on the account (`users.legal_accepted_at`, shown
+on the user's page). A new single sign-on user gets the same checkbox right
+after the provider's consent screen, and their account is only created once they
+accept. Accounts provisioned by delegated uploads, imports or fixtures never
+accept, so theirs stays empty.
 
 ## Users
 

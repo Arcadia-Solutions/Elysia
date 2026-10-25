@@ -67,7 +67,8 @@
     "storage_quota_unlimited": "Unlimited",
     "storage_quota_custom": "Custom",
     "storage_quota_save": "Save quota",
-    "storage_quota_saved": "Storage quota of {username} saved"
+    "storage_quota_saved": "Storage quota of {username} saved",
+    "legal_accepted_at": "Terms accepted"
   },
   "upload": {
     "choose": "Choose images",
@@ -326,6 +327,13 @@
     "record_referrer_views": {
       "label": "Record views per referrer",
       "help": "When on, views are split by the site they came from. When off, every view is counted as \"no referrer\". WARNING: without allowed referrers, any site (or a forged Referer header) adds new rows, so storage can grow without bound."
+    },
+    "legal_intro": "Shown to everyone and linked at the bottom of the login and register pages. Leave empty to hide.",
+    "terms_of_service": {
+      "label": "Terms of service"
+    },
+    "privacy_policy": {
+      "label": "Privacy policy"
     }
   },
   "reports": {
@@ -520,5 +528,13 @@
       "created_at": "Created",
       "image_count": "Images"
     }
+  },
+  "legal": {
+    "terms_of_service": "Terms of service",
+    "privacy_policy": "Privacy policy",
+    "not_set": "Nothing has been published here yet.",
+    "agree": "I accept the",
+    "sso_intro": "One last step before your account is created.",
+    "continue": "Create account"
   }
 }

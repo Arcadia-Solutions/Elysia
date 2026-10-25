@@ -180,6 +180,20 @@
       <Message v-if="errors.thumbnail_quality" severity="error" size="small" variant="simple">{{ errors.thumbnail_quality }}</Message>
     </div>
 
+    <hr />
+
+    <p class="intro">{{ $t('settings.legal_intro') }}</p>
+
+    <div class="field">
+      <label>{{ $t('settings.terms_of_service.label') }}</label>
+      <Textarea v-model="form.terms_of_service" size="small" rows="8" autoResize fluid />
+    </div>
+
+    <div class="field">
+      <label>{{ $t('settings.privacy_policy.label') }}</label>
+      <Textarea v-model="form.privacy_policy" size="small" rows="8" autoResize fluid />
+    </div>
+
     <Button :label="$t('settings.save')" size="small" :loading="saving" :disabled="loading || Object.keys(errors).length > 0" @click="save" />
   </div>
 </template>
@@ -189,6 +203,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -226,6 +241,8 @@ const form = reactive<Required<ElysiaSettings>>({
   uploads_enabled: true,
   default_storage_quota_bytes: 0,
   record_referrer_views: false,
+  terms_of_service: '',
+  privacy_policy: '',
 })
 
 // Thumbnails are on when a box is set on either axis.

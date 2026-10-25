@@ -84,17 +84,19 @@ pub async fn create_local_user(
     email: Option<&str>,
     password_hash: &str,
     is_admin: bool,
+    accepted_legal: bool,
 ) -> Result<AuthUserRow> {
     let row = sqlx::query_as!(
         UserRow,
-        r#"insert into users (username, email, password_hash, is_admin)
-           values ($1, $2, $3, $4)
+        r#"insert into users (username, email, password_hash, is_admin, legal_accepted_at)
+           values ($1, $2, $3, $4, case when $5 then now() end)
            returning id, username, email, password_hash, is_admin, banned,
                      provider::text as "provider!", external_sub"#,
         username,
         email,
         password_hash,
         is_admin,
+        accepted_legal,
     )
     .fetch_one(pool)
     .await
@@ -303,13 +305,15 @@ pub async fn find_by_issuer_sub(
 
 /// Find-or-create the SSO shadow row for a provider identity. Usernames are
 /// deconflicted with a short suffix, clashing emails are dropped to NULL
-/// (the column is unique, NULLs are allowed). Repeat logins reuse the row.
+/// (the column is unique, NULLs are allowed). Repeat logins reuse the row;
+/// `accepted_legal` only applies to a newly created one.
 pub async fn upsert_sso_user(
     pool: &PgPool,
     issuer: &str,
     sub: &str,
     username: &str,
     email: Option<&str>,
+    accepted_legal: bool,
 ) -> Result<AuthUserRow> {
     // A unique violation means a concurrent first login of the same identity,
     // or a concurrent signup taking the username or email: start over once.
@@ -321,14 +325,15 @@ pub async fn upsert_sso_user(
         let email = usable_email(pool, email).await?;
         match sqlx::query_as!(
             UserRow,
-            r#"insert into users (provider, username, email, password_hash, external_issuer, external_sub)
-               values ('sso', $1, $2, null, $3, $4)
+            r#"insert into users (provider, username, email, password_hash, external_issuer, external_sub, legal_accepted_at)
+               values ('sso', $1, $2, null, $3, $4, case when $5 then now() end)
                returning id, username, email, password_hash, is_admin, banned,
                          provider::text as "provider!", external_sub"#,
             username,
             email,
             issuer,
             sub,
+            accepted_legal,
         )
         .fetch_one(pool)
         .await
@@ -423,6 +428,9 @@ pub struct UserSummary {
     pub created_at: String,
     /// Last authenticated API request as a UTC ISO-8601 string; null if never.
     pub last_seen: Option<String>,
+    /// When the user accepted the terms of service and privacy policy, as a UTC
+    /// ISO-8601 string; null if they never did.
+    pub legal_accepted_at: Option<String>,
     /// Available (not trashed) files the user uploaded.
     pub uploads: i64,
     /// Bytes of the user's available and trashed files.
@@ -497,6 +505,7 @@ pub async fn list(
         r#"select users.id, username, email, provider::text as "provider!", is_admin, banned,
                   to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
                   to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_seen,
+                  to_char(legal_accepted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as legal_accepted_at,
                   count(files.id) filter (where files.status = 'available') as "uploads!",
                   coalesce(sum(files.size), 0)::bigint as "storage_used_bytes!", storage_quota_bytes,
                   nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $6 end), 0) as effective_storage_quota_bytes
@@ -541,6 +550,7 @@ pub async fn find_summary(
         r#"select users.id, username, email, provider::text as "provider!", is_admin, banned,
                   to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
                   to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_seen,
+                  to_char(legal_accepted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as legal_accepted_at,
                   count(files.id) filter (where files.status = 'available') as "uploads!",
                   coalesce(sum(files.size), 0)::bigint as "storage_used_bytes!", storage_quota_bytes,
                   nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $2 end), 0) as effective_storage_quota_bytes

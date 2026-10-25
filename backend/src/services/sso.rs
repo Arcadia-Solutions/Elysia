@@ -4,8 +4,9 @@ use std::time::{Duration, Instant};
 
 use actix_web::web::Data;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use rand_core::{OsRng, RngCore};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;
 use uuid::Uuid;
@@ -22,6 +23,11 @@ pub type SharedSsoState = Data<SsoState>;
 const SSO_SCOPE: &str = "openid profile email";
 /// How long a ban status verdict is trusted before re-checking the provider.
 const STATUS_TTL: Duration = Duration::from_secs(60);
+/// How long a new SSO user has to accept the terms before signing in again.
+const REGISTRATION_LIFETIME_SECONDS: u64 = 15 * 60;
+/// Audience of registration tokens, so they never pass as session tokens
+/// (which carry none) and the other way around.
+const REGISTRATION_AUDIENCE: &str = "sso-registration";
 
 /// HTTP client, provider endpoints (discovered on first use, retried until
 /// the provider answers) and the short-lived ban status cache, keyed by
@@ -150,7 +156,7 @@ struct TokenResponse {
 }
 
 /// The provider's userinfo response: who just signed in.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Identity {
     pub sub: String,
     #[serde(default)]
@@ -209,6 +215,47 @@ pub async fn fetch_identity(
         return Err(Error::Unauthorized);
     }
     Ok(identity)
+}
+
+/// A provider identity awaiting the terms acceptance, signed so the account
+/// can be created later without keeping anything server side.
+#[derive(Serialize, Deserialize)]
+struct RegistrationClaims {
+    #[serde(rename = "aud")]
+    audience: String,
+    #[serde(rename = "exp")]
+    expiration: u64,
+    #[serde(flatten)]
+    identity: Identity,
+}
+
+/// Sign `identity` into a short-lived registration token.
+pub fn mint_registration_token(identity: Identity, jwt_secret: &str) -> Result<String> {
+    let claims = RegistrationClaims {
+        audience: REGISTRATION_AUDIENCE.into(),
+        expiration: crate::services::auth::now_seconds() + REGISTRATION_LIFETIME_SECONDS,
+        identity,
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(jwt_secret.as_bytes()),
+    )
+    .map_err(|_| Error::Internal)
+}
+
+/// The identity inside a valid registration token; anything wrong is an
+/// `Unauthorized`.
+pub fn decode_registration_token(token: &str, jwt_secret: &str) -> Result<Identity> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.set_audience(&[REGISTRATION_AUDIENCE]);
+    decode::<RegistrationClaims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &validation,
+    )
+    .map(|valid| valid.claims.identity)
+    .map_err(|_| Error::Unauthorized)
 }
 
 /// The status endpoint's response: false when banned or unknown.

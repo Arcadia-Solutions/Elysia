@@ -79,7 +79,10 @@ async fn public_settings_require_a_session(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn unauth_settings_are_open_and_registration_only(pool: PgPool) {
+async fn unauth_settings_are_open_and_expose_legal_texts(pool: PgPool) {
+    let mut settings = settings_repo::load(&pool).await.unwrap();
+    settings.terms_of_service = "Be nice".into();
+    settings_repo::save(&pool, &settings).await.unwrap();
     let app = settings_app!(pool);
     let request = actix_test::TestRequest::get()
         .uri("/api/elysia-unauth-settings")
@@ -87,8 +90,14 @@ async fn unauth_settings_are_open_and_registration_only(pool: PgPool) {
     let body: serde_json::Value = actix_test::call_and_read_body_json(&app, request).await;
     assert_eq!(
         body.as_object().unwrap().keys().collect::<Vec<_>>(),
-        vec!["allow_registration", "sso_provider_name"]
+        vec![
+            "allow_registration",
+            "privacy_policy",
+            "sso_provider_name",
+            "terms_of_service"
+        ]
     );
+    assert_eq!(body["terms_of_service"], "Be nice");
 }
 
 #[sqlx::test(migrations = "./migrations")]

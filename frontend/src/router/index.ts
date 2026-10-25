@@ -12,19 +12,22 @@ import AlbumView from '@/views/AlbumView.vue'
 import UsersView from '@/views/UsersView.vue'
 import MaintenanceView from '@/views/MaintenanceView.vue'
 import ReportsView from '@/views/ReportsView.vue'
+import LegalView from '@/views/LegalView.vue'
 import { getToken, isAdmin } from '@/services/session'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/login', name: 'Login', component: LoginView, meta: { public: true } },
+    { path: '/login', name: 'Login', component: LoginView, meta: { public: true, auth: true } },
     {
       path: '/auth/sso/callback',
       name: 'SsoCallback',
       component: SsoCallbackView,
-      meta: { public: true },
+      meta: { public: true, auth: true },
     },
-    { path: '/register', name: 'Register', component: RegisterView, meta: { public: true } },
+    { path: '/register', name: 'Register', component: RegisterView, meta: { public: true, auth: true } },
+    { path: '/terms', name: 'Terms', component: LegalView, props: { field: 'terms_of_service' }, meta: { public: true } },
+    { path: '/privacy', name: 'Privacy', component: LegalView, props: { field: 'privacy_policy' }, meta: { public: true } },
     { path: '/', redirect: '/upload' },
     { path: '/upload', name: 'Upload', component: UploadView },
     { path: '/uploaded', name: 'Uploaded', component: UploadedView },

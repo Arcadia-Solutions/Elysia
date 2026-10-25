@@ -19,6 +19,7 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::api_keys::revoke_api_key::revoke_api_key,
         crate::handlers::auth::sso_login::sso_login,
         crate::handlers::auth::sso_callback::sso_callback,
+        crate::handlers::auth::sso_register::sso_register,
         crate::handlers::images::upload::upload,
         crate::handlers::images::upload_url::upload_url,
         crate::handlers::images::serve::serve,

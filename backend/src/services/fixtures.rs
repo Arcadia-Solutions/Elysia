@@ -213,6 +213,7 @@ async fn fixture_users(pool: &PgPool, count: usize, password: &str) -> Result<Ve
                     Some(&format!("{username}@example.com")),
                     &password_hash,
                     false,
+                    false,
                 )
                 .await?
             }

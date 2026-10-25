@@ -9,6 +9,7 @@ pub mod me;
 pub mod register;
 pub mod sso_callback;
 pub mod sso_login;
+pub mod sso_register;
 
 pub fn config(cfg: &mut ServiceConfig) {
     let unauthenticated = || from_fn(limit_unauthenticated);
@@ -41,6 +42,12 @@ pub fn config(cfg: &mut ServiceConfig) {
         "/sso/callback",
         post()
             .to(sso_callback::sso_callback)
+            .wrap(unauthenticated()),
+    )
+    .route(
+        "/sso/register",
+        post()
+            .to(sso_register::sso_register)
             .wrap(unauthenticated()),
     );
 }

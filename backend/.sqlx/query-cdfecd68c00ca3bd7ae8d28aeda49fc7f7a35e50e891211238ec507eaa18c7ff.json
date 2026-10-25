@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select users.id, username, email, provider::text as \"provider!\", is_admin, banned,\n                  to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\",\n                  to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_seen,\n                  count(files.id) filter (where files.status = 'available') as \"uploads!\",\n                  coalesce(sum(files.size), 0)::bigint as \"storage_used_bytes!\", storage_quota_bytes,\n                  nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $2 end), 0) as effective_storage_quota_bytes\n           from users\n           left join files on files.uploaded_by_user_id = users.id and files.status <> 'deleted'\n           where users.id = $1\n           group by users.id",
+  "query": "select users.id, username, email, provider::text as \"provider!\", is_admin, banned,\n                  to_char(users.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as \"created_at!\",\n                  to_char(last_seen at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_seen,\n                  to_char(legal_accepted_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as legal_accepted_at,\n                  count(files.id) filter (where files.status = 'available') as \"uploads!\",\n                  coalesce(sum(files.size), 0)::bigint as \"storage_used_bytes!\", storage_quota_bytes,\n                  nullif(coalesce(storage_quota_bytes, case when is_admin then 0 else $2 end), 0) as effective_storage_quota_bytes\n           from users\n           left join files on files.uploaded_by_user_id = users.id and files.status <> 'deleted'\n           where users.id = $1\n           group by users.id",
   "describe": {
     "columns": [
       {
@@ -78,18 +78,24 @@
       },
       {
         "ordinal": 8,
+        "name": "legal_accepted_at",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
         "name": "uploads!",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "storage_used_bytes!",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "storage_quota_bytes",
         "type_info": "Int8",
         "origin": {
@@ -100,7 +106,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "effective_storage_quota_bytes",
         "type_info": "Int8",
         "origin": "Expression"
@@ -123,9 +129,10 @@
       null,
       null,
       null,
+      null,
       true,
       null
     ]
   },
-  "hash": "e3490854eae57d402c0b5bc1ebc3713d6842c4515521c4979e9b9d075de2b927"
+  "hash": "cdfecd68c00ca3bd7ae8d28aeda49fc7f7a35e50e891211238ec507eaa18c7ff"
 }

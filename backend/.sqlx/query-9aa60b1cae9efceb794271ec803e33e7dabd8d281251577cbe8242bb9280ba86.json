@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update elysia_settings set\n            max_file_size_bytes = $1, max_width_pixels = $2, max_height_pixels = $3,\n            target_width_pixels = $4, target_height_pixels = $5,\n            default_target_file_format = $6, allow_overriding_file_format = $7,\n            target_file_size_bytes = $8,\n            default_compression = $9, allow_overriding_compression = $10,\n            strip_exif_by_default = $11, allow_overriding_strip_exif = $12,\n            thumbnail_width_pixels = $13, thumbnail_height_pixels = $14,\n            thumbnail_quality = $15, allow_registration = $16,\n            allowed_referrers = $17, uploads_enabled = $18,\n            default_storage_quota_bytes = $19, record_referrer_views = $20,\n            terms_of_service = $21, privacy_policy = $22\n         where id = $23",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        {
+          "Custom": {
+            "name": "target_format",
+            "kind": {
+              "Enum": [
+                "webp",
+                "jpegxl",
+                "avif",
+                "png",
+                "jpg"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Int8",
+        "Int4",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Bool",
+        "TextArray",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9aa60b1cae9efceb794271ec803e33e7dabd8d281251577cbe8242bb9280ba86"
+}

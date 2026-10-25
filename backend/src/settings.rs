@@ -87,6 +87,12 @@ pub struct ElysiaSettings {
     /// allowlist bounds the hosts.
     #[serde(default)]
     pub record_referrer_views: bool,
+    /// Terms of service, shown to everyone; empty hides the page and its links.
+    #[serde(default)]
+    pub terms_of_service: String,
+    /// Privacy policy, shown to everyone; empty hides the page and its links.
+    #[serde(default)]
+    pub privacy_policy: String,
 }
 
 fn default_allow_registration() -> bool {
@@ -157,6 +163,10 @@ pub struct UnauthElysiaSettings {
     /// Name of the single sign-on provider, when enabled; lets the login page
     /// offer "Login with <name>".
     pub sso_provider_name: Option<String>,
+    /// Terms of service; empty when not set.
+    pub terms_of_service: String,
+    /// Privacy policy; empty when not set.
+    pub privacy_policy: String,
 }
 
 /// Lowercased host of a `Referer`, sorted into Elysia's own pages and the rest.
@@ -206,6 +216,12 @@ impl ElysiaSettings {
             Some(RefererHost::Other(host)) => self.allowed_referrers.contains(&host),
             None => false,
         }
+    }
+
+    /// Whether a terms of service or privacy policy is set, so new accounts
+    /// must accept them.
+    pub fn legal_set(&self) -> bool {
+        !self.terms_of_service.is_empty() || !self.privacy_policy.is_empty()
     }
 
     /// Whether thumbnail generation is on (a box is set on at least one axis).

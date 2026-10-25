@@ -36,7 +36,7 @@ impl SessionClaims {
 }
 
 /// Current unix time in seconds.
-fn now_seconds() -> u64 {
+pub(crate) fn now_seconds() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("system clock before unix epoch")

@@ -9,7 +9,7 @@ use crate::settings::UnauthElysiaSettings;
     tag = "Settings",
     get,
     path = "/api/elysia-unauth-settings",
-    description = "Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.",
+    description = "Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session, plus the terms of service and privacy policy.",
     responses(
         (status = 200, body = UnauthElysiaSettings),
     )
@@ -22,5 +22,7 @@ pub async fn get_elysia_unauth_settings(
     Ok(HttpResponse::Ok().json(UnauthElysiaSettings {
         allow_registration: current.allow_registration,
         sso_provider_name: config.auth.sso.as_ref().map(|sso| sso.name.clone()),
+        terms_of_service: current.terms_of_service,
+        privacy_policy: current.privacy_policy,
     }))
 }

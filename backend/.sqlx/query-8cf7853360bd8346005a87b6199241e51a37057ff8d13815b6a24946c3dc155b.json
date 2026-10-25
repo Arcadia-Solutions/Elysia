@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into users (username, email, password_hash, is_admin)\n           values ($1, $2, $3, $4)\n           returning id, username, email, password_hash, is_admin, banned,\n                     provider::text as \"provider!\", external_sub",
+  "query": "insert into users (provider, username, email, password_hash, external_issuer, external_sub, legal_accepted_at)\n               values ('sso', $1, $2, null, $3, $4, case when $5 then now() end)\n               returning id, username, email, password_hash, is_admin, banned,\n                         provider::text as \"provider!\", external_sub",
   "describe": {
     "columns": [
       {
@@ -92,6 +92,7 @@
         "Text",
         "Text",
         "Text",
+        "Text",
         "Bool"
       ]
     },
@@ -106,5 +107,5 @@
       true
     ]
   },
-  "hash": "e88b7cc55832cd6b3875a4da46b455b20dfcda346269ea53f37daebce56dafe2"
+  "hash": "8cf7853360bd8346005a87b6199241e51a37057ff8d13815b6a24946c3dc155b"
 }

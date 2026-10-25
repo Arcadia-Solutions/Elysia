@@ -92,6 +92,8 @@ pub fn test_settings() -> ElysiaSettings {
         uploads_enabled: true,
         default_storage_quota_bytes: 0,
         record_referrer_views: false,
+        terms_of_service: String::new(),
+        privacy_policy: String::new(),
     }
 }
 
@@ -108,7 +110,7 @@ pub fn webp_settings() -> ElysiaSettings {
 pub async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
     let password_hash = auth_service::hash_password("long-test-password").unwrap();
     let email = format!("{username}@example.com");
-    let row = users::create_local_user(pool, username, Some(&email), &password_hash, false)
+    let row = users::create_local_user(pool, username, Some(&email), &password_hash, false, false)
         .await
         .unwrap();
     let config = test_config();

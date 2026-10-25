@@ -107,5 +107,8 @@ const handleSsoLogin = () => {
 .register-link {
   text-align: center;
   font-size: 0.875rem;
+  font-weight: bold;
+  text-decoration: none;
+  color: inherit;
 }
 </style>

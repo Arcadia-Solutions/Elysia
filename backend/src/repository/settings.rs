@@ -20,7 +20,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                    strip_exif_by_default, allow_overriding_strip_exif,
                    thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
                    allow_registration, allowed_referrers, uploads_enabled,
-                   default_storage_quota_bytes, record_referrer_views
+                   default_storage_quota_bytes, record_referrer_views,
+                   terms_of_service, privacy_policy
            from elysia_settings where id = $1"#,
         SINGLETON_ID,
     )
@@ -48,6 +49,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         uploads_enabled: row.uploads_enabled,
         default_storage_quota_bytes: row.default_storage_quota_bytes as u64,
         record_referrer_views: row.record_referrer_views,
+        terms_of_service: row.terms_of_service,
+        privacy_policy: row.privacy_policy,
     })
 }
 
@@ -65,8 +68,9 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             thumbnail_width_pixels = $13, thumbnail_height_pixels = $14,
             thumbnail_quality = $15, allow_registration = $16,
             allowed_referrers = $17, uploads_enabled = $18,
-            default_storage_quota_bytes = $19, record_referrer_views = $20
-         where id = $21"#,
+            default_storage_quota_bytes = $19, record_referrer_views = $20,
+            terms_of_service = $21, privacy_policy = $22
+         where id = $23"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
         settings.max_height_pixels as i32,
@@ -87,6 +91,8 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         settings.uploads_enabled,
         settings.default_storage_quota_bytes as i64,
         settings.record_referrer_views,
+        &settings.terms_of_service,
+        &settings.privacy_policy,
         SINGLETON_ID,
     )
     .execute(pool)

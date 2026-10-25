@@ -143,13 +143,14 @@ async fn spawn_mock() -> (String, Data<MockIdp>) {
 
 /// The app wired with SSO state, so the SSO and session-guarded routes work.
 macro_rules! sso_app {
-    ($pool:expr, $config:expr) => {{
+    ($pool:expr, $config:expr) => {{ sso_app!($pool, $config, common::test_settings()) }};
+    ($pool:expr, $config:expr, $settings:expr) => {{
         actix_test::init_service(
             App::new()
                 .app_data(Data::new($config))
                 .app_data(Data::new($pool))
                 .app_data(Data::new(SsoState::default()))
-                .app_data(Data::new(std::sync::RwLock::new(common::test_settings())))
+                .app_data(Data::new(std::sync::RwLock::new($settings)))
                 .configure(routes::init),
         )
         .await
@@ -323,6 +324,7 @@ async fn conflicting_username_and_email_are_handled(pool: PgPool) {
         Some("bob@arcadia.example"),
         &password_hash,
         false,
+        false,
     )
     .await
     .unwrap();
@@ -423,4 +425,70 @@ async fn no_status_endpoint_skips_the_ban_check(pool: PgPool) {
     // A provider without a status endpoint cannot ban: the session holds.
     mock.active.store(false, Ordering::SeqCst);
     assert_eq!(me_status!(&app, login.token), StatusCode::OK);
+}
+
+/// POST /api/auth/sso/register, returning status + raw JSON body.
+macro_rules! finish_registration {
+    ($app:expr, $registration_token:expr, $accept_legal:expr) => {{
+        let request = actix_test::TestRequest::post()
+            .uri("/api/auth/sso/register")
+            .set_json(serde_json::json!({
+                "registration_token": $registration_token,
+                "accept_legal": $accept_legal,
+            }))
+            .to_request();
+        let response = actix_test::call_service($app, request).await;
+        let status = response.status();
+        let body: serde_json::Value = actix_test::read_body_json(response).await;
+        (status, body)
+    }};
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn new_user_accepts_legal_before_being_created(pool: PgPool) {
+    let (issuer, _mock) = spawn_mock().await;
+    let settings = elysia::settings::ElysiaSettings {
+        privacy_policy: "We keep nothing".into(),
+        ..test_settings()
+    };
+    let app = sso_app!(pool.clone(), sso_config(&issuer), settings);
+
+    let (code_verifier, _) = start_login!(&app);
+    let (status, body) = finish_login!(&app, code_verifier);
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["token"].is_null());
+    let registration_token = body["registration_token"].as_str().unwrap().to_string();
+    // Nothing is stored before the acceptance, and the registration token is
+    // no session.
+    assert_eq!(users::count_users(&pool, None).await.unwrap(), 1);
+    assert_eq!(
+        me_status!(&app, registration_token),
+        StatusCode::UNAUTHORIZED
+    );
+
+    assert_eq!(
+        finish_registration!(&app, registration_token, false).0,
+        StatusCode::BAD_REQUEST
+    );
+    let session =
+        auth_service::mint_jwt(&uuid::Uuid::new_v4(), &test_config().auth.jwt_secret).unwrap();
+    assert_eq!(
+        finish_registration!(&app, session, true).0,
+        StatusCode::UNAUTHORIZED
+    );
+
+    let (status, body) = finish_registration!(&app, registration_token, true);
+    assert_eq!(status, StatusCode::OK);
+    let login: LoginResponse = serde_json::from_value(body).unwrap();
+    assert_eq!(login.user.username, "arcadia-bob");
+    let summary = users::find_summary(&pool, login.user.id.parse().unwrap(), 0)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(summary.legal_accepted_at.is_some());
+
+    // Once created, the user signs in straight away.
+    let (code_verifier, _) = start_login!(&app);
+    let (_, body) = finish_login!(&app, code_verifier);
+    assert!(body["token"].is_string());
 }

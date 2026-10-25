@@ -16,6 +16,7 @@ create table users (
   storage_quota_bytes bigint check (storage_quota_bytes >= 0),
   created_at timestamptz not null default now(),
   last_seen timestamptz,
+  legal_accepted_at timestamptz,
   unique (external_issuer, external_sub),
   check ((provider = 'local' and password_hash is not null and external_issuer is null and external_sub is null)
       or (provider = 'sso' and password_hash is null and external_issuer is not null and external_sub is not null))
@@ -24,6 +25,7 @@ create table users (
 comment on table users is 'Login accounts: local rows hold an Argon2 hash, sso rows are JIT-provisioned from an external sign-on backend (issuer/subject)';
 comment on column users.provider is 'local = password login, sso = shadow row provisioned on first sign-in';
 comment on column users.last_seen is 'Last authenticated API request';
+comment on column users.legal_accepted_at is 'When the user accepted the terms of service and privacy policy at registration; null if none were set or the account was not self-registered';
 comment on column users.storage_quota_bytes is 'Per-user storage quota override in bytes: null follows elysia_settings.default_storage_quota_bytes (admins are then unlimited), 0 is unlimited';
 
 -- Default admin account (username `admin`, password `change-me-123`).
@@ -263,7 +265,9 @@ create table elysia_settings (
    allowed_referrers text[] not null default '{}',
    uploads_enabled boolean not null default true,
    default_storage_quota_bytes bigint not null default 0 check (default_storage_quota_bytes >= 0),
-   record_referrer_views boolean not null default false
+   record_referrer_views boolean not null default false,
+   terms_of_service text not null default '',
+   privacy_policy text not null default ''
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -287,6 +291,8 @@ comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer 
 comment on column elysia_settings.uploads_enabled is 'When false, every upload is rejected, admins included';
 comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of available and trashed files each non-admin user may hold, unless overridden per user; 0 is unlimited';
 comment on column elysia_settings.record_referrer_views is 'When true, views are split per Referer host in file_referrer_views; when false, every view is counted under no referrer';
+comment on column elysia_settings.terms_of_service is 'Terms of service shown to everyone; empty hides the page';
+comment on column elysia_settings.privacy_policy is 'Privacy policy shown to everyone; empty hides the page';
 
 -- Default row
 insert into elysia_settings

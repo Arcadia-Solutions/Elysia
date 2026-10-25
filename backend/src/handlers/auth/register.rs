@@ -17,6 +17,9 @@ pub struct RegisterRequest {
     pub username: String,
     pub email: String,
     pub password: String,
+    /// Required when terms of service or a privacy policy are set.
+    #[serde(default)]
+    pub accept_legal: bool,
 }
 
 /// The account that was created.
@@ -35,7 +38,7 @@ pub struct RegisterResponse {
     request_body = RegisterRequest,
     responses(
         (status = 201, description = "Account created", body = RegisterResponse),
-        (status = 400, description = "Invalid username, email or password"),
+        (status = 400, description = "Invalid username, email or password, or the terms of service and privacy policy were not accepted"),
         (status = 403, description = "Open registration is disabled in settings"),
         (status = 409, description = "Username or email already taken"),
     )
@@ -45,14 +48,19 @@ pub async fn register(
     settings: SharedElysiaSettings,
     body: Json<RegisterRequest>,
 ) -> Result<HttpResponse> {
-    if !settings
-        .read()
-        .expect("settings lock poisoned")
-        .allow_registration
-    {
-        return Err(Error::Forbidden);
-    }
+    let legal_set = {
+        let current = settings.read().expect("settings lock poisoned");
+        if !current.allow_registration {
+            return Err(Error::Forbidden);
+        }
+        current.legal_set()
+    };
     let request = body.into_inner();
+    if legal_set && !request.accept_legal {
+        return Err(Error::BadRequest(
+            "the terms of service and privacy policy must be accepted".into(),
+        ));
+    }
     let username = auth_service::normalize_username(&request.username);
     let email = auth_service::normalize_email(&request.email);
     if !auth_service::valid_username(&username) {
@@ -74,6 +82,7 @@ pub async fn register(
         Some(&email),
         &password_hash,
         false,
+        legal_set,
     )
     .await?;
     Ok(HttpResponse::Created().json(RegisterResponse {

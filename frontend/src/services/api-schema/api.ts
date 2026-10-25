@@ -354,6 +354,10 @@ export interface ElysiaSettings {
      */
     'max_width_pixels'?: number;
     /**
+     * Privacy policy, shown to everyone; empty hides the page and its links.
+     */
+    'privacy_policy'?: string;
+    /**
      * When true, views are counted per `Referer` host; when false, every view is counted under no referrer. Without `allowed_referrers`, any site (or anyone forging a `Referer`) adds a row per file and host, so the referrer views table can grow indefinitely: keep this off unless the allowlist bounds the hosts.
      */
     'record_referrer_views'?: boolean;
@@ -373,6 +377,10 @@ export interface ElysiaSettings {
      * Resize width bound; 0 = no resize.
      */
     'target_width_pixels'?: number;
+    /**
+     * Terms of service, shown to everyone; empty hides the page and its links.
+     */
+    'terms_of_service'?: string;
     /**
      * Thumbnail box height; 0 on both axes disables thumbnails.
      */
@@ -750,6 +758,10 @@ export interface PaginatedResultsUserSummaryResultsInner {
      */
     'last_seen'?: string | null;
     /**
+     * When the user accepted the terms of service and privacy policy, as a UTC ISO-8601 string; null if they never did.
+     */
+    'legal_accepted_at'?: string | null;
+    /**
      * `local` or `sso`.
      */
     'provider': string;
@@ -878,6 +890,10 @@ export interface ReferrerViews {
  * Registration details for a new local account.
  */
 export interface RegisterRequest {
+    /**
+     * Required when terms of service or a privacy policy are set.
+     */
+    'accept_legal'?: boolean;
     'email': string;
     'password': string;
     'username': string;
@@ -1006,12 +1022,27 @@ export interface SsoCallbackRequest {
     'code_verifier': string;
 }
 /**
+ * Either a session (`token` and `user`), or, for a new user who must first accept the terms of service and privacy policy, a `registration_token` to send to `/api/auth/sso/register` along with the acceptance.
+ */
+export interface SsoCallbackResponse {
+    'registration_token'?: string | null;
+    'token'?: string | null;
+    'user'?: ProfileResponse | null;
+}
+/**
  * The provider authorize URL plus what the frontend keeps for the callback: the state, so a callback started by someone else is rejected, and the PKCE verifier, sent back with the code.
  */
 export interface SsoLoginResponse {
     'authorization_url': string;
     'code_verifier': string;
     'state': string;
+}
+/**
+ * The registration token from the callback, plus the user\'s acceptance.
+ */
+export interface SsoRegisterRequest {
+    'accept_legal': boolean;
+    'registration_token': string;
 }
 /**
  * Width of one step of the stats series.
@@ -1112,9 +1143,17 @@ export interface UnauthElysiaSettings {
      */
     'allow_registration': boolean;
     /**
+     * Privacy policy; empty when not set.
+     */
+    'privacy_policy': string;
+    /**
      * Name of the single sign-on provider, when enabled; lets the login page offer \"Login with <name>\".
      */
     'sso_provider_name'?: string | null;
+    /**
+     * Terms of service; empty when not set.
+     */
+    'terms_of_service': string;
 }
 /**
  * A page of the unreferenced images list.
@@ -1248,6 +1287,10 @@ export interface UserSummary {
      * Last authenticated API request as a UTC ISO-8601 string; null if never.
      */
     'last_seen'?: string | null;
+    /**
+     * When the user accepted the terms of service and privacy policy, as a UTC ISO-8601 string; null if they never did.
+     */
+    'legal_accepted_at'?: string | null;
     /**
      * `local` or `sso`.
      */
@@ -2222,7 +2265,7 @@ export const AuthApiAxiosParamCreator = function (configuration?: Configuration)
             };
         },
         /**
-         * 
+         * Finish a single sign-on. A new user is only created here when no terms of service or privacy policy is set; otherwise nothing is stored until they are accepted through `/api/auth/sso/register`.
          * @param {SsoCallbackRequest} ssoCallbackRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2279,6 +2322,41 @@ export const AuthApiAxiosParamCreator = function (configuration?: Configuration)
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Create a new single sign-on user once they accepted the terms of service and privacy policy, recording when, and sign them in.
+         * @param {SsoRegisterRequest} ssoRegisterRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoRegister: async (ssoRegisterRequest: SsoRegisterRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'ssoRegisterRequest' is not null or undefined
+            assertParamExists('ssoRegister', 'ssoRegisterRequest', ssoRegisterRequest)
+            const localVarPath = `/api/auth/sso/register`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(ssoRegisterRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -2342,12 +2420,12 @@ export const AuthApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * 
+         * Finish a single sign-on. A new user is only created here when no terms of service or privacy policy is set; otherwise nothing is stored until they are accepted through `/api/auth/sso/register`.
          * @param {SsoCallbackRequest} ssoCallbackRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
+        async ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SsoCallbackResponse>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.ssoCallback(ssoCallbackRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthApi.ssoCallback']?.[localVarOperationServerIndex]?.url;
@@ -2362,6 +2440,18 @@ export const AuthApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.ssoLogin(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthApi.ssoLogin']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Create a new single sign-on user once they accepted the terms of service and privacy policy, recording when, and sign them in.
+         * @param {SsoRegisterRequest} ssoRegisterRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async ssoRegister(ssoRegisterRequest: SsoRegisterRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<LoginResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.ssoRegister(ssoRegisterRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.ssoRegister']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
@@ -2409,12 +2499,12 @@ export const AuthApiFactory = function (configuration?: Configuration, basePath?
             return localVarFp.register(registerRequest, options).then((request) => request(axios, basePath));
         },
         /**
-         * 
+         * Finish a single sign-on. A new user is only created here when no terms of service or privacy policy is set; otherwise nothing is stored until they are accepted through `/api/auth/sso/register`.
          * @param {SsoCallbackRequest} ssoCallbackRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
+        ssoCallback(ssoCallbackRequest: SsoCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<SsoCallbackResponse> {
             return localVarFp.ssoCallback(ssoCallbackRequest, options).then((request) => request(axios, basePath));
         },
         /**
@@ -2424,6 +2514,15 @@ export const AuthApiFactory = function (configuration?: Configuration, basePath?
          */
         ssoLogin(options?: RawAxiosRequestConfig): AxiosPromise<SsoLoginResponse> {
             return localVarFp.ssoLogin(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Create a new single sign-on user once they accepted the terms of service and privacy policy, recording when, and sign them in.
+         * @param {SsoRegisterRequest} ssoRegisterRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        ssoRegister(ssoRegisterRequest: SsoRegisterRequest, options?: RawAxiosRequestConfig): AxiosPromise<LoginResponse> {
+            return localVarFp.ssoRegister(ssoRegisterRequest, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -2472,7 +2571,7 @@ export class AuthApi extends BaseAPI {
     }
 
     /**
-     * 
+     * Finish a single sign-on. A new user is only created here when no terms of service or privacy policy is set; otherwise nothing is stored until they are accepted through `/api/auth/sso/register`.
      * @param {SsoCallbackRequest} ssoCallbackRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2488,6 +2587,16 @@ export class AuthApi extends BaseAPI {
      */
     public ssoLogin(options?: RawAxiosRequestConfig) {
         return AuthApiFp(this.configuration).ssoLogin(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Create a new single sign-on user once they accepted the terms of service and privacy policy, recording when, and sign them in.
+     * @param {SsoRegisterRequest} ssoRegisterRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public ssoRegister(ssoRegisterRequest: SsoRegisterRequest, options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).ssoRegister(ssoRegisterRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -4422,7 +4531,7 @@ export const SettingsApiAxiosParamCreator = function (configuration?: Configurat
             };
         },
         /**
-         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session, plus the terms of service and privacy policy.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4535,7 +4644,7 @@ export const SettingsApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session, plus the terms of service and privacy policy.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4586,7 +4695,7 @@ export const SettingsApiFactory = function (configuration?: Configuration, baseP
             return localVarFp.getElysiaSettings(options).then((request) => request(axios, basePath));
         },
         /**
-         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+         * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session, plus the terms of service and privacy policy.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4627,7 +4736,7 @@ export class SettingsApi extends BaseAPI {
     }
 
     /**
-     * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session.
+     * Whether registrations are open and SSO is enabled, so the login and register pages can offer signup and single sign-on without a session, plus the terms of service and privacy policy.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */

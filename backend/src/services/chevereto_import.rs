@@ -772,9 +772,16 @@ impl Uploaders {
             .map_err(backend_error)?
         {
             Some((subject, email)) => {
-                users::upsert_sso_user(pool, &lookup.issuer, &subject, username, email.as_deref())
-                    .await?
-                    .id
+                users::upsert_sso_user(
+                    pool,
+                    &lookup.issuer,
+                    &subject,
+                    username,
+                    email.as_deref(),
+                    false,
+                )
+                .await?
+                .id
             }
             None => {
                 tracing::info!(
@@ -797,8 +804,15 @@ impl Uploaders {
             Some(user) => user,
             None => {
                 let password_hash = auth_service::hash_password_async(nanoid::nanoid!(32)).await?;
-                users::create_local_user(pool, &self.fallback_username, None, &password_hash, false)
-                    .await?
+                users::create_local_user(
+                    pool,
+                    &self.fallback_username,
+                    None,
+                    &password_hash,
+                    false,
+                    false,
+                )
+                .await?
             }
         };
         self.fallback_user_id = Some(user.id);

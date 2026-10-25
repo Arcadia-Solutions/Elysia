@@ -488,3 +488,31 @@ async fn password_change_requires_a_session(pool: PgPool) {
         StatusCode::UNAUTHORIZED
     );
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn registration_requires_and_records_legal_acceptance(pool: PgPool) {
+    let settings = elysia::settings::ElysiaSettings {
+        terms_of_service: "Be nice".into(),
+        ..test_settings()
+    };
+    let app = auth_app_with_settings!(pool.clone(), settings);
+    assert_eq!(
+        register_status!(&app, "alice", "alice@example.com", "supersecretpw12"),
+        StatusCode::BAD_REQUEST
+    );
+    let request = actix_test::TestRequest::post()
+        .uri("/api/auth/register")
+        .set_json(serde_json::json!({
+            "username": "alice",
+            "email": "alice@example.com",
+            "password": "supersecretpw12",
+            "accept_legal": true,
+        }))
+        .to_request();
+    let alice: RegisterResponse = actix_test::call_and_read_body_json(&app, request).await;
+    let summary = users::find_summary(&pool, alice.id.parse().unwrap(), 0)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(summary.legal_accepted_at.is_some());
+}
