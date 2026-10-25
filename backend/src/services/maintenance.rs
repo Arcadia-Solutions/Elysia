@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use crate::error::{Error, Result};
 use crate::repository::files::{self, ImageListRow, ImagesSortBy, SortOrder};
-use crate::services::{Job, JobProgress, files as files_service, paginate};
+use crate::services::{Job, JobProgress, check_shutdown, files as files_service, paginate};
 use crate::storage::Storage;
 
 /// Unreferenced images returned per page.
@@ -371,6 +371,7 @@ async fn scan(
     };
     let mut ids = HashSet::new();
     for (index, table) in tables.iter().enumerate() {
+        check_shutdown()?;
         // Identifiers quoted by the database itself, the pattern bound.
         let mut query = sqlx::query_scalar::<_, String>(AssertSqlSafe(
             dialect.table_statement(table, patterns.len()),
@@ -413,6 +414,7 @@ pub async fn start_trash(pool: PgPool, storage: Data<Storage>, admin_id: Uuid) -
         let ids = files::unreferenced_ids(&pool).await?;
         update(|progress| progress.total = ids.len());
         for batch in ids.chunks(TRASH_BATCH) {
+            check_shutdown()?;
             files_service::trash(&pool, &storage, admin_id, true, batch, false).await?;
             update(|progress| progress.done += batch.len());
         }

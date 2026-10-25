@@ -12,7 +12,7 @@ use utoipa::ToSchema;
 
 use crate::error::{Error, Result};
 use crate::repository::files::{self, ImageListRow};
-use crate::services::{Job, JobProgress, paginate};
+use crate::services::{Job, JobProgress, check_shutdown, paginate};
 
 /// Largest `max_distance` accepted: unrelated images differ in about half of
 /// the 63 used hash bits, so past a quarter they start matching and transitive
@@ -93,11 +93,12 @@ async fn scan(pool: &PgPool, max_distance: u32) -> Result<()> {
     let hashes: Vec<i64> = rows.iter().map(|row| row.phash).collect();
     let groups = tokio::task::spawn_blocking(move || {
         group_similar(&hashes, max_distance, |done| {
-            JOB.update(|progress| progress.done = done)
+            JOB.update(|progress| progress.done = done);
+            check_shutdown()
         })
     })
     .await
-    .map_err(|_| Error::Internal)?;
+    .map_err(|_| Error::Internal)??;
 
     let mut ids = Vec::new();
     let mut group_ids = Vec::new();
@@ -114,14 +115,15 @@ async fn scan(pool: &PgPool, max_distance: u32) -> Result<()> {
 
 /// Group the indexes of `hashes` differing in at most `max_distance` bits,
 /// transitively: groups of two or more, each in index order, by first index.
-/// `on_progress` gets how many hashes were compared with all later ones.
+/// `on_progress` gets how many hashes were compared with all later ones, its
+/// error stops the grouping.
 // ponytail: compares every pair, O(n²): seconds for 100k images, minutes past
 // a million; index the hashes in a BK-tree if that gets too slow.
 pub fn group_similar(
     hashes: &[i64],
     max_distance: u32,
-    on_progress: impl Fn(usize),
-) -> Vec<Vec<usize>> {
+    on_progress: impl Fn(usize) -> Result<()>,
+) -> Result<Vec<Vec<usize>>> {
     // Union-find: each index points towards its group's root.
     let mut parents: Vec<usize> = (0..hashes.len()).collect();
     fn root(parents: &mut [usize], mut index: usize) -> usize {
@@ -140,17 +142,17 @@ pub fn group_similar(
             }
         }
         if index % 1000 == 999 {
-            on_progress(index + 1);
+            on_progress(index + 1)?;
         }
     }
-    on_progress(hashes.len());
+    on_progress(hashes.len())?;
     let mut groups: Vec<Vec<usize>> = vec![Vec::new(); hashes.len()];
     for index in 0..hashes.len() {
         let group_root = root(&mut parents, index);
         groups[group_root].push(index);
     }
     groups.retain(|members| members.len() > 1);
-    groups
+    Ok(groups)
 }
 
 /// One page (1-based) of the last scan's groups still holding two available

@@ -62,8 +62,14 @@ fn perceptual_hash_survives_reencoding_and_resizing() {
 fn groups_transitively_within_the_distance() {
     // 0 and 0b1 differ in 1 bit, 0b1 and 0b1111 in 3, 0 and 0b1111 in 4.
     let hashes = [0b1111, -1, 0, 0b1, 0x7777_0000];
-    assert_eq!(group_similar(&hashes, 3, |_| {}), vec![vec![0, 2, 3]]);
-    assert_eq!(group_similar(&hashes, 0, |_| {}), Vec::<Vec<usize>>::new());
+    assert_eq!(
+        group_similar(&hashes, 3, |_| Ok(())).unwrap(),
+        vec![vec![0, 2, 3]]
+    );
+    assert_eq!(
+        group_similar(&hashes, 0, |_| Ok(())).unwrap(),
+        Vec::<Vec<usize>>::new()
+    );
 }
 
 async fn finished() -> SimilarProgress {

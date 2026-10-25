@@ -1,4 +1,5 @@
 use std::sync::RwLock;
+use std::time::Duration;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, web::Data};
@@ -13,10 +14,17 @@ use elysia::middlewares::RateLimits;
 use elysia::repository::settings as settings_repo;
 use elysia::routes;
 use elysia::scheduler;
+use elysia::services;
 use elysia::services::sso::SsoState;
 use elysia::services::views::ViewCounter;
 use elysia::storage::Storage;
 use elysia::telemetry;
+
+/// Seconds the HTTP server gives in-flight requests to finish on shutdown.
+const HTTP_SHUTDOWN_TIMEOUT_SECONDS: u64 = 10;
+/// Seconds the background jobs then get to reach a safe point and stop. Both
+/// fit in the compose `stop_grace_period`.
+const JOBS_SHUTDOWN_TIMEOUT_SECONDS: u64 = 15;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -88,10 +96,14 @@ async fn main() -> std::io::Result<()> {
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
     })
+    .shutdown_timeout(HTTP_SHUTDOWN_TIMEOUT_SECONDS)
     .bind((host, port))?
     .run()
     .await;
 
+    if !services::stop_jobs(Duration::from_secs(JOBS_SHUTDOWN_TIMEOUT_SECONDS)).await {
+        tracing::warn!("background jobs still running at shutdown, dropping them");
+    }
     // Stop the scheduler before the last flush, so the two never race.
     scheduler_handle.abort();
     scheduler::flush(&shutdown_pool, &shutdown_views).await;

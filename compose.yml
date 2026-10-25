@@ -20,6 +20,7 @@ services:
     profiles: [app]
     build: backend
     restart: always
+    stop_grace_period: 30s
     environment:
       ELYSIA_DATABASE__HOST: db
     volumes:

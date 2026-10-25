@@ -11,8 +11,40 @@ pub mod views;
 
 use std::num::NonZeroU32;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+use tokio::sync::RwLock;
 
 use crate::error::{Error, Result};
+
+/// Set once the server stops, background jobs then stop at their next safe point.
+static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+/// Read-held by every running background job, so `stop_jobs` can wait for them.
+static RUNNING_JOBS: RwLock<()> = RwLock::const_new(());
+
+/// Run a background job, registered so `stop_jobs` waits for it.
+pub async fn track_job<T>(job: impl Future<Output = T>) -> T {
+    let _running = RUNNING_JOBS.read().await;
+    job.await
+}
+
+/// Fails once the server is stopping, for jobs to call between two safe steps.
+pub fn check_shutdown() -> Result<()> {
+    if SHUTTING_DOWN.load(Ordering::SeqCst) {
+        return Err(Error::BadRequest("interrupted by a server shutdown".into()));
+    }
+    Ok(())
+}
+
+/// Ask the background jobs to stop and wait for them, at most `timeout`.
+/// Returns whether they all stopped in time.
+pub async fn stop_jobs(timeout: Duration) -> bool {
+    SHUTTING_DOWN.store(true, Ordering::SeqCst);
+    tokio::time::timeout(timeout, RUNNING_JOBS.write())
+        .await
+        .is_ok()
+}
 
 /// Progress of a `Job`, read by its progress endpoint.
 pub trait JobProgress: Clone + Send + 'static {
@@ -55,7 +87,7 @@ impl<P: JobProgress> Job<P> {
             *progress.running() = true;
             *progress.error() = None;
         }
-        tokio::spawn(async move {
+        tokio::spawn(track_job(async move {
             // Run in its own task so a panic still clears `running` below.
             let result = tokio::spawn(job).await.unwrap_or(Err(Error::Internal));
             if let Err(error) = &result {
@@ -65,7 +97,7 @@ impl<P: JobProgress> Job<P> {
                 *progress.running() = false;
                 *progress.error() = result.err().map(|error| error.to_string());
             });
-        });
+        }));
         Ok(())
     }
 }

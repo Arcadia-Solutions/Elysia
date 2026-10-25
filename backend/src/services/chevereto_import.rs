@@ -32,7 +32,7 @@ use crate::repository::files as files_repo;
 use crate::repository::users;
 use crate::services::auth as auth_service;
 use crate::services::files::{self, image_url, thumbnail_url};
-use crate::services::paginate;
+use crate::services::{check_shutdown, paginate, track_job};
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
 
@@ -598,7 +598,7 @@ pub async fn start(
     let (checks_sender, checks_receiver) = tokio::sync::oneshot::channel();
     // Checks and import run in their own task so a panic, or the request being
     // dropped mid-checks, still clears `RUNNING` below.
-    tokio::spawn(async move {
+    tokio::spawn(track_job(async move {
         let job_pool = pool.clone();
         let result = tokio::spawn(async move {
             match prepare(
@@ -633,7 +633,7 @@ pub async fn start(
             }
         }
         RUNNING.store(false, Ordering::SeqCst);
-    });
+    }));
     checks_receiver.await.unwrap_or(Err(Error::Internal))
 }
 
@@ -1047,6 +1047,9 @@ impl Job {
                     "stopped by an admin, resume to continue".into(),
                 ));
             }
+            check_shutdown().map_err(|_| {
+                Error::BadRequest("interrupted by a server shutdown, resume to continue".into())
+            })?;
             let rows: Vec<ChunkRow> = sqlx::query_as(CHUNK_QUERY)
                 .bind(last_image_id)
                 .bind(batch_size)

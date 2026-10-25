@@ -77,14 +77,7 @@
       <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
       <div class="actions">
         <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" @click="deleteDialogVisible = true" />
-        <Button
-          v-if="!meta.trashed_at"
-          :label="$t('reports.report')"
-          icon="pi pi-flag"
-          severity="secondary"
-          size="small"
-          @click="reportDialogVisible = true"
-        />
+        <Button v-if="!meta.trashed_at" :label="$t('reports.report')" icon="pi pi-flag" severity="secondary" size="small" @click="reportDialogVisible = true" />
         <Button v-if="meta.trashed_at" :label="$t('trash.restore', 1)" icon="pi pi-replay" size="small" @click="restore" />
       </div>
     </aside>

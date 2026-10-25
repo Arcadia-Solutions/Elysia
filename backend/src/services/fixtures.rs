@@ -19,6 +19,7 @@ use crate::repository::{files as files_repository, users};
 use crate::services::auth as auth_service;
 use crate::services::files::{self, UploadOptions};
 use crate::services::image::TargetFormat;
+use crate::services::{check_shutdown, track_job};
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
 
@@ -119,7 +120,7 @@ pub fn start(
             error: None,
         };
     }
-    tokio::spawn(async move {
+    tokio::spawn(track_job(async move {
         // Run in its own task so a panic still clears `running` below.
         let result = tokio::spawn(async move { run(&pool, &storage, &settings, &params).await })
             .await
@@ -131,7 +132,7 @@ pub fn start(
             progress.running = false;
             progress.error = result.err().map(|error| error.to_string());
         });
-    });
+    }));
     Ok(())
 }
 
@@ -239,6 +240,7 @@ async fn run(
         (Vec::new(), Vec::new(), Vec::new(), Vec::new());
 
     for index in 0..params.image_count {
+        check_shutdown()?;
         // Encoding is CPU bound, keep it off the server's async workers.
         let image_seed = random.next();
         let (bytes, source_ext) =
