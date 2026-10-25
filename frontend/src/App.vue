@@ -15,7 +15,7 @@ import Toast from 'primevue/toast'
 import TopBar from '@/components/TopBar.vue'
 import { api } from '@/services/api/http'
 import type { UnauthElysiaSettings } from '@/services/api-schema'
-import { getToken, saveSession } from '@/services/session'
+import { getToken, setAdmin } from '@/services/session'
 
 const route = useRoute()
 const legal = ref<UnauthElysiaSettings>()
@@ -34,10 +34,7 @@ onMounted(() => {
   })
   api
     .me()
-    .then((response) => {
-      const token = getToken()
-      if (token) saveSession(token, response.data.is_admin)
-    })
+    .then((response) => setAdmin(response.data.is_admin))
     .catch(() => {})
 })
 </script>

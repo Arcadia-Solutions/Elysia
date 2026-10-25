@@ -16,6 +16,7 @@ use elysia::handlers::auth::me::ProfileResponse;
 use elysia::handlers::auth::register::RegisterResponse;
 use elysia::repository::{files, users};
 use elysia::routes;
+use elysia::services::auth as auth_service;
 use elysia::storage::Storage;
 
 use common::*;
@@ -490,6 +491,79 @@ async fn logout_revokes_only_its_session(pool: PgPool) {
     );
     assert_eq!(get_me!(&app, token).0, StatusCode::UNAUTHORIZED);
     assert_eq!(get_me!(&app, other_token).0, StatusCode::OK);
+}
+
+/// POST a refresh token, returning status + raw JSON body.
+macro_rules! refresh {
+    ($app:expr, $refresh_token:expr) => {{
+        let request = actix_test::TestRequest::post()
+            .uri("/api/auth/refresh")
+            .set_json(serde_json::json!({"refresh_token": $refresh_token}))
+            .to_request();
+        let service_response = actix_test::call_service($app, request).await;
+        let status = service_response.status();
+        let body: serde_json::Value = actix_test::read_body_json(service_response).await;
+        (status, body)
+    }};
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn refresh_rotates_tokens_until_logout(pool: PgPool) {
+    let app = auth_app!(pool.clone());
+    test_user(&pool, "alice").await;
+    let request = actix_test::TestRequest::post()
+        .uri("/api/auth/login")
+        .set_json(serde_json::json!({
+            "login": "alice",
+            "password": "long-test-password",
+            "remember_me": true,
+        }))
+        .to_request();
+    let login: LoginResponse = actix_test::call_and_read_body_json(&app, request).await;
+
+    let (status, tokens) = refresh!(&app, &login.refresh_token);
+    assert_eq!(status, StatusCode::OK);
+    let token = tokens["token"].as_str().unwrap();
+    let refresh_token = tokens["refresh_token"].as_str().unwrap();
+    assert_eq!(get_me!(&app, token).0, StatusCode::OK);
+    // Still remembered: a 24 hour access token.
+    let claims = auth_service::decode_jwt(token, &test_config().auth.jwt_secret).unwrap();
+    assert_eq!(claims.expiration - claims.issued_at, 24 * 60 * 60);
+    // The used refresh token is spent.
+    assert_eq!(
+        refresh!(&app, &login.refresh_token).0,
+        StatusCode::UNAUTHORIZED
+    );
+
+    let request = actix_test::TestRequest::post()
+        .uri("/api/auth/logout")
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    actix_test::call_service(&app, request).await;
+    assert_eq!(refresh!(&app, refresh_token).0, StatusCode::UNAUTHORIZED);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn non_remembered_access_token_lives_15_minutes(pool: PgPool) {
+    let (_, token) = test_user(&pool, "alice").await;
+    let claims = auth_service::decode_jwt(&token, &test_config().auth.jwt_secret).unwrap();
+    assert_eq!(claims.expiration - claims.issued_at, 15 * 60);
+}
+
+#[sqlx::test(migrations = "./migrations", fixtures("refresh_sessions"))]
+async fn refresh_refuses_expired_and_revokes_replayed_sessions(pool: PgPool) {
+    let app = auth_app!(pool);
+    let unauthorized = StatusCode::UNAUTHORIZED;
+    assert_eq!(refresh!(&app, "expired-refresh-token").0, unauthorized);
+    // A replay past the grace minute revokes the session.
+    assert_eq!(refresh!(&app, "spent-refresh-token").0, unauthorized);
+    assert_eq!(refresh!(&app, "current-refresh-token").0, unauthorized);
+    // A replay within it, like a concurrent refresh from another tab, does not.
+    assert_eq!(refresh!(&app, "graced-spent-refresh-token").0, unauthorized);
+    assert_eq!(
+        refresh!(&app, "graced-current-refresh-token").0,
+        StatusCode::OK
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]

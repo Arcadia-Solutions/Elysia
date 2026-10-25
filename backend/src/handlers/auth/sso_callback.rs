@@ -22,14 +22,18 @@ use crate::settings::SharedElysiaSettings;
 pub struct SsoCallbackRequest {
     pub code: String,
     pub code_verifier: String,
+    /// Keep the session 60 days without a refresh instead of 2 hours.
+    #[serde(default)]
+    pub remember_me: bool,
 }
 
-/// Either a session (`token` and `user`), or, for a new user who must first
+/// Either a session (`token`, `refresh_token` and `user`), or, for a new user who must first
 /// accept the terms of service and privacy policy, a `registration_token` to
 /// send to `/api/auth/sso/register` along with the acceptance.
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct SsoCallbackResponse {
     pub token: Option<String>,
+    pub refresh_token: Option<String>,
     pub user: Option<ProfileResponse>,
     pub registration_token: Option<String>,
 }
@@ -64,6 +68,7 @@ pub async fn sso_callback(
     {
         return Ok(HttpResponse::Ok().json(SsoCallbackResponse {
             token: None,
+            refresh_token: None,
             user: None,
             registration_token: Some(sso_service::mint_registration_token(
                 identity,
@@ -71,9 +76,19 @@ pub async fn sso_callback(
             )?),
         }));
     }
-    let login = log_in(&pool, &config, &sso_state, sso, &identity, false).await?;
+    let login = log_in(
+        &pool,
+        &config,
+        &sso_state,
+        sso,
+        &identity,
+        false,
+        request.remember_me,
+    )
+    .await?;
     Ok(HttpResponse::Ok().json(SsoCallbackResponse {
         token: Some(login.token),
+        refresh_token: Some(login.refresh_token),
         user: Some(login.user),
         registration_token: None,
     }))
@@ -88,6 +103,7 @@ pub(crate) async fn log_in(
     sso: &SsoConfig,
     identity: &Identity,
     accepted_legal: bool,
+    remember_me: bool,
 ) -> Result<LoginResponse> {
     let row = users::upsert_sso_user(
         pool,
@@ -101,8 +117,11 @@ pub(crate) async fn log_in(
     if row.banned || !sso_service::user_active(sso_state, sso, row.id, &identity.sub).await {
         return Err(Error::Unauthorized);
     }
+    let tokens =
+        auth_service::start_session(pool, &row.id, remember_me, &config.auth.jwt_secret).await?;
     Ok(LoginResponse {
-        token: auth_service::start_session(pool, &row.id, &config.auth.jwt_secret).await?,
+        token: tokens.token,
+        refresh_token: tokens.refresh_token,
         user: ProfileResponse::from(row),
     })
 }

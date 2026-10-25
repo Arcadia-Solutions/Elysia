@@ -19,6 +19,9 @@ use crate::services::sso::SharedSsoState;
 pub struct SsoRegisterRequest {
     pub registration_token: String,
     pub accept_legal: bool,
+    /// Keep the session 60 days without a refresh instead of 2 hours.
+    #[serde(default)]
+    pub remember_me: bool,
 }
 
 #[utoipa::path(
@@ -28,7 +31,7 @@ pub struct SsoRegisterRequest {
     request_body = SsoRegisterRequest,
     description = "Create a new single sign-on user once they accepted the terms of service and privacy policy, recording when, and sign them in.",
     responses(
-        (status = 200, description = "Signed session token plus caller profile", body = LoginResponse),
+        (status = 200, description = "Session tokens plus caller profile", body = LoginResponse),
         (status = 400, description = "The terms of service and privacy policy were not accepted"),
         (status = 401, description = "Invalid or expired registration token, or banned"),
     )
@@ -49,6 +52,15 @@ pub async fn sso_register(
         &request.registration_token,
         &config.auth.jwt_secret,
     )?;
-    let login = log_in(&pool, &config, &sso_state, sso, &identity, true).await?;
+    let login = log_in(
+        &pool,
+        &config,
+        &sso_state,
+        sso,
+        &identity,
+        true,
+        request.remember_me,
+    )
+    .await?;
     Ok(HttpResponse::Ok().json(login))
 }

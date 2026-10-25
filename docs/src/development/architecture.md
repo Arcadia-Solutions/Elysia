@@ -64,6 +64,15 @@ A bearer token is either a session JWT or an API key. Each session JWT names a
 user's other ones. Admin rights, bans and sessions are re-read from the database
 on every request, so they apply immediately.
 
+Session JWTs live 24 hours when the user ticked "remember me", 15 minutes
+otherwise. Login also returns a refresh token, stored hashed on the session row,
+which `/api/auth/refresh` trades for a new JWT and a new refresh token (the old
+one stops working). Each refresh pushes the session expiry back by its lifetime:
+60 days when the user ticked "remember me", 2 hours otherwise. Replaying a spent
+refresh token more than a minute after its refresh revokes the session, as the
+token must have leaked; the grace minute spares concurrent refreshes from
+several tabs. The frontend refreshes on a 401 and replays the request.
+
 ### Rate limiting
 
 `middlewares/rate_limit.rs` keeps in-memory `governor` buckets: one per client

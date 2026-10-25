@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with pruned as (delete from sessions where expires_at < now())\n           insert into sessions (user_id, refresh_token_hash, remember_me, expires_at)\n           values ($1, $2, $3, now() + make_interval(secs => $4::integer))\n           returning id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "49b178e07c076f16e5efacde27ceebf9b129ef95b52a974774c773f28cdcb930"
+}

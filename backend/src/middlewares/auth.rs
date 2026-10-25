@@ -86,10 +86,9 @@ fn authenticate(
             {
                 // A JWT is checked without a query, an API key is not.
                 failed_auth.check_blocked()?;
-                let api_key =
-                    api_keys::find_active(pool.get_ref(), &auth::hash_api_key_token(&token))
-                        .await?
-                        .ok_or(Error::Unauthorized)?;
+                let api_key = api_keys::find_active(pool.get_ref(), &auth::hash_token(&token))
+                    .await?
+                    .ok_or(Error::Unauthorized)?;
                 if !api_key.scope.allows(required_scope) {
                     return Err(Error::Forbidden);
                 }

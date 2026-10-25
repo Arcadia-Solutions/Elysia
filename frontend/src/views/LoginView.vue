@@ -4,6 +4,10 @@
       <h2>{{ $t('app.name') }}</h2>
       <InputText v-model="login" size="small" :placeholder="$t('login.login_placeholder')" fluid @keyup.enter="handleLogin" />
       <Password v-model="password" size="small" :placeholder="$t('login.password_placeholder')" :feedback="false" toggleMask fluid @keyup.enter="handleLogin" />
+      <div class="remember-me">
+        <Checkbox v-model="rememberMe" inputId="remember-me" binary size="small" />
+        <label for="remember-me">{{ $t('login.remember_me') }}</label>
+      </div>
       <Message v-if="error" severity="error" size="small">{{ error }}</Message>
       <Button :label="$t('login.submit')" size="small" :loading @click="handleLogin" />
       <Button
@@ -26,6 +30,7 @@ import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 import { api } from '@/services/api/http'
 import { saveSession } from '@/services/session'
@@ -34,6 +39,7 @@ const { t } = useI18n()
 const router = useRouter()
 const login = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const loading = ref(false)
 const error = ref('')
 const allowRegistration = ref(false)
@@ -49,9 +55,9 @@ const handleLogin = () => {
   loading.value = true
   error.value = ''
   api
-    .login({ login: login.value, password: password.value })
+    .login({ login: login.value, password: password.value, remember_me: rememberMe.value })
     .then((response) => {
-      saveSession(response.data.token, response.data.user.is_admin)
+      saveSession(response.data.token, response.data.refresh_token, response.data.user.is_admin)
       api
         .getPublicElysiaSettings()
         .then((settings) => localStorage.setItem('public_settings', JSON.stringify(settings.data)))
@@ -76,6 +82,7 @@ const handleSsoLogin = () => {
       // The PKCE verifier is sent back with the code.
       sessionStorage.setItem('ssoState', response.data.state)
       sessionStorage.setItem('ssoCodeVerifier', response.data.code_verifier)
+      sessionStorage.setItem('ssoRememberMe', rememberMe.value ? '1' : '0')
       window.location.href = response.data.authorization_url
     })
     .catch(() => {
@@ -103,6 +110,12 @@ const handleSsoLogin = () => {
 .login-card h2 {
   text-align: center;
   margin: 0 0 8px;
+}
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
 }
 .register-link {
   text-align: center;

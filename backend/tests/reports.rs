@@ -22,10 +22,15 @@ async fn reports_reach_the_moderation_queue_until_dismissed(pool: PgPool) {
         .await
         .unwrap()
         .unwrap();
-    let admin_token =
-        auth_service::start_session(&pool, &admin_id, &common::test_config().auth.jwt_secret)
-            .await
-            .unwrap();
+    let admin_token = auth_service::start_session(
+        &pool,
+        &admin_id,
+        false,
+        &common::test_config().auth.jwt_secret,
+    )
+    .await
+    .unwrap()
+    .token;
     common::seed_files(&pool, uploader.id, "img", 2, 10).await;
     let (storage, _dir) = common::temp_storage();
     // Restoring moves the bytes back from the trash.

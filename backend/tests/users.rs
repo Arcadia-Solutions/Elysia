@@ -31,10 +31,15 @@ async fn seed_users(pool: &PgPool) -> SeededUsers {
         .await
         .unwrap()
         .unwrap();
-    let admin_token =
-        auth_service::start_session(pool, &admin.id, &common::test_config().auth.jwt_secret)
-            .await
-            .unwrap();
+    let admin_token = auth_service::start_session(
+        pool,
+        &admin.id,
+        false,
+        &common::test_config().auth.jwt_secret,
+    )
+    .await
+    .unwrap()
+    .token;
     let (local, local_token) = common::test_user(pool, "local").await;
     let sso = users::upsert_sso_user(pool, "https://issuer.test", "subject", "sso", None, false)
         .await

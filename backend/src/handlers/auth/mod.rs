@@ -7,6 +7,7 @@ pub mod change_password;
 pub mod login;
 pub mod logout;
 pub mod me;
+pub mod refresh;
 pub mod register;
 pub mod sso_callback;
 pub mod sso_login;
@@ -27,6 +28,10 @@ pub fn config(cfg: &mut ServiceConfig) {
             .to(login::login)
             .wrap(from_fn(limit_login))
             .wrap(unauthenticated()),
+    )
+    .route(
+        "/refresh",
+        post().to(refresh::refresh).wrap(unauthenticated()),
     )
     .route("/logout", post().to(logout::logout))
     .route("/me", get().to(me::me))

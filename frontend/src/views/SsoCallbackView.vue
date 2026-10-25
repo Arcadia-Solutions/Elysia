@@ -33,9 +33,10 @@ const registrationToken = ref('')
 const legal = ref<UnauthElysiaSettings>()
 const acceptLegal = ref(false)
 const loading = ref(false)
+const rememberMe = sessionStorage.getItem('ssoRememberMe') === '1'
 
 const signIn = (login: LoginResponse) => {
-  saveSession(login.token, login.user.is_admin)
+  saveSession(login.token, login.refresh_token, login.user.is_admin)
   api
     .getPublicElysiaSettings()
     .then((settings) => localStorage.setItem('public_settings', JSON.stringify(settings.data)))
@@ -45,7 +46,7 @@ const signIn = (login: LoginResponse) => {
 const register = () => {
   loading.value = true
   api
-    .ssoRegister({ registration_token: registrationToken.value, accept_legal: acceptLegal.value })
+    .ssoRegister({ registration_token: registrationToken.value, accept_legal: acceptLegal.value, remember_me: rememberMe })
     .then((response) => signIn(response.data))
     .catch(() => {
       error.value = t('login.sso_failed')
@@ -61,16 +62,17 @@ const expectedState = sessionStorage.getItem('ssoState')
 const codeVerifier = sessionStorage.getItem('ssoCodeVerifier')
 sessionStorage.removeItem('ssoState')
 sessionStorage.removeItem('ssoCodeVerifier')
+sessionStorage.removeItem('ssoRememberMe')
 // the provider reports a refusal through ?error=; a state this browser did not
 // start means the callback link came from someone else
 if (route.query.error || typeof code !== 'string' || !code || !codeVerifier || typeof state !== 'string' || !state || state !== expectedState) {
   error.value = t('login.sso_failed')
 } else {
   api
-    .ssoCallback({ code, code_verifier: codeVerifier })
+    .ssoCallback({ code, code_verifier: codeVerifier, remember_me: rememberMe })
     .then((response) => {
-      const { token, user, registration_token } = response.data
-      if (token && user) return signIn({ token, user })
+      const { token, refresh_token, user, registration_token } = response.data
+      if (token && refresh_token && user) return signIn({ token, refresh_token, user })
       registrationToken.value = registration_token ?? ''
       api.getElysiaUnauthSettings().then((settings) => {
         legal.value = settings.data

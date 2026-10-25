@@ -68,15 +68,27 @@ create unique index api_keys_token_hash_idx on api_keys (token_hash);
 create table sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id),
+  refresh_token_hash text not null,
+  previous_refresh_token_hash text,
+  refreshed_at timestamptz,
+  remember_me boolean not null,
   expires_at timestamptz not null
 );
 
-comment on table sessions is 'Live session tokens (JWT `sid` claim); deleting a row logs that token out';
-comment on column sessions.expires_at is 'Same as the token expiry; expired rows are pruned whenever a session is created';
+comment on table sessions is 'Live sessions (JWT `sid` claim); deleting a row logs out its access and refresh tokens';
+comment on column sessions.refresh_token_hash is 'SHA-256 (hex) of the current refresh token, replaced on every refresh';
+comment on column sessions.previous_refresh_token_hash is 'The refresh token spent by the last refresh; presenting it again after a grace minute revokes the session as stolen';
+comment on column sessions.refreshed_at is 'Last refresh; null until the first one';
+comment on column sessions.remember_me is 'Remembered sessions live 60 days without a refresh and get 24 hour access tokens, others 2 hours and 15 minutes';
+comment on column sessions.expires_at is 'Pushed back by the session lifetime on every refresh; expired rows are pruned whenever a session is created';
 
 -- A password change deletes the user's other sessions, each new session prunes expired ones.
 create index sessions_user_id_idx on sessions (user_id);
 create index sessions_expires_at_idx on sessions (expires_at);
+-- Every refresh looks its session up by refresh token hash.
+create unique index sessions_refresh_token_hash_idx on sessions (refresh_token_hash);
+-- A spent refresh token is looked up to revoke its session.
+create index sessions_previous_refresh_token_hash_idx on sessions (previous_refresh_token_hash);
 
 create type file_status as enum ('available', 'trashed', 'deleted');
 create type deletion_source as enum ('manual', 'scheduler');

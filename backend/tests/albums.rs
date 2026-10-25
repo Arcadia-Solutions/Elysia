@@ -21,10 +21,15 @@ async fn albums_are_public_and_hold_any_image(pool: PgPool) {
         .await
         .unwrap()
         .unwrap();
-    let admin_token =
-        auth_service::start_session(&pool, &admin_id, &common::test_config().auth.jwt_secret)
-            .await
-            .unwrap();
+    let admin_token = auth_service::start_session(
+        &pool,
+        &admin_id,
+        false,
+        &common::test_config().auth.jwt_secret,
+    )
+    .await
+    .unwrap()
+    .token;
     common::seed_files(&pool, owner.id, "mine", 1, 10).await;
     common::seed_files(&pool, uploader.id, "theirs", 1, 10).await;
     let app = actix_test::init_service(

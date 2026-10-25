@@ -8,14 +8,24 @@ use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
 use crate::repository::sessions;
 use crate::services::sso::random_bytes;
 
-/// Session token lifetime: 24 hours.
-const SESSION_LIFETIME_SECONDS: u64 = 24 * 60 * 60;
+/// Access token lifetime when remembered: 24 hours, then the client refreshes it.
+const REMEMBERED_ACCESS_TOKEN_LIFETIME_SECONDS: u64 = 24 * 60 * 60;
+
+/// Access token lifetime when not remembered: 15 minutes.
+const ACCESS_TOKEN_LIFETIME_SECONDS: u64 = 15 * 60;
+
+/// How long a session lives without a refresh: 60 days when remembered.
+const REMEMBERED_SESSION_LIFETIME_SECONDS: i32 = 60 * 24 * 60 * 60;
+
+/// How long a session lives without a refresh: 2 hours when not remembered.
+const SESSION_LIFETIME_SECONDS: i32 = 2 * 60 * 60;
 
 /// Session token claims. Admin rights are re-read from the database on every
 /// request. The wire names are the standard JWT ones (`sub`/`exp`/`iat`) so
@@ -157,19 +167,96 @@ pub async fn verify_password_async(password_hash: String, password: String) -> b
         .unwrap_or(false)
 }
 
-/// Store a new session for a user and mint its token, valid for 24 hours.
-pub async fn start_session(pool: &PgPool, user_id: &Uuid, jwt_secret: &str) -> Result<String> {
-    let issued_at = now_seconds();
-    let session_id = sessions::create(pool, *user_id, issued_at + SESSION_LIFETIME_SECONDS).await?;
-    mint_jwt(user_id, &session_id, issued_at, jwt_secret)
+/// A short-lived access token plus the refresh token that renews it.
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct SessionTokens {
+    pub token: String,
+    pub refresh_token: String,
 }
 
-/// Sign a session token issued at `issued_at`. Only valid while its
-/// `sessions` row exists, see `start_session`.
-fn mint_jwt(user_id: &Uuid, session_id: &Uuid, issued_at: u64, jwt_secret: &str) -> Result<String> {
+/// Store a new session for a user and mint its tokens. A remembered session
+/// survives 60 days without a refresh, otherwise 2 hours.
+pub async fn start_session(
+    pool: &PgPool,
+    user_id: &Uuid,
+    remember_me: bool,
+    jwt_secret: &str,
+) -> Result<SessionTokens> {
+    let refresh_token = generate_refresh_token();
+    let lifetime_seconds = if remember_me {
+        REMEMBERED_SESSION_LIFETIME_SECONDS
+    } else {
+        SESSION_LIFETIME_SECONDS
+    };
+    let session_id = sessions::create(
+        pool,
+        *user_id,
+        &hash_token(&refresh_token),
+        remember_me,
+        lifetime_seconds,
+    )
+    .await?;
+    Ok(SessionTokens {
+        token: mint_jwt(user_id, &session_id, remember_me, jwt_secret)?,
+        refresh_token,
+    })
+}
+
+/// Rotate a refresh token: the old one stops working, the session lives on
+/// for its full lifetime and gets a fresh access token. Replaying a spent
+/// refresh token revokes its session.
+pub async fn refresh_session(
+    pool: &PgPool,
+    refresh_token: &str,
+    jwt_secret: &str,
+) -> Result<SessionTokens> {
+    let refresh_token_hash = hash_token(refresh_token);
+    let new_refresh_token = generate_refresh_token();
+    let Some(session) = sessions::refresh(
+        pool,
+        &refresh_token_hash,
+        &hash_token(&new_refresh_token),
+        REMEMBERED_SESSION_LIFETIME_SECONDS,
+        SESSION_LIFETIME_SECONDS,
+    )
+    .await?
+    else {
+        sessions::revoke_by_spent_refresh_token(pool, &refresh_token_hash).await?;
+        return Err(Error::Unauthorized);
+    };
+    Ok(SessionTokens {
+        token: mint_jwt(
+            &session.user_id,
+            &session.id,
+            session.remember_me,
+            jwt_secret,
+        )?,
+        refresh_token: new_refresh_token,
+    })
+}
+
+/// 32 random bytes, base64url-encoded.
+fn generate_refresh_token() -> String {
+    URL_SAFE_NO_PAD.encode(random_bytes::<32>())
+}
+
+/// Sign an access token, valid 24 hours when remembered, 15 minutes otherwise.
+/// Only valid while its `sessions` row is live, see `start_session`.
+fn mint_jwt(
+    user_id: &Uuid,
+    session_id: &Uuid,
+    remember_me: bool,
+    jwt_secret: &str,
+) -> Result<String> {
+    let issued_at = now_seconds();
+    let lifetime_seconds = if remember_me {
+        REMEMBERED_ACCESS_TOKEN_LIFETIME_SECONDS
+    } else {
+        ACCESS_TOKEN_LIFETIME_SECONDS
+    };
     let claims = SessionClaims {
         subject: user_id.to_string(),
-        expiration: issued_at + SESSION_LIFETIME_SECONDS,
+        expiration: issued_at + lifetime_seconds,
         issued_at,
         session_id: *session_id,
     };
@@ -213,13 +300,13 @@ pub fn generate_api_key() -> GeneratedApiKey {
         URL_SAFE_NO_PAD.encode(random_bytes::<32>())
     );
     GeneratedApiKey {
-        token_hash: hash_api_key_token(&token),
+        token_hash: hash_token(&token),
         token_prefix: token[..API_KEY_DISPLAYED_PREFIX_LENGTH].to_string(),
         token,
     }
 }
 
-/// SHA-256 (hex) of an API key token, as stored.
-pub fn hash_api_key_token(token: &str) -> String {
+/// SHA-256 (hex) of an API key or refresh token, as stored.
+pub fn hash_token(token: &str) -> String {
     format!("{:x}", Sha256::digest(token.as_bytes()))
 }

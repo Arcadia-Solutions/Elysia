@@ -529,11 +529,16 @@ export type ImagesStatus = typeof ImagesStatus[keyof typeof ImagesStatus];
 export interface LoginRequest {
     'login': string;
     'password': string;
+    /**
+     * Keep the session 60 days without a refresh instead of 2 hours.
+     */
+    'remember_me'?: boolean;
 }
 /**
- * A signed session token plus the caller\'s profile, so login seeds client state without a second request. New `ProfileResponse` fields show up here automatically.
+ * Session tokens plus the caller\'s profile, so login seeds client state without a second request. New `ProfileResponse` fields show up here automatically.
  */
 export interface LoginResponse {
+    'refresh_token': string;
     'token': string;
     'user': ProfileResponse;
 }
@@ -907,6 +912,12 @@ export interface ReferrerViews {
     'views': number;
 }
 /**
+ * The refresh token from the last login or refresh.
+ */
+export interface RefreshRequest {
+    'refresh_token': string;
+}
+/**
  * Registration details for a new local account.
  */
 export interface RegisterRequest {
@@ -971,6 +982,13 @@ export interface ScanParams {
      * Hosts the links use, with an optional path prefix, e.g. `img.example.com` or `example.com/elysia`. A scheme and trailing slash are ignored.
      */
     'hosts': Array<string>;
+}
+/**
+ * A short-lived access token plus the refresh token that renews it.
+ */
+export interface SessionTokens {
+    'refresh_token': string;
+    'token': string;
 }
 export interface SetUserAdminRequest {
     'is_admin': boolean;
@@ -1040,11 +1058,16 @@ export type SortOrder = typeof SortOrder[keyof typeof SortOrder];
 export interface SsoCallbackRequest {
     'code': string;
     'code_verifier': string;
+    /**
+     * Keep the session 60 days without a refresh instead of 2 hours.
+     */
+    'remember_me'?: boolean;
 }
 /**
- * Either a session (`token` and `user`), or, for a new user who must first accept the terms of service and privacy policy, a `registration_token` to send to `/api/auth/sso/register` along with the acceptance.
+ * Either a session (`token`, `refresh_token` and `user`), or, for a new user who must first accept the terms of service and privacy policy, a `registration_token` to send to `/api/auth/sso/register` along with the acceptance.
  */
 export interface SsoCallbackResponse {
+    'refresh_token'?: string | null;
     'registration_token'?: string | null;
     'token'?: string | null;
     'user'?: ProfileResponse | null;
@@ -1063,6 +1086,10 @@ export interface SsoLoginResponse {
 export interface SsoRegisterRequest {
     'accept_legal': boolean;
     'registration_token': string;
+    /**
+     * Keep the session 60 days without a refresh instead of 2 hours.
+     */
+    'remember_me'?: boolean;
 }
 /**
  * Width of one step of the stats series.
@@ -2283,6 +2310,41 @@ export const AuthApiAxiosParamCreator = function (configuration?: Configuration)
             };
         },
         /**
+         * Trade a refresh token for a new access token and a new refresh token. The old refresh token stops working and the session expiry is pushed back by its lifetime (60 days when remembered, 2 hours otherwise).
+         * @param {RefreshRequest} refreshRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        refresh: async (refreshRequest: RefreshRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'refreshRequest' is not null or undefined
+            assertParamExists('refresh', 'refreshRequest', refreshRequest)
+            const localVarPath = `/api/auth/refresh`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(refreshRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @param {RegisterRequest} registerRequest 
          * @param {*} [options] Override http request option.
@@ -2472,6 +2534,18 @@ export const AuthApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Trade a refresh token for a new access token and a new refresh token. The old refresh token stops working and the session expiry is pushed back by its lifetime (60 days when remembered, 2 hours otherwise).
+         * @param {RefreshRequest} refreshRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async refresh(refreshRequest: RefreshRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SessionTokens>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.refresh(refreshRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AuthApi.refresh']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @param {RegisterRequest} registerRequest 
          * @param {*} [options] Override http request option.
@@ -2562,6 +2636,15 @@ export const AuthApiFactory = function (configuration?: Configuration, basePath?
             return localVarFp.me(options).then((request) => request(axios, basePath));
         },
         /**
+         * Trade a refresh token for a new access token and a new refresh token. The old refresh token stops working and the session expiry is pushed back by its lifetime (60 days when remembered, 2 hours otherwise).
+         * @param {RefreshRequest} refreshRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        refresh(refreshRequest: RefreshRequest, options?: RawAxiosRequestConfig): AxiosPromise<SessionTokens> {
+            return localVarFp.refresh(refreshRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @param {RegisterRequest} registerRequest 
          * @param {*} [options] Override http request option.
@@ -2639,6 +2722,16 @@ export class AuthApi extends BaseAPI {
      */
     public me(options?: RawAxiosRequestConfig) {
         return AuthApiFp(this.configuration).me(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Trade a refresh token for a new access token and a new refresh token. The old refresh token stops working and the session expiry is pushed back by its lifetime (60 days when remembered, 2 hours otherwise).
+     * @param {RefreshRequest} refreshRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public refresh(refreshRequest: RefreshRequest, options?: RawAxiosRequestConfig) {
+        return AuthApiFp(this.configuration).refresh(refreshRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

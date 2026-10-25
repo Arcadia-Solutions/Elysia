@@ -17,14 +17,18 @@ use crate::services::auth as auth_service;
 pub struct LoginRequest {
     pub login: String,
     pub password: String,
+    /// Keep the session 60 days without a refresh instead of 2 hours.
+    #[serde(default)]
+    pub remember_me: bool,
 }
 
-/// A signed session token plus the caller's profile, so login seeds client
+/// Session tokens plus the caller's profile, so login seeds client
 /// state without a second request. New `ProfileResponse` fields show up here
 /// automatically.
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct LoginResponse {
     pub token: String,
+    pub refresh_token: String,
     pub user: ProfileResponse,
 }
 
@@ -34,7 +38,7 @@ pub struct LoginResponse {
     path = "/api/auth/login",
     request_body = LoginRequest,
     responses(
-        (status = 200, description = "Signed session token plus caller profile", body = LoginResponse),
+        (status = 200, description = "Session tokens plus caller profile", body = LoginResponse),
         (status = 401, description = "Unknown login, wrong password or banned"),
     )
 )]
@@ -59,10 +63,16 @@ pub async fn login(
     if !password_ok || row.password_hash.is_none() || row.banned {
         return Err(Error::Unauthorized);
     }
-    let token =
-        auth_service::start_session(pool.get_ref(), &row.id, &config.auth.jwt_secret).await?;
+    let tokens = auth_service::start_session(
+        pool.get_ref(),
+        &row.id,
+        request.remember_me,
+        &config.auth.jwt_secret,
+    )
+    .await?;
     Ok(HttpResponse::Ok().json(LoginResponse {
-        token,
+        token: tokens.token,
+        refresh_token: tokens.refresh_token,
         user: ProfileResponse::from(row),
     }))
 }

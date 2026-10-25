@@ -26,9 +26,10 @@ async fn auth_header(pool: &PgPool) -> (&'static str, String) {
         .unwrap()
         .expect("migration seeds a default admin");
     assert!(admin.is_admin);
-    let token = auth_service::start_session(pool, &admin.id, &test_config().auth.jwt_secret)
+    let token = auth_service::start_session(pool, &admin.id, false, &test_config().auth.jwt_secret)
         .await
-        .unwrap();
+        .unwrap()
+        .token;
     ("Authorization", format!("Bearer {token}"))
 }
 
