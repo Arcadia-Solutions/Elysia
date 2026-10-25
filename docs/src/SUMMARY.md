@@ -8,6 +8,7 @@
 - [Administration](usage/administration.md)
 - [Integrating with another site](usage/integration.md)
 - [Importing from Chevereto](usage/chevereto-import.md)
+- [Backup and restore](usage/backup.md)
 - [Telemetry](usage/telemetry.md)
 
 # Development

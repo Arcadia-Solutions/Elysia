@@ -17,7 +17,7 @@ Request bodies are capped at 100MB, change it with `ELYSIA_MAX_BODY_SIZE`
 (e.g. `500MB`) if `max_file_size_bytes` is set higher.
 
 Uploaded files live in the `elysia_uploads` volume, the database in
-`elysia_pgdata`.
+`elysia_pgdata`. See [Backup and restore](backup.md).
 
 ### Behind another proxy
 
