@@ -7,9 +7,11 @@ use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, deco
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::repository::sessions;
 use crate::services::sso::random_bytes;
 
 /// Session token lifetime: 24 hours.
@@ -26,6 +28,9 @@ pub struct SessionClaims {
     pub expiration: u64,
     #[serde(rename = "iat")]
     pub issued_at: u64,
+    /// The `sessions` row backing the token; deleting it revokes the token.
+    #[serde(rename = "sid")]
+    pub session_id: Uuid,
 }
 
 impl SessionClaims {
@@ -152,13 +157,21 @@ pub async fn verify_password_async(password_hash: String, password: String) -> b
         .unwrap_or(false)
 }
 
-/// Mint a session token for a user, valid for 24 hours.
-pub fn mint_jwt(user_id: &Uuid, jwt_secret: &str) -> Result<String> {
+/// Store a new session for a user and mint its token, valid for 24 hours.
+pub async fn start_session(pool: &PgPool, user_id: &Uuid, jwt_secret: &str) -> Result<String> {
     let issued_at = now_seconds();
+    let session_id = sessions::create(pool, *user_id, issued_at + SESSION_LIFETIME_SECONDS).await?;
+    mint_jwt(user_id, &session_id, issued_at, jwt_secret)
+}
+
+/// Sign a session token issued at `issued_at`. Only valid while its
+/// `sessions` row exists, see `start_session`.
+fn mint_jwt(user_id: &Uuid, session_id: &Uuid, issued_at: u64, jwt_secret: &str) -> Result<String> {
     let claims = SessionClaims {
         subject: user_id.to_string(),
         expiration: issued_at + SESSION_LIFETIME_SECONDS,
         issued_at,
+        session_id: *session_id,
     };
     encode(
         &Header::default(),

@@ -59,8 +59,10 @@ polls.
 
 ### Authentication
 
-A bearer token is either a session JWT or an API key. Admin rights and bans are
-re-read from the database on every request, so they apply immediately.
+A bearer token is either a session JWT or an API key. Each session JWT names a
+`sessions` row (`sid` claim): logout deletes it, and a password change deletes the
+user's other ones. Admin rights, bans and sessions are re-read from the database
+on every request, so they apply immediately.
 
 ### Rate limiting
 

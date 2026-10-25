@@ -12,6 +12,7 @@ use crate::repository::users::UsersSortBy;
     paths(
         crate::handlers::auth::register::register,
         crate::handlers::auth::login::login,
+        crate::handlers::auth::logout::logout,
         crate::handlers::auth::me::me,
         crate::handlers::auth::change_password::change_password,
         crate::handlers::api_keys::list_api_keys::list_api_keys,

@@ -5,6 +5,7 @@ use crate::middlewares::rate_limit::{limit_login, limit_unauthenticated};
 
 pub mod change_password;
 pub mod login;
+pub mod logout;
 pub mod me;
 pub mod register;
 pub mod sso_callback;
@@ -27,6 +28,7 @@ pub fn config(cfg: &mut ServiceConfig) {
             .wrap(from_fn(limit_login))
             .wrap(unauthenticated()),
     )
+    .route("/logout", post().to(logout::logout))
     .route("/me", get().to(me::me))
     .route(
         "/password",

@@ -475,6 +475,38 @@ async fn password_change_roundtrip(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn logout_revokes_only_its_session(pool: PgPool) {
+    let app = auth_app!(pool.clone());
+    let (_, token) = test_user(&pool, "alice").await;
+    let other_token = login_token!(&app, "alice", "long-test-password");
+
+    let request = actix_test::TestRequest::post()
+        .uri("/api/auth/logout")
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    assert_eq!(
+        actix_test::call_service(&app, request).await.status(),
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(get_me!(&app, token).0, StatusCode::UNAUTHORIZED);
+    assert_eq!(get_me!(&app, other_token).0, StatusCode::OK);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn password_change_revokes_other_sessions(pool: PgPool) {
+    let app = auth_app!(pool.clone());
+    let (_, token) = test_user(&pool, "alice").await;
+    let other_token = login_token!(&app, "alice", "long-test-password");
+
+    assert_eq!(
+        change_password_status!(&app, token, "long-test-password", "brandnewpassword12"),
+        StatusCode::OK
+    );
+    assert_eq!(get_me!(&app, token).0, StatusCode::OK);
+    assert_eq!(get_me!(&app, other_token).0, StatusCode::UNAUTHORIZED);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn password_change_requires_a_session(pool: PgPool) {
     let app = auth_app!(pool.clone());
     let request = actix_test::TestRequest::put()

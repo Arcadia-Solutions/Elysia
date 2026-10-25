@@ -211,7 +211,9 @@ async fn admin_keys_reach_neither_admin_routes_nor_password_change(pool: PgPool)
         .await
         .unwrap()
         .unwrap();
-    let session_token = auth_service::mint_jwt(&admin.id, &config.auth.jwt_secret).unwrap();
+    let session_token = auth_service::start_session(&pool, &admin.id, &config.auth.jwt_secret)
+        .await
+        .unwrap();
     let generated = auth_service::generate_api_key();
     api_keys::create(
         &pool,

@@ -116,7 +116,9 @@ pub async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
         .await
         .unwrap();
     let config = test_config();
-    let token = auth_service::mint_jwt(&row.id, &config.auth.jwt_secret).unwrap();
+    let token = auth_service::start_session(pool, &row.id, &config.auth.jwt_secret)
+        .await
+        .unwrap();
     (row, token)
 }
 

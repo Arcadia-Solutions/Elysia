@@ -45,13 +45,16 @@
 import { computed } from 'vue'
 import Button from 'primevue/button'
 import { useRoute, useRouter } from 'vue-router'
+import { api } from '@/services/api/http'
 import { clearSession, getToken, isAdmin } from '@/services/session'
 import { darkMode, toggleDarkMode } from '@/services/theme'
 
 const route = useRoute()
 const router = useRouter()
 
-const logout = () => {
+const logout = async () => {
+  // Revoke the token server side, but log out locally even if that fails.
+  await api.logout().catch(() => {})
   clearSession()
   router.push('/login')
 }

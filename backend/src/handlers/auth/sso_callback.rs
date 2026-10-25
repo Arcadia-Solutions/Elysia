@@ -102,7 +102,7 @@ pub(crate) async fn log_in(
         return Err(Error::Unauthorized);
     }
     Ok(LoginResponse {
-        token: auth_service::mint_jwt(&row.id, &config.auth.jwt_secret)?,
+        token: auth_service::start_session(pool, &row.id, &config.auth.jwt_secret).await?,
         user: ProfileResponse::from(row),
     })
 }

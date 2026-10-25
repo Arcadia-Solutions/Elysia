@@ -65,6 +65,19 @@ comment on column api_keys.revoked_at is 'When the user revoked the key; null wh
 -- Every API key request looks its key up by token hash.
 create unique index api_keys_token_hash_idx on api_keys (token_hash);
 
+create table sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  expires_at timestamptz not null
+);
+
+comment on table sessions is 'Live session tokens (JWT `sid` claim); deleting a row logs that token out';
+comment on column sessions.expires_at is 'Same as the token expiry; expired rows are pruned whenever a session is created';
+
+-- A password change deletes the user's other sessions, each new session prunes expired ones.
+create index sessions_user_id_idx on sessions (user_id);
+create index sessions_expires_at_idx on sessions (expires_at);
+
 create type file_status as enum ('available', 'trashed', 'deleted');
 create type deletion_source as enum ('manual', 'scheduler');
 

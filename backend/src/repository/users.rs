@@ -152,12 +152,36 @@ pub async fn find_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<AuthUserR
     .map(UserRow::into_auth))
 }
 
-/// Replace the password hash of a local user, for password changes.
-pub async fn update_password_hash(pool: &PgPool, user_id: Uuid, password_hash: &str) -> Result<()> {
+/// Find the user of a live session, for session validation. None once the
+/// session was logged out or expired.
+pub async fn find_by_session(pool: &PgPool, session_id: Uuid) -> Result<Option<AuthUserRow>> {
+    Ok(sqlx::query_as!(
+        UserRow,
+        r#"select users.id, username, email, password_hash, is_admin, banned,
+                  provider::text as "provider!", external_sub
+           from users join sessions on sessions.user_id = users.id
+           where sessions.id = $1 and sessions.expires_at > now()"#,
+        session_id,
+    )
+    .fetch_optional(pool)
+    .await?
+    .map(UserRow::into_auth))
+}
+
+/// Replace the password hash of a local user and delete their sessions other
+/// than `kept_session_id`, in one statement so both happen or neither does.
+pub async fn change_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    password_hash: &str,
+    kept_session_id: Uuid,
+) -> Result<()> {
     sqlx::query!(
-        r#"update users set password_hash = $2 where id = $1"#,
+        r#"with revoked as (delete from sessions where user_id = $1 and id <> $3)
+           update users set password_hash = $2 where id = $1"#,
         user_id,
-        password_hash
+        password_hash,
+        kept_session_id
     )
     .execute(pool)
     .await?;

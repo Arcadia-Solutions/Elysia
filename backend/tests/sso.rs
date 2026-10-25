@@ -470,8 +470,7 @@ async fn new_user_accepts_legal_before_being_created(pool: PgPool) {
         finish_registration!(&app, registration_token, false).0,
         StatusCode::BAD_REQUEST
     );
-    let session =
-        auth_service::mint_jwt(&uuid::Uuid::new_v4(), &test_config().auth.jwt_secret).unwrap();
+    let (_, session) = test_user(&pool, "someone").await;
     assert_eq!(
         finish_registration!(&app, session, true).0,
         StatusCode::UNAUTHORIZED

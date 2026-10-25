@@ -22,6 +22,7 @@ pub struct ChangePasswordRequest {
     tag = "Auth",
     put,
     path = "/api/auth/password",
+    description = "Change the caller's password and log out their other sessions.",
     request_body = ChangePasswordRequest,
     security(("bearer" = [])),
     responses(
@@ -36,7 +37,7 @@ pub async fn change_password(
     pool: Data<PgPool>,
     body: Json<ChangePasswordRequest>,
 ) -> Result<HttpResponse> {
-    authenticated.require_session()?;
+    let session_id = authenticated.require_session()?;
     let request = body.into_inner();
     auth_service::validate_password(&request.new_password)?;
     let row = users::find_by_id(pool.get_ref(), authenticated.user_id)
@@ -55,6 +56,6 @@ pub async fn change_password(
         return Err(Error::BadRequest("current password is wrong".into()));
     }
     let new_hash = auth_service::hash_password_async(request.new_password).await?;
-    users::update_password_hash(pool.get_ref(), row.id, &new_hash).await?;
+    users::change_password(pool.get_ref(), row.id, &new_hash, session_id).await?;
     Ok(HttpResponse::Ok().finish())
 }

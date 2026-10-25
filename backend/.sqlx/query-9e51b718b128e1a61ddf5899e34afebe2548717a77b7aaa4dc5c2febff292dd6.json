@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with revoked as (delete from sessions where user_id = $1 and id <> $3)\n           update users set password_hash = $2 where id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9e51b718b128e1a61ddf5899e34afebe2548717a77b7aaa4dc5c2febff292dd6"
+}

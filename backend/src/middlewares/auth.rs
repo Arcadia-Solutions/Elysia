@@ -24,6 +24,8 @@ pub struct AuthUser {
     pub is_admin: bool,
     /// The API key the request authenticated with; None for a session.
     pub api_key_id: Option<Uuid>,
+    /// The session the request authenticated with; None for an API key.
+    pub session_id: Option<Uuid>,
 }
 
 impl AuthUser {
@@ -37,12 +39,9 @@ impl AuthUser {
     }
 
     /// Reject API key callers, so a leaked key cannot change the password or
-    /// mint and revoke keys.
-    pub fn require_session(&self) -> Result<()> {
-        match self.api_key_id {
-            None => Ok(()),
-            Some(_) => Err(Error::Forbidden),
-        }
+    /// mint and revoke keys. Returns the caller's session.
+    pub fn require_session(&self) -> Result<Uuid> {
+        self.session_id.ok_or(Error::Forbidden)
     }
 }
 
@@ -83,7 +82,8 @@ fn authenticate(
         // No token is not a failed guess, so it is not charged.
         let token = token.ok_or(Error::Unauthorized)?;
         let result = async {
-            let (user_id, api_key_id) = if token.starts_with(auth::API_KEY_TOKEN_PREFIX) {
+            let (user_id, api_key_id, session_id) = if token.starts_with(auth::API_KEY_TOKEN_PREFIX)
+            {
                 // A JWT is checked without a query, an API key is not.
                 failed_auth.check_blocked()?;
                 let api_key =
@@ -93,18 +93,21 @@ fn authenticate(
                 if !api_key.scope.allows(required_scope) {
                     return Err(Error::Forbidden);
                 }
-                (api_key.user_id, Some(api_key.id))
+                (api_key.user_id, Some(api_key.id), None)
             } else {
                 let claims = auth::decode_jwt(&token, &config.auth.jwt_secret)?;
-                (claims.user_id()?, None)
+                (claims.user_id()?, None, Some(claims.session_id))
             };
             // Before the user lookup, so a flood stops costing queries.
             if let Some(rate_limits) = &rate_limits {
                 rate_limits.check_user(user_id)?;
             }
-            let row = users::find_by_id(pool.get_ref(), user_id)
-                .await?
-                .ok_or(Error::Unauthorized)?;
+            // A logged out or expired session finds no row, like a deleted user.
+            let row = match session_id {
+                Some(session_id) => users::find_by_session(pool.get_ref(), session_id).await?,
+                None => users::find_by_id(pool.get_ref(), user_id).await?,
+            }
+            .ok_or(Error::Unauthorized)?;
             if row.banned {
                 return Err(Error::Unauthorized);
             }
@@ -128,6 +131,7 @@ fn authenticate(
                 user_id: row.id,
                 is_admin: row.is_admin && api_key_id.is_none(),
                 api_key_id,
+                session_id,
             })
         }
         .await;
