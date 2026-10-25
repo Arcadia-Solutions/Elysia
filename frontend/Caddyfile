@@ -4,6 +4,7 @@
 # Bodies are capped at ELYSIA_MAX_BODY_SIZE (default 100MB): keep it above the
 # max_file_size_bytes setting, the backend enforces the exact upload limit.
 :80 {
+	encode zstd gzip
 	request_body {
 		max_size {$ELYSIA_MAX_BODY_SIZE:100MB}
 	}
@@ -13,6 +14,12 @@
 	}
 	handle {
 		root * /srv/elysia
+		# Vite emits content-hashed filenames under /assets: cache them forever,
+		# revalidate everything else so deploys are picked up immediately.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@unhashed not path /assets/*
+		header @unhashed Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
