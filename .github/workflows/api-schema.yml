@@ -1,0 +1,60 @@
+name: API schema drift
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/**"
+      - "frontend/src/services/api-schema/**"
+      - "frontend/openapitools.json"
+      - "frontend/openapi-generator.config.json"
+      - "!**.md"
+      - ".github/workflows/api-schema.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/src/services/api-schema/**"
+      - "frontend/openapitools.json"
+      - "frontend/openapi-generator.config.json"
+      - "!**.md"
+      - ".github/workflows/api-schema.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: "true"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # rav1e (via ravif) assembles x86 SIMD with nasm at build time.
+      - name: Install nasm
+        run: sudo apt-get update && sudo apt-get install -y nasm
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-workspaces: ./backend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dump OpenAPI spec
+        working-directory: ./backend
+        run: cargo run -q -- openapi > "$RUNNER_TEMP/openapi.json"
+
+      - name: Regenerate api client
+        working-directory: ./frontend
+        run: |
+          npm ci
+          OPENAPI_SPEC="$RUNNER_TEMP/openapi.json" npm run gen:api
+
+      - name: Check for drift
+        run: |
+          test -z "$(git status --porcelain -- frontend/src/services/api-schema)" || { git diff -- frontend/src/services/api-schema; echo "api-schema is out of date, run npm run gen:api"; exit 1; }

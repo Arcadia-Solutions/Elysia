@@ -1,0 +1,10 @@
+[advisories]
+ignore = [
+    # rsa and crypto-bigint come from jsonwebtoken's rust_crypto backend. Elysia only
+    # signs HS256 tokens, so the RSA and elliptic curve code never runs. No fixed rsa
+    # release exists yet.
+    { id = "RUSTSEC-2023-0071", reason = "RSA unused, only HS256 JWTs" },
+    { id = "RUSTSEC-2026-0387", reason = "EC unused, only HS256 JWTs" },
+    # Build-time proc macro pulled by rav1e, no maintained replacement upstream.
+    { id = "RUSTSEC-2024-0436", reason = "unmaintained proc macro in rav1e, no fix" },
+]

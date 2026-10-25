@@ -5,13 +5,13 @@ edition = "2024"
 license = "AGPL-3.0-only"
 
 [dependencies]
-actix-web = "4"
+actix-web = { version = "4", default-features = false, features = ["macros", "compress-brotli", "compress-gzip", "compress-zstd", "cookies", "unicode", "compat"] }
 actix-multipart = "0.7"
 actix-cors = "0.7"
 actix-files = "0.6"
 sqlx = { version = "0.9", features = ["runtime-tokio", "any", "postgres", "mysql", "uuid"] }
-utoipa = { version = "5.5", features = ["actix_extras"] }
-utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
+utoipa = { version = "6", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "10", features = ["actix-web"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
@@ -27,7 +27,7 @@ sha2 = "0.10"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 img-parts = "0.3"
 webp = "0.3"
-ravif = "0.11"
+ravif = "0.13"
 rgb = "0.8"
 jpegxl-rs = { version = "0.11", features = ["vendored"] }
 argon2 = "0.5"

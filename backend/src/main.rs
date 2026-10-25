@@ -28,6 +28,12 @@ const JOBS_SHUTDOWN_TIMEOUT_SECONDS: u64 = 15;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // `elysia openapi` prints the spec without needing a config or database,
+    // so CI can check the generated frontend client against it.
+    if std::env::args().nth(1).as_deref() == Some("openapi") {
+        println!("{}", ApiDoc::openapi().to_pretty_json()?);
+        return Ok(());
+    }
     let cfg = Config::load();
     cfg.validate();
     if let Some(proxy) = &cfg.outbound_proxy {
