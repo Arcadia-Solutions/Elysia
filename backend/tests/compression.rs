@@ -100,6 +100,7 @@ fn default_compression_applies_when_none_requested() {
         lossy_compression_value: None,
         target_file_format: None,
         strip_exif: None,
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -114,6 +115,7 @@ fn zero_requests_lossless_over_default() {
         lossy_compression_value: Some(0),
         target_file_format: None,
         strip_exif: None,
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -128,6 +130,7 @@ fn request_overrides_default_when_allowed() {
         lossy_compression_value: Some(90),
         target_file_format: None,
         strip_exif: None,
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -144,6 +147,7 @@ fn override_rejected_when_disabled_but_default_still_used() {
             lossy_compression_value: Some(90),
             target_file_format: None,
             strip_exif: None,
+            expiry_days: None,
         }
         .into_options(&settings)
         .is_err()
@@ -152,6 +156,7 @@ fn override_rejected_when_disabled_but_default_still_used() {
         lossy_compression_value: None,
         target_file_format: None,
         strip_exif: None,
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -168,6 +173,7 @@ fn file_format_override_respects_allow_flag() {
             lossy_compression_value: None,
             target_file_format: Some(TargetFormat::Png),
             strip_exif: None,
+            expiry_days: None,
         }
         .into_options(&settings)
         .is_err()
@@ -179,6 +185,7 @@ fn file_format_override_respects_allow_flag() {
         lossy_compression_value: None,
         target_file_format: Some(TargetFormat::Png),
         strip_exif: None,
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -195,6 +202,7 @@ fn strip_exif_override_respects_allow_flag() {
         lossy_compression_value: None,
         target_file_format: None,
         strip_exif: Some(false),
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
@@ -207,6 +215,7 @@ fn strip_exif_override_respects_allow_flag() {
             lossy_compression_value: None,
             target_file_format: None,
             strip_exif: Some(false),
+            expiry_days: None,
         }
         .into_options(&settings)
         .is_err()
@@ -215,10 +224,36 @@ fn strip_exif_override_respects_allow_flag() {
         lossy_compression_value: None,
         target_file_format: None,
         strip_exif: None,
+        expiry_days: None,
     }
     .into_options(&settings)
     .unwrap();
     assert!(options.strip_exif);
+}
+
+#[test]
+fn expiry_override_respects_allow_flag() {
+    let mut settings = webp_settings();
+    settings.default_expiry_days = 7;
+    let options = |expiry_days| UploadOptionsQuery {
+        expiry_days,
+        ..Default::default()
+    };
+    assert_eq!(
+        options(None).into_options(&settings).unwrap().expiry_days,
+        Some(7)
+    );
+    // 0 requests no expiry over the default.
+    assert_eq!(
+        options(Some(0))
+            .into_options(&settings)
+            .unwrap()
+            .expiry_days,
+        None
+    );
+    assert!(options(Some(36501)).into_options(&settings).is_err());
+    settings.allow_overriding_expiry = false;
+    assert!(options(Some(1)).into_options(&settings).is_err());
 }
 
 #[sqlx::test(migrations = "./migrations")]

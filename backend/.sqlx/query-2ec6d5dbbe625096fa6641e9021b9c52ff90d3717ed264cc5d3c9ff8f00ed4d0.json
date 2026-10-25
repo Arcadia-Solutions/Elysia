@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update files set expires_at = case when $2::int is null then null\n           else greatest(expires_at, now() + make_interval(days => $2)) end\n         where id = $1 and expires_at is not null",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ec6d5dbbe625096fa6641e9021b9c52ff90d3717ed264cc5d3c9ff8f00ed4d0"
+}

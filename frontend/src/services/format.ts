@@ -1,3 +1,7 @@
+// Longest expiry, in days, an upload or the default may set; mirrors the
+// backend's MAX_EXPIRY_DAYS.
+export const MAX_EXPIRY_DAYS = 36500
+
 // Human-readable byte count in binary units, e.g. 1536 -> "1.5 KiB".
 export const formatBytes = (bytes: number): string => {
   const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']

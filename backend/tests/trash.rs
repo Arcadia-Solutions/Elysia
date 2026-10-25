@@ -15,7 +15,7 @@ use elysia::repository::files::{self, ImagesQuery, ImagesStatus, SortOrder};
 use elysia::repository::stats::{self, StatsInterval, StatsPeriod};
 use elysia::routes;
 use elysia::services::files::{
-    TRASH_RETENTION_DAYS, get_metadata, list_images, restore, trash, wipe_trash,
+    TRASH_RETENTION_DAYS, delete_expired, get_metadata, list_images, restore, trash, wipe_trash,
 };
 use elysia::services::views::ViewCounter;
 
@@ -161,6 +161,17 @@ async fn wipes_trash(pool: PgPool) {
 
 /// Insert a 1x1 available png with the given hash.
 async fn insert_png(pool: &PgPool, id: &str, hash: &str, uploader: Uuid) {
+    insert_expiring_png(pool, id, hash, uploader, None).await;
+}
+
+/// Insert a 1x1 available png expiring after `expiry_days`.
+async fn insert_expiring_png(
+    pool: &PgPool,
+    id: &str,
+    hash: &str,
+    uploader: Uuid,
+    expiry_days: Option<i32>,
+) {
     files::insert(
         pool,
         &files::NewFile {
@@ -182,10 +193,45 @@ async fn insert_png(pool: &PgPool, id: &str, hash: &str, uploader: Uuid) {
             phash: 0,
             uploaded_by_user_id: uploader,
             api_key_id: None,
+            expiry_days,
         },
     )
     .await
     .unwrap();
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn deletes_expired_files(pool: PgPool) {
+    let (storage, _dir) = common::temp_storage();
+    let uploader = common::test_user(&pool, "expirer").await.0.id;
+    insert_expiring_png(&pool, "expired0", "expired0", uploader, Some(0)).await;
+    insert_expiring_png(&pool, "later000", "later000", uploader, Some(1)).await;
+    insert_expiring_png(&pool, "shared00", "shared00", uploader, Some(0)).await;
+    // Uploading shared00 again without expiry makes it never expire.
+    files::extend_expiry(&pool, "shared00", None).await.unwrap();
+    for id in ["expired0", "later000", "shared00"] {
+        storage.prepare_shard(id).await.unwrap();
+        std::fs::write(storage.path_for(id, "png"), b"png").unwrap();
+    }
+
+    delete_expired(&pool, &storage).await.unwrap();
+    let ids = ["expired0", "later000", "shared00"].map(String::from);
+    let available: Vec<String> = files::find_available(&pool, &ids)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| row.id)
+        .collect();
+    assert_eq!(available, ["later000", "shared00"]);
+    assert!(!storage.path_for("expired0", "png").exists());
+    assert!(
+        files::find_metadata(&pool, "later000")
+            .await
+            .unwrap()
+            .unwrap()
+            .expires_at
+            .is_some()
+    );
 }
 
 #[sqlx::test(migrations = "./migrations", fixtures("trash"))]

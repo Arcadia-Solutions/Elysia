@@ -95,6 +95,7 @@ create table files (
   trashed_by_id uuid references users(id),
   deletion_source deletion_source,
   deleted_by_id uuid references users(id),
+  expires_at timestamptz,
   check ((status = 'available') = (trashed_at is null)),
   check ((status = 'available') = (trashed_by_id is null)),
   check ((status = 'deleted') = (deletion_source is not null)),
@@ -126,13 +127,16 @@ comment on column files.created_at is 'When the file was uploaded';
 comment on column files.status is 'available = served, trashed = moved to <root>/trash and no longer served, deleted = wiped from disk (the row stays for stats)';
 comment on column files.trashed_at is 'When the file was trashed; trashed files are wiped 30 days later. Null while available';
 comment on column files.trashed_by_id is 'Who trashed the file. Null while available';
-comment on column files.deletion_source is 'What wiped the file from disk: manual = an admin emptied the trash, scheduler = its 30 days ran out. Null until deleted';
+comment on column files.deletion_source is 'What wiped the file from disk: manual = an admin emptied the trash, scheduler = its 30 days in the trash or its expiry ran out. Null until deleted';
 comment on column files.deleted_by_id is 'The admin who emptied the trash, for a manual deletion. Null otherwise';
+comment on column files.expires_at is 'When the scheduler deletes the file, as chosen at upload, skipping the trash; null never expires';
 
 -- Dedup only matches available files, so re-uploading a trashed image stores it anew.
 create unique index files_hash_idx on files (hash) where status = 'available';
 -- The trash wipe looks up old trashed files.
 create index files_trashed_at_idx on files (trashed_at) where status = 'trashed';
+-- The expiry sweep looks up available files past their expiry.
+create index files_expires_at_idx on files (expires_at) where status = 'available' and expires_at is not null;
 
 create table file_referrer_views (
   file_id text not null references files(id) on delete cascade,
@@ -267,7 +271,9 @@ create table elysia_settings (
    default_storage_quota_bytes bigint not null default 0 check (default_storage_quota_bytes >= 0),
    record_referrer_views boolean not null default false,
    terms_of_service text not null default '',
-   privacy_policy text not null default ''
+   privacy_policy text not null default '',
+   default_expiry_days int not null default 0 check (default_expiry_days >= 0),
+   allow_overriding_expiry boolean not null default true
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -293,6 +299,8 @@ comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of avail
 comment on column elysia_settings.record_referrer_views is 'When true, views are split per Referer host in file_referrer_views; when false, every view is counted under no referrer';
 comment on column elysia_settings.terms_of_service is 'Terms of service shown to everyone; empty hides the page';
 comment on column elysia_settings.privacy_policy is 'Privacy policy shown to everyone; empty hides the page';
+comment on column elysia_settings.default_expiry_days is 'Days after which an upload that requests no expiry is deleted; 0 never expires';
+comment on column elysia_settings.allow_overriding_expiry is 'When false, uploads may not request their own expiry; the default is always used';
 
 -- Default row
 insert into elysia_settings

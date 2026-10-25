@@ -114,6 +114,20 @@
     <hr />
 
     <div class="field">
+      <label>{{ $t('settings.default_expiry_days.label') }}</label>
+      <small>{{ $t('settings.default_expiry_days.help') }}</small>
+      <InputNumber v-model="form.default_expiry_days" size="small" :min="0" :max="MAX_EXPIRY_DAYS" fluid />
+    </div>
+
+    <div class="field">
+      <label>{{ $t('settings.allow_overriding_expiry.label') }}</label>
+      <small>{{ $t('settings.allow_overriding_expiry.help') }}</small>
+      <ToggleSwitch v-model="form.allow_overriding_expiry" />
+    </div>
+
+    <hr />
+
+    <div class="field">
       <label>{{ $t('settings.uploads_enabled.label') }}</label>
       <small>{{ $t('settings.uploads_enabled.help') }}</small>
       <ToggleSwitch v-model="form.uploads_enabled" />
@@ -200,6 +214,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { MAX_EXPIRY_DAYS } from '@/services/format'
 import AutoComplete from 'primevue/autocomplete'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
@@ -243,6 +258,8 @@ const form = reactive<Required<ElysiaSettings>>({
   record_referrer_views: false,
   terms_of_service: '',
   privacy_policy: '',
+  default_expiry_days: 0,
+  allow_overriding_expiry: true,
 })
 
 // Thumbnails are on when a box is set on either axis.

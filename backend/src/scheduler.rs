@@ -15,7 +15,7 @@ const FLUSH_INTERVAL_SECONDS: u64 = 10;
 /// Seconds between two cleanups of the idle rate limit buckets.
 const RATE_LIMIT_CLEANUP_INTERVAL_SECONDS: u64 = 60;
 
-/// Seconds between two wipes of the expired trash.
+/// Seconds between two wipes of the expired trash and expired files.
 const TRASH_WIPE_INTERVAL_SECONDS: u64 = 3600;
 
 /// Run the scheduled tasks forever, on a one second tick. Spawned at startup,
@@ -43,6 +43,11 @@ pub async fn handle(
                 files::wipe_trash(pool, storage, files::TRASH_RETENTION_DAYS, None).await
         {
             tracing::warn!("failed to wipe the expired trash: {error:?}");
+        }
+        if seconds.is_multiple_of(TRASH_WIPE_INTERVAL_SECONDS)
+            && let Err(error) = files::delete_expired(pool, storage).await
+        {
+            tracing::warn!("failed to delete the expired files: {error:?}");
         }
     }
 }

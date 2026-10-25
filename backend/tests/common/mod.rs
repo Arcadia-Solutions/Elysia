@@ -94,6 +94,8 @@ pub fn test_settings() -> ElysiaSettings {
         record_referrer_views: false,
         terms_of_service: String::new(),
         privacy_policy: String::new(),
+        default_expiry_days: 0,
+        allow_overriding_expiry: true,
     }
 }
 
@@ -314,6 +316,7 @@ pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usiz
                 ) as i64,
                 uploaded_by_user_id: uploader,
                 api_key_id: None,
+                expiry_days: None,
             },
         )
         .await

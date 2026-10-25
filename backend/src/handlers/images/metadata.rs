@@ -54,6 +54,8 @@ pub struct MetadataResponse {
     /// Whole days left before the trashed image is deleted, rounded
     /// up. Null while available.
     pub days_until_deletion: Option<i32>,
+    /// When the image is deleted, as a UTC ISO-8601 string. Null never expires.
+    pub expires_at: Option<String>,
     /// Every album the image is in, whoever owns it, the caller's first.
     pub albums: Vec<ImageAlbum>,
 }
@@ -93,6 +95,7 @@ pub async fn metadata(
         trashed_at: row.trashed_at,
         trashed_by_username: row.trashed_by_username,
         days_until_deletion: row.days_until_deletion,
+        expires_at: row.expires_at,
         id: row.id,
         ext: row.ext,
         mime: row.mime,

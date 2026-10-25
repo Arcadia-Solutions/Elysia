@@ -82,6 +82,13 @@ Uploaders can trash their own images during the hour following the upload,
 admins can trash and restore any image. An image cannot be restored if the same
 file was uploaded again since.
 
+## Expiry
+
+Uploads can expire: once their expiry passes, the hourly background task deletes
+them for good, skipping the trash. The settings set a default expiry in days (0
+never expires) and whether uploads may pick their own, including never. When the
+same image is uploaded again, it keeps the longest of the two expiries.
+
 ## Maintenance
 
 ### Unreferenced images

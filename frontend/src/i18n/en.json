@@ -104,6 +104,9 @@
     },
     "strip_exif": {
       "label": "Strip EXIF"
+    },
+    "expiry_days": {
+      "label": "Delete after (days, 0 = never)"
     }
   },
   "image": {
@@ -118,6 +121,7 @@
     "no_referrer": "No referrer",
     "trashed_at": "Deleted at",
     "trashed_by": "Deleted by",
+    "expires_at": "Expires at",
     "days_until_deletion": "Will be deleted today | Will be deleted in {days} day | Will be deleted in {days} days",
     "links": {
       "full": "Full image",
@@ -293,6 +297,14 @@
     "allow_overriding_strip_exif": {
       "label": "Allow overriding metadata stripping",
       "help": "Let an upload choose whether to strip its own metadata. When off, the default above is always used."
+    },
+    "default_expiry_days": {
+      "label": "Default expiry (days)",
+      "help": "Delete uploads this many days after upload, unless they request otherwise. 0 means uploads never expire."
+    },
+    "allow_overriding_expiry": {
+      "label": "Allow overriding expiry",
+      "help": "Let an upload choose its own expiry, including never. When off, the default above is always used."
     },
     "thumbnails_intro": "A smaller preview served from /t/ instead of /i/. Enabled when a width or height is set. Not overridable per upload; images already within the box are served unchanged.",
     "thumbnail_width": {

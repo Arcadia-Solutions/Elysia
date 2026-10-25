@@ -165,6 +165,12 @@ impl Storage {
         }
     }
 
+    /// Delete a served file and its thumbnail. Missing files are skipped.
+    pub async fn delete(&self, id: &str, ext: &str) -> Result<()> {
+        ignore_missing(tokio::fs::remove_file(self.path_for(id, ext)).await)?;
+        ignore_missing(tokio::fs::remove_file(self.thumbnail_path_for(id)).await)
+    }
+
     /// Delete a trashed file and its thumbnail. Missing files are skipped.
     pub async fn wipe_trashed(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(tokio::fs::remove_file(self.trash_path_for(id, ext)).await)?;

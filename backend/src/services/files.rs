@@ -95,6 +95,8 @@ pub struct UploadOptions {
     /// Effective EXIF-stripping choice: the per-upload override, or the
     /// configured default.
     pub strip_exif: bool,
+    /// Days after which the file is deleted; `None` never expires.
+    pub expiry_days: Option<u32>,
     /// Bytes the uploader may still store; `None` is unlimited.
     pub remaining_storage_bytes: Option<u64>,
 }
@@ -407,7 +409,7 @@ pub async fn store_upload(
     if let Some(record) =
         files::find_record_by_source(pool, &original_hash, requested_quality).await?
     {
-        return Ok(existing_stored(record));
+        return keep_existing(pool, record, options).await;
     }
 
     // Run the pipeline when a target format is in effect; `None` passes through.
@@ -528,7 +530,7 @@ pub async fn store_upload(
 
     // A different source that produced identical output bytes.
     if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
-        return Ok(existing_stored(record));
+        return keep_existing(pool, record, options).await;
     }
 
     if options
@@ -594,6 +596,7 @@ pub async fn store_upload(
                 phash,
                 uploaded_by_user_id,
                 api_key_id,
+                expiry_days: options.expiry_days.map(|days| days as i32),
             },
         )
         .await;
@@ -609,7 +612,7 @@ pub async fn store_upload(
                 // A failed insert is an id collision or a concurrent upload of the same
                 // bytes winning the hash race; in the latter case, reuse its row.
                 if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
-                    return Ok(existing_stored(record));
+                    return keep_existing(pool, record, options).await;
                 }
             }
             Err(error) => {
@@ -690,6 +693,22 @@ pub async fn remaining_storage_bytes(
 
 fn storage_quota_exceeded() -> Error {
     Error::BadRequest("storage quota exceeded".into())
+}
+
+/// Return a deduplicated upload, pushing its expiry back so it lives at least
+/// as long as this upload asked for: another uploader may share the link.
+async fn keep_existing(
+    pool: &PgPool,
+    record: files::FileRecord,
+    options: &UploadOptions,
+) -> Result<StoredFile> {
+    files::extend_expiry(
+        pool,
+        &record.id,
+        options.expiry_days.map(|days| days as i32),
+    )
+    .await?;
+    Ok(existing_stored(record))
 }
 
 /// Build a `StoredFile` for a dedup or skip hit from a stored record.
@@ -953,6 +972,17 @@ async fn wipe(
         }
     }
     files::mark_deleted(pool, &wiped_ids, deleted_by_id).await
+}
+
+/// Delete the available files past their expiry straight away, skipping the
+/// trash. A file that fails to delete is logged, so it does not block the others.
+pub async fn delete_expired(pool: &PgPool, storage: &Storage) -> Result<()> {
+    for row in files::mark_expired_deleted(pool).await? {
+        if let Err(error) = storage.delete(&row.id, &row.ext).await {
+            tracing::warn!("failed to delete expired file {}: {error:?}", row.id);
+        }
+    }
+    Ok(())
 }
 
 /// Look up a file's display metadata by id, or `NotFound`. Trashed files are

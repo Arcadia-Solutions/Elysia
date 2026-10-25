@@ -16,8 +16,8 @@ use crate::error::{Error, Result};
 use crate::middlewares::UploadUser;
 use crate::services::files::{self, Actions, UploadOptions};
 use crate::services::image::TargetFormat;
-use crate::settings::ElysiaSettings;
 use crate::settings::SharedElysiaSettings;
+use crate::settings::{ElysiaSettings, MAX_EXPIRY_DAYS};
 use crate::storage::Storage;
 
 /// OpenAPI shape of the upload body. The handler streams the multipart body by
@@ -60,6 +60,12 @@ pub struct UploadOptionsQuery {
     /// Requested EXIF-stripping choice; absent uses the configured default.
     /// Rejected unless overriding EXIF stripping is allowed in settings.
     pub strip_exif: Option<bool>,
+    /// Days after which the image is deleted, or 0 to never expire; absent
+    /// uses the configured default. Rejected unless overriding the expiry is
+    /// allowed in settings.
+    // utoipa only takes a literal: keep in sync with MAX_EXPIRY_DAYS.
+    #[param(maximum = 36500)]
+    pub expiry_days: Option<u32>,
 }
 
 impl UploadOptionsQuery {
@@ -86,6 +92,18 @@ impl UploadOptionsQuery {
                 "overriding EXIF stripping is disabled".into(),
             ));
         }
+        if self.expiry_days.is_some() && !settings.allow_overriding_expiry {
+            return Err(Error::BadRequest(
+                "overriding the expiry is disabled".into(),
+            ));
+        }
+        if self.expiry_days.is_some_and(|days| days > MAX_EXPIRY_DAYS) {
+            return Err(Error::BadRequest(format!(
+                "expiry_days must be <= {MAX_EXPIRY_DAYS}"
+            )));
+        }
+        let expiry_days =
+            Some(self.expiry_days.unwrap_or(settings.default_expiry_days)).filter(|days| *days > 0);
         let strip_exif = self.strip_exif.unwrap_or(settings.strip_exif_by_default);
         let target_file_format = self
             .target_file_format
@@ -110,6 +128,7 @@ impl UploadOptionsQuery {
             lossy_compression_value,
             target_file_format,
             strip_exif,
+            expiry_days,
             remaining_storage_bytes: None,
         })
     }

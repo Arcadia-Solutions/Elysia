@@ -29,6 +29,8 @@ pub struct NewFile<'a> {
     pub uploaded_by_user_id: Uuid,
     /// The API key the file was uploaded with, if any.
     pub api_key_id: Option<Uuid>,
+    /// Days after which the file expires; None never expires.
+    pub expiry_days: Option<i32>,
 }
 
 pub struct FileRow {
@@ -47,8 +49,10 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         r#"insert into files
          (id, ext, mime, original_name, size, width, height, hash,
           original_hash, original_ext, original_width, original_height,
-          requested_quality, applied_quality, has_thumbnail, phash, uploaded_by_user_id, api_key_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"#,
+          requested_quality, applied_quality, has_thumbnail, phash, uploaded_by_user_id, api_key_id,
+          expires_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                 now() + make_interval(days => $19))"#,
         f.id,
         f.ext,
         f.mime,
@@ -67,6 +71,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.phash,
         f.uploaded_by_user_id,
         f.api_key_id,
+        f.expiry_days,
     )
     .execute(pool)
     .await;
@@ -188,6 +193,8 @@ pub struct FileMetadata {
     pub trashed_by_username: Option<String>,
     /// Whole days left before the scheduled wipe, rounded up. None while available.
     pub days_until_deletion: Option<i32>,
+    /// When the file expires, as a UTC ISO-8601 string. None never expires.
+    pub expires_at: Option<String>,
 }
 
 /// Minutes after upload during which uploaders may trash their own files.
@@ -212,7 +219,9 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
                 trashers.username as "trashed_by_username?",
                 greatest(0, ceil(extract(epoch from
                   files.trashed_at + make_interval(days => $3) - now()) / 86400))::int
-                  as days_until_deletion
+                  as days_until_deletion,
+                to_char(files.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                  as expires_at
          from files join users on users.id = files.uploaded_by_user_id
          left join users trashers on trashers.id = files.trashed_by_id
          where files.id = $1 and status in ('available', 'trashed')"#,
@@ -704,6 +713,42 @@ pub async fn trashed_before(pool: &PgPool, days: i32) -> Result<Vec<TrashedRow>>
     )
     .fetch_all(pool)
     .await?)
+}
+
+/// Flag the available files past their expiry as deleted by the scheduler,
+/// skipping the trash (trashed by their uploader, at the deletion time),
+/// returning them. Flagging before touching the disk keeps a concurrent dedup
+/// from handing out a file about to be deleted.
+pub async fn mark_expired_deleted(pool: &PgPool) -> Result<Vec<TrashedRow>> {
+    Ok(sqlx::query_as!(
+        TrashedRow,
+        r#"with deleted as (
+           update files set status = 'deleted', trashed_at = now(),
+             trashed_by_id = uploaded_by_user_id, deletion_source = 'scheduler'
+           where status = 'available' and expires_at <= now()
+           returning id, ext
+         ), reported as (
+           delete from reports where file_id in (select id from deleted)
+         )
+         select id as "id!", ext as "ext!" from deleted"#
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Make an expiring file last at least `expiry_days` more days, or never
+/// expire when None.
+pub async fn extend_expiry(pool: &PgPool, id: &str, expiry_days: Option<i32>) -> Result<()> {
+    sqlx::query!(
+        r#"update files set expires_at = case when $2::int is null then null
+           else greatest(expires_at, now() + make_interval(days => $2)) end
+         where id = $1 and expires_at is not null"#,
+        id,
+        expiry_days
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 /// Flag the trashed files among `ids` that can be served again as available,

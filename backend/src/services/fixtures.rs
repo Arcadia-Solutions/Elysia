@@ -257,6 +257,7 @@ async fn run(
             lossy_compression_value: target_file_format.map(|_| 75),
             target_file_format,
             strip_exif: false,
+            expiry_days: None,
             remaining_storage_bytes: None,
         };
 

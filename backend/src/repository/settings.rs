@@ -21,7 +21,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                    thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
                    allow_registration, allowed_referrers, uploads_enabled,
                    default_storage_quota_bytes, record_referrer_views,
-                   terms_of_service, privacy_policy
+                   terms_of_service, privacy_policy,
+                   default_expiry_days, allow_overriding_expiry
            from elysia_settings where id = $1"#,
         SINGLETON_ID,
     )
@@ -51,6 +52,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         record_referrer_views: row.record_referrer_views,
         terms_of_service: row.terms_of_service,
         privacy_policy: row.privacy_policy,
+        default_expiry_days: row.default_expiry_days as u32,
+        allow_overriding_expiry: row.allow_overriding_expiry,
     })
 }
 
@@ -69,8 +72,9 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             thumbnail_quality = $15, allow_registration = $16,
             allowed_referrers = $17, uploads_enabled = $18,
             default_storage_quota_bytes = $19, record_referrer_views = $20,
-            terms_of_service = $21, privacy_policy = $22
-         where id = $23"#,
+            terms_of_service = $21, privacy_policy = $22,
+            default_expiry_days = $23, allow_overriding_expiry = $24
+         where id = $25"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
         settings.max_height_pixels as i32,
@@ -93,6 +97,8 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         settings.record_referrer_views,
         &settings.terms_of_service,
         &settings.privacy_policy,
+        settings.default_expiry_days as i32,
+        settings.allow_overriding_expiry,
         SINGLETON_ID,
     )
     .execute(pool)

@@ -93,7 +93,18 @@ pub struct ElysiaSettings {
     /// Privacy policy, shown to everyone; empty hides the page and its links.
     #[serde(default)]
     pub privacy_policy: String,
+    /// Days after which an upload that requests no expiry is deleted; 0 never
+    /// expires.
+    #[serde(default)]
+    pub default_expiry_days: u32,
+    /// When false, an upload may not request its own expiry and the default is
+    /// always used.
+    #[serde(default)]
+    pub allow_overriding_expiry: bool,
 }
+
+/// Longest expiry, in days, an upload or the default may set.
+pub const MAX_EXPIRY_DAYS: u32 = 36500;
 
 fn default_allow_registration() -> bool {
     true
@@ -131,6 +142,11 @@ pub struct PublicElysiaSettings {
     pub uploads_enabled: bool,
     /// Storage quota of users without an override; 0 is unlimited.
     pub default_storage_quota_bytes: u64,
+    /// Expiry of uploads that request none, in days; 0 never expires.
+    pub default_expiry_days: u32,
+    /// Whether an upload may pick its own expiry; drives the expiry control on
+    /// the upload page.
+    pub allow_overriding_expiry: bool,
 }
 
 impl From<ElysiaSettings> for PublicElysiaSettings {
@@ -150,6 +166,8 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             allow_registration: s.allow_registration,
             uploads_enabled: s.uploads_enabled,
             default_storage_quota_bytes: s.default_storage_quota_bytes,
+            default_expiry_days: s.default_expiry_days,
+            allow_overriding_expiry: s.allow_overriding_expiry,
         }
     }
 }
@@ -312,6 +330,9 @@ impl ElysiaSettings {
                 "default_storage_quota_bytes must be <= {}",
                 i64::MAX
             ));
+        }
+        if self.default_expiry_days > MAX_EXPIRY_DAYS {
+            return Err(format!("default_expiry_days must be <= {MAX_EXPIRY_DAYS}"));
         }
         if let Some(host) = self
             .allowed_referrers

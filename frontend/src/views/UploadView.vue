@@ -95,6 +95,11 @@
           <label>{{ $t('upload.strip_exif.label') }}</label>
           <ToggleSwitch v-model="stripExif" :disabled="uploading" />
         </div>
+
+        <div v-if="settings?.allow_overriding_expiry" class="format-row">
+          <label>{{ $t('upload.expiry_days.label') }}</label>
+          <InputNumber v-model="expiryDays" size="small" :min="0" :max="MAX_EXPIRY_DAYS" fluid :disabled="uploading" />
+        </div>
       </section>
 
       <Button :label="$t('upload.upload')" @click="submit" fluid :disabled="uploading || (!selected.length && !urlInput)" />
@@ -110,10 +115,11 @@
 </template>
 
 <script setup lang="ts">
-import { formatBytes } from '@/services/format'
+import { MAX_EXPIRY_DAYS, formatBytes } from '@/services/format'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
+import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
@@ -160,6 +166,10 @@ const lossless = ref(false)
 // Per-upload EXIF-stripping choice, initialized from the server default.
 // Only honored when the settings allow overriding.
 const stripExif = ref(!!settings?.strip_exif_by_default)
+// Per-upload expiry in days (0 never expires), initialized from the server
+// default. Only honored when the settings allow overriding; cleared uses the
+// default.
+const expiryDays = ref<number | null>(settings?.default_expiry_days ?? 0)
 // One of the caller's albums the uploads go into, if any.
 const albumId = ref<string | null>(null)
 
@@ -174,6 +184,7 @@ const losslessSelected = computed(() => showLosslessToggle.value && lossless.val
 // 0 asks the backend for lossless, overriding its default quality.
 const qualityValue = () => (losslessSelected.value ? 0 : showCompression.value ? quality.value : undefined)
 const stripExifValue = () => (settings?.allow_overriding_strip_exif ? stripExif.value : undefined)
+const expiryDaysValue = () => (settings?.allow_overriding_expiry ? (expiryDays.value ?? undefined) : undefined)
 // Puts the uploaded images in the picked album, if any; resolves either way so
 // the result page still opens when that fails (the interceptor toasts it).
 const addToAlbum = (ids: string[]): Promise<void> =>
@@ -249,7 +260,7 @@ const uploadAll = (items: Selected[]) => {
         chain.then(() => {
           item.status = 'uploading'
           return api
-            .upload(item.file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue(), {
+            .upload(item.file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue(), expiryDaysValue(), {
               onUploadProgress: (event) => {
                 item.progress = event.total ? Math.round((event.loaded / event.total) * 100) : 0
                 // Bytes all sent: backend is now processing, switch to indeterminate.
@@ -354,7 +365,13 @@ const rehost = () => {
   // no client-side transfer to track, just the processing phase.
   phase.value = 'processing'
   api
-    .uploadUrl({ url: urlInput.value }, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue())
+    .uploadUrl(
+      { url: urlInput.value },
+      qualityValue(),
+      formatOverride.value === 'default' ? undefined : formatOverride.value,
+      stripExifValue(),
+      expiryDaysValue(),
+    )
     .then((uploaded) => addToAlbum([uploaded.data.id]).then(() => uploaded))
     .then((uploaded) => {
       router.push({ name: 'Uploaded', query: { id: uploaded.data.id, url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })

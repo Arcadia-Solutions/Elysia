@@ -15,6 +15,14 @@
           <br />
           ({{ timeAgo(meta.created_at) }})
         </dd>
+        <template v-if="meta.expires_at && !meta.trashed_at">
+          <dt>{{ $t('image.expires_at') }}</dt>
+          <dd>
+            {{ formatDate(meta.expires_at) }}
+            <br />
+            ({{ timeAgo(meta.expires_at) }})
+          </dd>
+        </template>
         <template v-if="meta.trashed_at">
           <dt>{{ $t('image.trashed_at') }}</dt>
           <dd>

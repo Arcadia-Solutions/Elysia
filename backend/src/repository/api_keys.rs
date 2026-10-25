@@ -78,7 +78,7 @@ pub async fn create(
            )
            returning id, name, scope as "scope: ApiKeyScope", token_prefix,
                      to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
-                     to_char(expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as expires_at,
+                     to_char(api_keys.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as expires_at,
                      null::text as last_used_at, null::text as revoked_at,
                      true as "active!", 0::bigint as "uploads!""#,
         user_id,
@@ -119,10 +119,10 @@ pub async fn list(pool: &PgPool, user_id: Uuid) -> Result<Vec<ApiKeySummary>> {
         ApiKeySummary,
         r#"select api_keys.id, name, scope as "scope: ApiKeyScope", token_prefix,
                   to_char(api_keys.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "created_at!",
-                  to_char(expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as expires_at,
+                  to_char(api_keys.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as expires_at,
                   to_char(last_used_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_used_at,
                   to_char(revoked_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as revoked_at,
-                  (revoked_at is null and (expires_at is null or expires_at > now())) as "active!",
+                  (revoked_at is null and (api_keys.expires_at is null or api_keys.expires_at > now())) as "active!",
                   count(files.id) as "uploads!"
            from api_keys
            left join files on files.api_key_id = api_keys.id

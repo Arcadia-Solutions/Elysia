@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with deleted as (\n           update files set status = 'deleted', trashed_at = now(),\n             trashed_by_id = uploaded_by_user_id, deletion_source = 'scheduler'\n           where status = 'available' and expires_at <= now()\n           returning id, ext\n         ), reported as (\n           delete from reports where file_id in (select id from deleted)\n         )\n         select id as \"id!\", ext as \"ext!\" from deleted",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ext!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "ext"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c124f217625909894e37f32f0212ed945e11c096c980f7b233a233118de8d080"
+}
