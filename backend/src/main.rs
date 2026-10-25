@@ -47,7 +47,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("failed to run migrations");
 
-    let storage = Storage::new(&cfg.storage.upload_dir);
+    let storage = Storage::new(&cfg.storage.upload_dir, cfg.storage.min_free_bytes);
     storage
         .ensure_root()
         .await

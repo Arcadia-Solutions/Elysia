@@ -12,6 +12,7 @@ use crate::repository::stats::{
     self, FormatTotal, PeriodTotal, ReferrerTotal, StatsInterval, StatsPeriod, Uploader,
     WindowTotals,
 };
+use crate::storage::{DiskSpace, Storage};
 
 /// Storage overview for the admin dashboard.
 #[derive(Serialize, ToSchema)]
@@ -27,6 +28,7 @@ pub struct StatsResponse {
     /// Views per `Referer` host of the files uploaded within `period`, most
     /// viewed first, the rest summed into a last null row.
     pub referrers: Vec<ReferrerTotal>,
+    pub disk: DiskSpace,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -51,6 +53,7 @@ pub struct StatsQuery {
 pub async fn stats_overview(
     authenticated: AuthUser,
     pool: Data<PgPool>,
+    storage: Data<Storage>,
     query: Query<StatsQuery>,
 ) -> Result<HttpResponse> {
     authenticated.require_admin()?;
@@ -68,5 +71,6 @@ pub async fn stats_overview(
         formats,
         uploaders,
         referrers,
+        disk: storage.disk_space()?,
     }))
 }

@@ -125,6 +125,7 @@ impl UploadOptionsQuery {
     responses(
         (status = 200, description = "Image uploaded", body = UploadResponse),
         (status = 400, description = "File too large, or storage quota exceeded"),
+        (status = 507, description = "The server disk is nearly full"),
         (status = 401, description = "Missing or invalid session, or invalid SSO client credentials. The SSO provider may upload on behalf of its users with its client credentials as Basic auth and the user subject in the On-Behalf-Of-Sub header (On-Behalf-Of-Username names the account on first upload)"),
         (status = 403, description = "Uploads are disabled"),
         (status = 415, description = "Not a supported image"),

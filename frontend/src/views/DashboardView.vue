@@ -36,6 +36,7 @@
       <div v-for="tile in tiles" :key="tile.label" class="tile">
         <small>{{ tile.label }}</small>
         <strong>{{ tile.value }}</strong>
+        <small v-if="tile.detail" :class="{ alert: tile.alert }">{{ tile.detail }}</small>
       </div>
     </div>
 
@@ -99,13 +100,19 @@ const formatCount = (value: number) => value.toLocaleString()
 // them on every hovered point, so skip the deep reactive proxies.
 const stats = shallowRef<StatsResponse>()
 
-// Everything uploaded within the selected window.
+// Everything uploaded within the selected window, plus the disk space left.
 const tiles = computed(() => {
   const totals = stats.value?.window
   const uploads = totals?.uploads ?? 0
   const bytes = totals?.uploaded_bytes ?? 0
+  const disk = stats.value?.disk
   return [
-    { label: t('dashboard.uploaded_size'), value: formatBytes(bytes) },
+    {
+      label: t('dashboard.uploaded_size'),
+      value: formatBytes(bytes),
+      detail: disk && t('dashboard.disk_free', { available: formatBytes(disk.available_bytes), total: formatBytes(disk.total_bytes) }),
+      alert: disk && disk.available_bytes < disk.min_free_bytes,
+    },
     { label: t('dashboard.uploads'), value: formatCount(uploads) },
     { label: t('dashboard.average_size'), value: formatBytes(uploads ? Math.round(bytes / uploads) : 0) },
     { label: t('dashboard.new_users'), value: formatCount(totals?.new_users ?? 0) },
@@ -331,6 +338,9 @@ h3 {
 }
 .tile strong {
   font-size: 1.5rem;
+}
+.tile small.alert {
+  color: var(--p-red-500, #d33);
 }
 .charts,
 .tables {

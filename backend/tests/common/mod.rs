@@ -39,6 +39,7 @@ pub fn test_config() -> Config {
         },
         storage: StorageConfig {
             upload_dir: "/tmp/elysia".into(),
+            min_free_bytes: 0,
         },
         auth: AuthConfig {
             jwt_secret: "test-jwt-secret-with-enough-bytes".into(),
@@ -166,7 +167,7 @@ pub async fn upload_with_headers(
     headers: &[(&str, String)],
 ) -> (StatusCode, serde_json::Value) {
     let upload_dir = tempfile::tempdir().unwrap();
-    let storage = Storage::new(upload_dir.path().to_str().unwrap());
+    let storage = Storage::new(upload_dir.path().to_str().unwrap(), 0);
 
     let app = actix_test::init_service(
         App::new()
@@ -232,7 +233,7 @@ pub fn serve_once(status_line: &'static str, content_type: &'static str, body: V
 pub fn temp_storage() -> (Storage, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("trash")).unwrap();
-    (Storage::new(dir.path().to_str().unwrap()), dir)
+    (Storage::new(dir.path().to_str().unwrap(), 0), dir)
 }
 
 pub fn real_png(width: u32, height: u32) -> Vec<u8> {

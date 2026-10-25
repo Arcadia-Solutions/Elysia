@@ -29,7 +29,7 @@ macro_rules! auth_app {
 macro_rules! auth_app_with_settings {
     ($pool:expr, $settings:expr) => {{
         let upload_dir = tempfile::tempdir().unwrap();
-        let storage = Storage::new(upload_dir.path().to_str().unwrap());
+        let storage = Storage::new(upload_dir.path().to_str().unwrap(), 0);
         actix_test::init_service(
             App::new()
                 .app_data(Data::new(test_config()))

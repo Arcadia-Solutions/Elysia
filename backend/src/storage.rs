@@ -1,9 +1,21 @@
 use std::path::PathBuf;
 
 use actix_files::NamedFile;
+use serde::Serialize;
 use tempfile::NamedTempFile;
+use utoipa::ToSchema;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
+
+/// Space of the filesystem holding the uploads.
+#[derive(Serialize, ToSchema)]
+pub struct DiskSpace {
+    /// Bytes Elysia may still write.
+    pub available_bytes: u64,
+    pub total_bytes: u64,
+    /// Uploads are refused below this many available bytes.
+    pub min_free_bytes: u64,
+}
 
 /// Owns the on-disk layout for uploaded files. Every path, persist, open and
 /// delete goes through here so handlers/services never hand-build a path.
@@ -12,13 +24,24 @@ use crate::error::Result;
 /// lands, turn this into a trait then, not before.
 pub struct Storage {
     root: PathBuf,
+    min_free_bytes: u64,
 }
 
 impl Storage {
-    pub fn new(upload_dir: &str) -> Self {
+    pub fn new(upload_dir: &str, min_free_bytes: u64) -> Self {
         Self {
             root: PathBuf::from(upload_dir.trim_end_matches('/')),
+            min_free_bytes,
         }
+    }
+
+    pub fn disk_space(&self) -> Result<DiskSpace> {
+        let stat = rustix::fs::statvfs(&self.root).map_err(std::io::Error::from)?;
+        Ok(DiskSpace {
+            available_bytes: stat.f_bavail * stat.f_frsize,
+            total_bytes: stat.f_blocks * stat.f_frsize,
+            min_free_bytes: self.min_free_bytes,
+        })
     }
 
     /// Create the root and trash dirs if missing. Called once at startup.
@@ -47,7 +70,13 @@ impl Storage {
 
     /// A temp file inside `root`, so a later `persist` stays on the same
     /// filesystem. Uploads and URL rehosts stream their bytes into one.
+    /// Refused once the disk is down to `min_free_bytes`, before anything is written.
     pub fn new_temp(&self) -> Result<NamedTempFile> {
+        let available_bytes = self.disk_space()?.available_bytes;
+        if available_bytes < self.min_free_bytes {
+            tracing::warn!(available_bytes, "disk nearly full, upload refused");
+            return Err(Error::InsufficientStorage);
+        }
         Ok(NamedTempFile::new_in(&self.root)?)
     }
 

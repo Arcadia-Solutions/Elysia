@@ -76,7 +76,7 @@ backend_texts="select concat_ws(' ', avatar, description) as text from users
 cat > "$TEMP_DIR/elysia.yml" <<EOF
 server: { host: 127.0.0.1, port: 28090, public_url: $ELYSIA }
 database: { host: localhost, port: 25432, user: elysia, password: password, name: elysia }
-storage: { upload_dir: $TEMP_DIR/uploads }
+storage: { upload_dir: $TEMP_DIR/uploads, min_free_bytes: 0 }
 auth:
   jwt_secret: chevereto-import-test-secret-of-enough-length
   sso:

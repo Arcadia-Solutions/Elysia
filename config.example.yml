@@ -19,6 +19,10 @@ database:
 
 storage:
   upload_dir: ./data/uploads
+  # Uploads are refused (HTTP 507) while the disk holding upload_dir has less
+  # free space than this many bytes, checked before anything is written. 0 never
+  # refuses. The space left shows on the admin dashboard.
+  min_free_bytes: 1073741824 # 1GiB
   # The upload size cap and all processing options are edited in the web UI
   # (Settings), not here.
 

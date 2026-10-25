@@ -292,6 +292,20 @@ export interface CreatedApiKey {
     'token': string;
 }
 /**
+ * Space of the filesystem holding the uploads.
+ */
+export interface DiskSpace {
+    /**
+     * Bytes Elysia may still write.
+     */
+    'available_bytes': number;
+    /**
+     * Uploads are refused below this many available bytes.
+     */
+    'min_free_bytes': number;
+    'total_bytes': number;
+}
+/**
  * Runtime-editable elysia settings: the upload limits and processing options edited from the web UI and persisted as the single `elysia_settings` row.  Kept separate from [`crate::config::Config`], which holds only the boot-time infrastructure values (bind address, database, upload dir).
  */
 export interface ElysiaSettings {
@@ -1032,6 +1046,7 @@ export type StatsPeriod = typeof StatsPeriod[keyof typeof StatsPeriod];
  * Storage overview for the admin dashboard.
  */
 export interface StatsResponse {
+    'disk': DiskSpace;
     /**
      * Stored files per MIME type, largest first.
      */

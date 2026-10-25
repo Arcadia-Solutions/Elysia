@@ -58,6 +58,9 @@ impl DatabaseConfig {
 #[derive(Debug, Deserialize)]
 pub struct StorageConfig {
     pub upload_dir: String,
+    /// Uploads are refused while the disk holding `upload_dir` has less free
+    /// space than this, 0 never refuses.
+    pub min_free_bytes: u64,
 }
 
 /// OpenTelemetry export, disabled (stdout logs only) while `otlp_endpoint` is unset.

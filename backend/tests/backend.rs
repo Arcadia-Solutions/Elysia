@@ -60,7 +60,7 @@ fn error_response_is_json() {
 
 #[test]
 fn storage_path_joins_root_shard_id_ext() {
-    let storage = Storage::new("/var/uploads");
+    let storage = Storage::new("/var/uploads", 0);
     assert_eq!(
         storage.path_for("abc12345", "png"),
         std::path::PathBuf::from("/var/uploads/ab/abc12345.png")
@@ -68,9 +68,20 @@ fn storage_path_joins_root_shard_id_ext() {
 }
 
 #[test]
+fn storage_refuses_files_below_min_free_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().to_str().unwrap();
+    let space = Storage::new(path, 0).disk_space().unwrap();
+    assert!(space.available_bytes > 0 && space.available_bytes <= space.total_bytes);
+    assert!(Storage::new(path, 0).new_temp().is_ok());
+    let full = Storage::new(path, u64::MAX).new_temp().unwrap_err();
+    assert_eq!(full.status_code(), StatusCode::INSUFFICIENT_STORAGE);
+}
+
+#[test]
 fn storage_new_trims_trailing_slashes() {
     // trailing slashes stripped so path_for never produces a doubled separator
-    let storage = Storage::new("/var/uploads///");
+    let storage = Storage::new("/var/uploads///", 0);
     assert_eq!(
         storage.path_for("xy345678", "jpg"),
         std::path::PathBuf::from("/var/uploads/xy/xy345678.jpg")

@@ -43,7 +43,7 @@ fn limits(
 macro_rules! limited_app {
     ($pool:expr, $limits:expr) => {{
         let upload_dir = tempfile::tempdir().unwrap();
-        let storage = Storage::new(upload_dir.path().to_str().unwrap());
+        let storage = Storage::new(upload_dir.path().to_str().unwrap(), 0);
         actix_test::init_service(
             App::new()
                 .app_data(Data::new(test_config()))

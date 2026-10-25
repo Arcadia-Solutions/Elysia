@@ -25,6 +25,9 @@ pub enum Error {
     #[error("too many requests, retry in {0} seconds")]
     TooManyRequests(u64),
 
+    #[error("the server disk is nearly full, uploads are paused")]
+    InsufficientStorage,
+
     #[error("internal server error")]
     Internal,
 
@@ -46,6 +49,7 @@ impl Error {
             Error::UnsupportedMediaType => "unsupported_media_type",
             Error::BadRequest(_) => "bad_request",
             Error::TooManyRequests(_) => "too_many_requests",
+            Error::InsufficientStorage => "insufficient_storage",
             Error::Internal => "internal",
             Error::Io(_) => "io",
             Error::Db(_) => "db",
@@ -65,6 +69,7 @@ impl ResponseError for Error {
             Error::NotFound => StatusCode::NOT_FOUND,
             Error::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             Error::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
+            Error::InsufficientStorage => StatusCode::INSUFFICIENT_STORAGE,
             Error::Io(_) | Error::Db(_) | Error::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

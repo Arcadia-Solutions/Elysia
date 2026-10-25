@@ -222,6 +222,7 @@
       "year": "Year"
     },
     "uploaded_size": "Uploaded size",
+    "disk_free": "{available} free of {total}",
     "new_users": "New users",
     "active_uploaders": "Active uploaders",
     "deletions_per": "Deletions per {interval}",
