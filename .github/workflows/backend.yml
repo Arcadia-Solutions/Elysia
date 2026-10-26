@@ -61,7 +61,7 @@ jobs:
           cache-workspaces: ./backend
 
       - name: Clippy
-        run: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Build
         run: cargo build

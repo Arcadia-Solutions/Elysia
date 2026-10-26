@@ -4,6 +4,15 @@ version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-only"
 
+[lints.rust]
+unreachable_pub = "warn"
+
+[lints.clippy]
+allow_attributes = "warn"
+unused_async = "warn"
+unused_self = "warn"
+needless_pass_by_value = "warn"
+
 [dependencies]
 actix-web = { version = "4", default-features = false, features = ["macros", "compress-brotli", "compress-gzip", "compress-zstd", "cookies", "unicode", "compat"] }
 actix-multipart = "0.7"

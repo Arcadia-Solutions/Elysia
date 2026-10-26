@@ -150,7 +150,7 @@ impl UploadOptionsQuery {
         (status = 415, description = "Not a supported image"),
     )
 )]
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn upload(
     authenticated: UploadUser,
     config: Data<Config>,

@@ -677,10 +677,12 @@ type ChunkRow = (
     Option<String>,
 );
 
+#[expect(clippy::needless_pass_by_value, reason = "map_err adapter")]
 fn chevereto_error(error: sqlx::Error) -> Error {
     Error::BadRequest(format!("chevereto database: {error}"))
 }
 
+#[expect(clippy::needless_pass_by_value, reason = "map_err adapter")]
 fn backend_error(error: Error) -> Error {
     Error::BadRequest(format!("backend database: {error}"))
 }

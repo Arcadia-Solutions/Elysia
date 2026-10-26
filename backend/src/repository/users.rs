@@ -19,8 +19,8 @@ pub enum AuthProvider {
 }
 
 impl AuthProvider {
-    fn from_database(value: String) -> Self {
-        match value.as_str() {
+    fn from_database(value: &str) -> Self {
+        match value {
             "sso" => Self::Sso,
             _ => Self::Local,
         }
@@ -70,7 +70,7 @@ impl UserRow {
             password_hash: self.password_hash,
             is_admin: self.is_admin,
             banned: self.banned,
-            provider: AuthProvider::from_database(self.provider),
+            provider: AuthProvider::from_database(&self.provider),
             external_sub: self.external_sub,
         }
     }

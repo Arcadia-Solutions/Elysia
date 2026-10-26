@@ -237,6 +237,7 @@ pub fn extract_ids(text: &str, hosts: &[String], ids: &mut HashSet<String>) {
     }
 }
 
+#[expect(clippy::needless_pass_by_value, reason = "map_err adapter")]
 fn external_database_error(error: sqlx::Error) -> Error {
     Error::BadRequest(format!("external database: {error}"))
 }

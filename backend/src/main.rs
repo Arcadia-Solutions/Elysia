@@ -113,6 +113,7 @@ async fn main() -> std::io::Result<()> {
     // Stop the scheduler before the last flush, so the two never race.
     scheduler_handle.abort();
     scheduler::flush(&shutdown_pool, &shutdown_views).await;
-    telemetry::shutdown();
+    // Blocking flush, kept off the single runtime thread that drives the gRPC exporters
+    let _ = tokio::task::spawn_blocking(telemetry::shutdown).await;
     result
 }

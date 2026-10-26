@@ -1,5 +1,5 @@
 //! Helpers shared by the integration test binaries.
-#![allow(dead_code)]
+#![expect(dead_code)]
 
 use std::sync::RwLock;
 
@@ -22,7 +22,7 @@ use elysia::services::image::{ProcessOptions, TargetFormat};
 use elysia::settings::ElysiaSettings;
 use elysia::storage::Storage;
 
-pub fn test_config() -> Config {
+pub(crate) fn test_config() -> Config {
     Config {
         server: ServerConfig {
             host: "127.0.0.1".into(),
@@ -54,7 +54,7 @@ pub fn test_config() -> Config {
 /// Test config with single sign-on enabled against a mock issuer. The
 /// redirect URI is never visited in tests; it is only echoed into the
 /// authorize URL and the token request.
-pub fn sso_config(issuer: &str) -> Config {
+pub(crate) fn sso_config(issuer: &str) -> Config {
     let mut config = test_config();
     config.auth.sso = Some(SsoConfig {
         name: "Arcadia".into(),
@@ -70,7 +70,7 @@ pub fn sso_config(issuer: &str) -> Config {
 /// Default elysia settings: all checks off and processing off. Note this fails
 /// `validate` (max_file_size_bytes is 0) by design, which the validation tests
 /// rely on; the store/upload paths never call `validate`, so 0 = unlimited there.
-pub fn test_settings() -> ElysiaSettings {
+pub(crate) fn test_settings() -> ElysiaSettings {
     ElysiaSettings {
         max_file_size_bytes: 0,
         max_width_pixels: 0,
@@ -100,7 +100,7 @@ pub fn test_settings() -> ElysiaSettings {
 }
 
 /// Default settings with WebP processing turned on.
-pub fn webp_settings() -> ElysiaSettings {
+pub(crate) fn webp_settings() -> ElysiaSettings {
     ElysiaSettings {
         default_target_file_format: Some(TargetFormat::Webp),
         ..test_settings()
@@ -109,7 +109,7 @@ pub fn webp_settings() -> ElysiaSettings {
 
 /// Create a local user in `pool` and mint a session token for them. Used by
 /// tests that need an authenticated (non-admin) caller.
-pub async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
+pub(crate) async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
     let password_hash = auth_service::hash_password("long-test-password").unwrap();
     let email = format!("{username}@example.com");
     let row = users::create_local_user(pool, username, Some(&email), &password_hash, false, false)
@@ -125,12 +125,16 @@ pub async fn test_user(pool: &PgPool, username: &str) -> (AuthUserRow, String) {
 
 /// POST `image` to `/api/upload` against an app built from `settings` and `pool`,
 /// returning the status.
-pub async fn upload_status(pool: PgPool, settings: ElysiaSettings, image: Vec<u8>) -> StatusCode {
+pub(crate) async fn upload_status(
+    pool: PgPool,
+    settings: ElysiaSettings,
+    image: Vec<u8>,
+) -> StatusCode {
     upload_status_with_query(pool, settings, image, "").await
 }
 
 /// Like `upload_status`, with a query string appended to the request uri.
-pub async fn upload_status_with_query(
+pub(crate) async fn upload_status_with_query(
     pool: PgPool,
     settings: ElysiaSettings,
     image: Vec<u8>,
@@ -144,7 +148,7 @@ pub async fn upload_status_with_query(
 
 /// POST `image` to `/api/upload` with `token` as the bearer, returning the
 /// status and the parsed JSON body.
-pub async fn upload_with_token(
+pub(crate) async fn upload_with_token(
     pool: PgPool,
     settings: ElysiaSettings,
     image: Vec<u8>,
@@ -165,7 +169,7 @@ pub async fn upload_with_token(
 /// POST `image` to `/api/upload` against an app built from `config`, with
 /// the given extra request headers, returning the status and the parsed JSON
 /// body.
-pub async fn upload_with_headers(
+pub(crate) async fn upload_with_headers(
     pool: PgPool,
     config: Config,
     settings: ElysiaSettings,
@@ -216,7 +220,11 @@ pub async fn upload_with_headers(
 
 /// One-shot HTTP server on a loopback port: answers a single request with the
 /// given status line, content type and body, then closes. Returns its URL.
-pub fn serve_once(status_line: &'static str, content_type: &'static str, body: Vec<u8>) -> String {
+pub(crate) fn serve_once(
+    status_line: &'static str,
+    content_type: &'static str,
+    body: Vec<u8>,
+) -> String {
     use std::io::{Read, Write};
     use std::net::TcpListener;
 
@@ -237,13 +245,13 @@ pub fn serve_once(status_line: &'static str, content_type: &'static str, body: V
 }
 
 /// Build a Storage over a fresh temp dir, deleted when the returned `TempDir` drops.
-pub fn temp_storage() -> (Storage, tempfile::TempDir) {
+pub(crate) fn temp_storage() -> (Storage, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("trash")).unwrap();
     (Storage::new(dir.path().to_str().unwrap(), 0), dir)
 }
 
-pub fn real_png(width: u32, height: u32) -> Vec<u8> {
+pub(crate) fn real_png(width: u32, height: u32) -> Vec<u8> {
     let img = image::RgbaImage::from_pixel(width, height, image::Rgba([120, 30, 200, 255]));
     let mut bytes = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgba8(img)
@@ -253,7 +261,7 @@ pub fn real_png(width: u32, height: u32) -> Vec<u8> {
 }
 
 /// A noisy image: a flat colour compresses to almost nothing losslessly.
-pub fn noisy_png(width: u32, height: u32) -> Vec<u8> {
+pub(crate) fn noisy_png(width: u32, height: u32) -> Vec<u8> {
     let noisy = image::RgbaImage::from_fn(width, height, |x, y| {
         let v = (x * 7919 + y * 104729 + x * y * 31) as u8;
         image::Rgba([v, v.wrapping_mul(3), v.wrapping_add(90), 255])
@@ -265,7 +273,7 @@ pub fn noisy_png(width: u32, height: u32) -> Vec<u8> {
     cursor.into_inner()
 }
 
-pub fn animated_gif() -> Vec<u8> {
+pub(crate) fn animated_gif() -> Vec<u8> {
     use image::{Frame, RgbaImage, codecs::gif::GifEncoder};
     let mut buf = std::io::Cursor::new(Vec::new());
     {
@@ -279,7 +287,7 @@ pub fn animated_gif() -> Vec<u8> {
     buf.into_inner()
 }
 
-pub fn pipeline_options(format: TargetFormat) -> ProcessOptions {
+pub(crate) fn pipeline_options(format: TargetFormat) -> ProcessOptions {
     ProcessOptions {
         target_width: 0,
         target_height: 0,
@@ -291,7 +299,13 @@ pub fn pipeline_options(format: TargetFormat) -> ProcessOptions {
 
 /// Insert `count` bare PNG rows of `size` bytes uploaded by `uploader`, with
 /// ids and hashes unique per `prefix`.
-pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usize, size: i64) {
+pub(crate) async fn seed_files(
+    pool: &PgPool,
+    uploader: Uuid,
+    prefix: &str,
+    count: usize,
+    size: i64,
+) {
     for index in 0..count {
         let id = format!("{prefix}{index:06}");
         files::insert(
@@ -328,7 +342,7 @@ pub async fn seed_files(pool: &PgPool, uploader: Uuid, prefix: &str, count: usiz
 }
 
 /// Newest available images first, on the given browse page.
-pub fn page(page: u32) -> elysia::repository::files::ImagesQuery {
+pub(crate) fn page(page: u32) -> elysia::repository::files::ImagesQuery {
     use elysia::repository::files::{ImagesQuery, ImagesSortBy, ImagesStatus, SortOrder};
     ImagesQuery {
         page: std::num::NonZeroU32::new(page).unwrap(),

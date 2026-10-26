@@ -19,7 +19,7 @@ use crate::services::{Job, JobProgress, check_shutdown, paginate};
 /// grouping merges them all. Also in `SimilarScanParams`' schema, which takes literals only.
 pub const MAX_DISTANCE: u32 = 16;
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Clone, Copy, Deserialize, ToSchema)]
 pub struct SimilarScanParams {
     /// Most bits two perceptual hashes (64 bits) may differ in for their images
     /// to be grouped: 0 only matches visually identical images, around 10 also

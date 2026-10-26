@@ -287,7 +287,7 @@ fn is_public_ip(ip: std::net::IpAddr) -> bool {
 /// validation. `original_name` defaults to the URL's last path segment. Returns
 /// a `BadRequest` when the URL cannot be fetched, and the usual
 /// `UnsupportedMediaType` when the fetched bytes are not a supported image.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn store_from_url(
     pool: &PgPool,
     storage: &Storage,
@@ -354,7 +354,7 @@ pub async fn store_from_url(
 /// Validate, inspect and store an uploaded temp file: size check, type sniff,
 /// dimensions, a collision-safe row insert, then persist to disk. Shared by the
 /// multipart upload and the URL rehost.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn store_upload(
     pool: &PgPool,
     storage: &Storage,
@@ -497,7 +497,7 @@ pub async fn store_upload(
         // drops EXIF (re-encode starts from a bare pixel buffer), so EXIF is
         // only stripped here, when requested, by rewriting the container.
         None if options.strip_exif => {
-            let stripped = strip_exif(source_bytes.clone(), orientation)?;
+            let stripped = strip_exif(&source_bytes, orientation)?;
             let mut temp = storage.new_temp()?;
             temp.write_all(&stripped)?;
             Output {
@@ -643,7 +643,7 @@ pub async fn store_upload(
 /// Strip EXIF (and other sidecar metadata) from an image container without
 /// re-encoding the pixels. JPEG, PNG and WebP carry EXIF; anything else
 /// (e.g. GIF) is returned unchanged.
-fn strip_exif(bytes: img_parts::Bytes, orientation: Orientation) -> Result<Vec<u8>> {
+fn strip_exif(bytes: &img_parts::Bytes, orientation: Orientation) -> Result<Vec<u8>> {
     use img_parts::{DynImage, ImageEXIF};
 
     match DynImage::from_bytes(bytes.clone())

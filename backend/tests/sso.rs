@@ -112,7 +112,7 @@ async fn mock_status(
 
 /// Boot a mock Arcadia on a loopback port, returning its issuer URL (the
 /// endpoints hang directly off it) and its knobs.
-async fn spawn_mock() -> (String, Data<MockIdp>) {
+fn spawn_mock() -> (String, Data<MockIdp>) {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let issuer = format!("http://{}", listener.local_addr().unwrap());
     let mock = Data::new(MockIdp {
@@ -221,7 +221,7 @@ async fn disabled_sso_rejects_login_and_callback(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn login_builds_authorize_url_with_pkce(pool: PgPool) {
-    let (issuer, _mock) = spawn_mock().await;
+    let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool, sso_config(&issuer));
     let (code_verifier, authorization_url) = start_login!(&app);
 
@@ -258,7 +258,7 @@ async fn login_builds_authorize_url_with_pkce(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn callback_provisions_user_and_relogin_reuses_row(pool: PgPool) {
-    let (issuer, _mock) = spawn_mock().await;
+    let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
 
     let (code_verifier, _) = start_login!(&app);
@@ -286,7 +286,7 @@ async fn callback_provisions_user_and_relogin_reuses_row(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn callback_refuses_locally_banned_user(pool: PgPool) {
-    let (issuer, _mock) = spawn_mock().await;
+    let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
     let (code_verifier, _) = start_login!(&app);
     let (_, body) = finish_login!(&app, code_verifier);
@@ -303,7 +303,7 @@ async fn callback_refuses_locally_banned_user(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn callback_refuses_provider_banned_user(pool: PgPool) {
-    let (issuer, mock) = spawn_mock().await;
+    let (issuer, mock) = spawn_mock();
     mock.active.store(false, Ordering::SeqCst);
     let app = sso_app!(pool, sso_config(&issuer));
     let (code_verifier, _) = start_login!(&app);
@@ -315,7 +315,7 @@ async fn callback_refuses_provider_banned_user(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn conflicting_username_and_email_are_handled(pool: PgPool) {
-    let (issuer, mock) = spawn_mock().await;
+    let (issuer, mock) = spawn_mock();
     // A local account already owns the provider's username and email.
     let password_hash = auth_service::hash_password("long-test-password").unwrap();
     users::create_local_user(
@@ -345,7 +345,7 @@ async fn conflicting_username_and_email_are_handled(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn unusable_provider_username_falls_back(pool: PgPool) {
-    let (issuer, mock) = spawn_mock().await;
+    let (issuer, mock) = spawn_mock();
     *mock.username.lock().unwrap() = "  !!  ".into();
     *mock.email.lock().unwrap() = None;
 
@@ -360,7 +360,7 @@ async fn unusable_provider_username_falls_back(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn arcadia_ban_blocks_session_but_not_local_users(pool: PgPool) {
-    let (issuer, mock) = spawn_mock().await;
+    let (issuer, mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
 
     let (code_verifier, _) = start_login!(&app);
@@ -381,7 +381,7 @@ async fn arcadia_ban_blocks_session_but_not_local_users(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn unreachable_arcadia_fails_closed(pool: PgPool) {
-    let (issuer, _mock) = spawn_mock().await;
+    let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
     let (code_verifier, _) = start_login!(&app);
     let (status, body) = finish_login!(&app, code_verifier);
@@ -398,7 +398,7 @@ async fn unreachable_arcadia_fails_closed(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn discovery_with_another_issuer_is_refused(pool: PgPool) {
-    let (issuer, _mock) = spawn_mock().await;
+    let (issuer, _mock) = spawn_mock();
     // Same server, but the configured issuer differs from the one the
     // discovery document names.
     let app = sso_app!(pool, sso_config(&issuer.replace("127.0.0.1", "localhost")));
@@ -413,7 +413,7 @@ async fn discovery_with_another_issuer_is_refused(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn no_status_endpoint_skips_the_ban_check(pool: PgPool) {
-    let (issuer, mock) = spawn_mock().await;
+    let (issuer, mock) = spawn_mock();
     let mut config = sso_config(&issuer);
     config.auth.sso.as_mut().unwrap().status_endpoint = None;
     let app = sso_app!(pool, config);
@@ -446,7 +446,7 @@ macro_rules! finish_registration {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn new_user_accepts_legal_before_being_created(pool: PgPool) {
-    let (issuer, _mock) = spawn_mock().await;
+    let (issuer, _mock) = spawn_mock();
     let settings = elysia::settings::ElysiaSettings {
         privacy_policy: "We keep nothing".into(),
         ..test_settings()
