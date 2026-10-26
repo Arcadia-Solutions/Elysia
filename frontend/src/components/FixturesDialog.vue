@@ -61,7 +61,7 @@ const refresh = pollProgress(api.getFixturesProgress, progress, (ended) => {
 // Mark the run as started so the first poll sees it end, even when it finishes before that poll.
 const generate = () =>
   api.generateFixtures(params.value).then(() => {
-    progress.value = { running: true, done: 0, total: params.value.image_count }
+    progress.value = { available: true, running: true, done: 0, total: params.value.image_count }
     refresh()
   })
 </script>

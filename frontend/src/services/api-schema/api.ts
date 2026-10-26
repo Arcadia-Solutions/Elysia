@@ -431,6 +431,10 @@ export interface FixturesParams {
  */
 export interface FixturesProgress {
     /**
+     * Whether this build allows generation, false on release builds.
+     */
+    'available': boolean;
+    /**
      * Images handled so far, rejected ones included.
      */
     'done': number;
@@ -2782,7 +2786,7 @@ export class AuthApi extends BaseAPI {
 export const FixturesApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
-         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`. Only available on debug builds.
          * @param {FixturesParams} fixturesParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2855,7 +2859,7 @@ export const FixturesApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = FixturesApiAxiosParamCreator(configuration)
     return {
         /**
-         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`. Only available on debug builds.
          * @param {FixturesParams} fixturesParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2887,7 +2891,7 @@ export const FixturesApiFactory = function (configuration?: Configuration, baseP
     const localVarFp = FixturesApiFp(configuration)
     return {
         /**
-         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+         * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`. Only available on debug builds.
          * @param {FixturesParams} fixturesParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2911,7 +2915,7 @@ export const FixturesApiFactory = function (configuration?: Configuration, baseP
  */
 export class FixturesApi extends BaseAPI {
     /**
-     * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`.
+     * Start generating fixture users and images in the background, through the real upload pipeline with upload dates spread over the past. Follow it with `GET /api/fixtures`. Only available on debug builds.
      * @param {FixturesParams} fixturesParams 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

@@ -41,7 +41,8 @@ Admins can generate users and images from Browse > "Generate fixtures". It
 creates the requested number of users (`alice`, `bob`, ..., then `alice2`, ...)
 with the given password, and uploads generated images through the real upload
 pipeline, spread over the requested number of past days. It adds to what is
-already there.
+already there. Only debug builds of the API (`cargo run`) allow it: release
+builds, like the Docker image, refuse it and the button stays disabled.
 
 ## Database changes
 

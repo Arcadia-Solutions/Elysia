@@ -45,6 +45,9 @@ const REFERRERS: [&str; 12] = [
 ];
 const MAX_IMAGE_COUNT: u32 = 10_000;
 const MAX_HISTORY_DAYS: u32 = 10 * 365;
+/// Generation floods the instance with fake users and images, so only debug
+/// builds (`cargo run`, tests, e2e) allow it, never the release image.
+pub const AVAILABLE: bool = cfg!(debug_assertions);
 
 #[derive(Deserialize, ToSchema)]
 pub struct FixturesParams {
@@ -61,6 +64,8 @@ pub struct FixturesParams {
 /// State of the current or last generation run.
 #[derive(Clone, Default, Serialize, ToSchema)]
 pub struct FixturesProgress {
+    /// Whether this build allows generation, false on release builds.
+    pub available: bool,
     pub running: bool,
     /// Images handled so far, rejected ones included.
     pub done: u32,
@@ -71,6 +76,7 @@ pub struct FixturesProgress {
 
 // ponytail: one run at a time per process, fine for a dev tool.
 static PROGRESS: Mutex<FixturesProgress> = Mutex::new(FixturesProgress {
+    available: AVAILABLE,
     running: false,
     done: 0,
     total: 0,
@@ -85,13 +91,16 @@ pub fn progress() -> FixturesProgress {
     PROGRESS.lock().expect("fixtures lock poisoned").clone()
 }
 
-/// Start a run in the background. Fails if one is already running.
+/// Start a run in the background. Fails on release builds or if one is already running.
 pub fn start(
     pool: PgPool,
     storage: Data<Storage>,
     settings: ElysiaSettings,
     params: FixturesParams,
 ) -> Result<()> {
+    if !AVAILABLE {
+        return Err(Error::Forbidden);
+    }
     if params.image_count == 0 || params.image_count > MAX_IMAGE_COUNT {
         return Err(Error::BadRequest(format!(
             "image count must be between 1 and {MAX_IMAGE_COUNT}"
@@ -114,6 +123,7 @@ pub fn start(
             return Err(Error::Conflict);
         }
         *progress = FixturesProgress {
+            available: AVAILABLE,
             running: true,
             done: 0,
             total: params.image_count,

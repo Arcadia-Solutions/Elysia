@@ -195,6 +195,7 @@
     "trash_emptied": "Trash emptied",
     "username_placeholder": "Username",
     "fixtures": "Generate fixtures",
+    "fixtures_unavailable": "Only available when the API runs in dev mode (debug build), as generating fixtures floods the instance with fake users and images.",
     "tabs": {
       "images": "Images",
       "albums": "Albums"
