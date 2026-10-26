@@ -82,9 +82,11 @@ const navItems = computed(() =>
   font-size: 1.2rem;
   border-bottom: 1px solid var(--p-content-border-color, #ddd);
 }
+.topbar a {
+  text-decoration: none;
+}
 .topbar .brand {
   color: inherit;
-  text-decoration: none;
 }
 .topbar .actions {
   display: flex;
