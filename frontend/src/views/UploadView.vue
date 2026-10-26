@@ -398,10 +398,6 @@ const rehost = () => {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 20px;
-  border: 2px solid var(--p-content-border-color);
-  border-radius: 10px;
-  background: var(--p-content-background);
 }
 .card-head {
   display: flex;

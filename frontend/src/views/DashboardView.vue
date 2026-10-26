@@ -33,7 +33,7 @@
     </div>
 
     <div class="tiles">
-      <div v-for="tile in tiles" :key="tile.label" class="tile">
+      <div v-for="tile in tiles" :key="tile.label" class="tile card">
         <small>{{ tile.label }}</small>
         <strong>{{ tile.value }}</strong>
         <small v-if="tile.detail" :class="{ alert: tile.alert }">{{ tile.detail }}</small>
@@ -330,8 +330,6 @@ h3 {
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px;
-  border: 1px solid var(--p-content-border-color, #ddd);
-  border-radius: 8px;
 }
 .tile small {
   color: var(--p-text-muted-color, #666);

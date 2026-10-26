@@ -46,6 +46,12 @@ body {
   background: var(--p-content-background);
   color: var(--p-text-color);
 }
+.card {
+  padding: 20px;
+  border: 2px solid var(--p-content-border-color);
+  border-radius: 10px;
+  background: var(--p-content-background);
+}
 .footer {
   display: flex;
   justify-content: center;

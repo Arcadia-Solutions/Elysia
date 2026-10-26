@@ -1,7 +1,7 @@
 <template>
   <div v-if="meta" class="image-wrap">
     <img :src="meta.url" :alt="meta.original_name ?? meta.id" class="image" />
-    <aside class="side">
+    <aside class="side card">
       <dl class="meta">
         <template v-if="meta.original_name">
           <dt>{{ $t('image.name') }}</dt>

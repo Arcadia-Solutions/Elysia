@@ -13,7 +13,7 @@
         :totalItems="page.total_items"
         @changePage="(number: number) => router.push({ query: { ...route.query, page: number } })"
       >
-        <div v-for="reported in page.results" :key="reported.image.id" class="reported">
+        <div v-for="reported in page.results" :key="reported.image.id" class="reported card">
           <router-link :to="{ name: 'Image', params: { id: reported.image.id } }" class="thumb">
             <img :src="reported.image.thumbnail_url" :alt="reported.image.id" loading="lazy" />
           </router-link>
@@ -111,8 +111,6 @@ watch(
   flex-wrap: wrap;
   gap: 16px;
   padding: 12px;
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 8px;
 }
 .thumb {
   flex: 0 0 160px;

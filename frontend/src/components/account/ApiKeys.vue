@@ -5,7 +5,7 @@
       <Button :label="$t('api_keys.create')" icon="pi pi-plus" size="small" @click="showDialog = true" />
     </div>
     <span v-if="!apiKeys.length" class="muted">{{ $t('api_keys.empty') }}</span>
-    <div v-for="apiKey in apiKeys" :key="apiKey.id" class="api-key" :class="{ inactive: !apiKey.active }">
+    <div v-for="apiKey in apiKeys" :key="apiKey.id" class="api-key card" :class="{ inactive: !apiKey.active }">
       <div class="api-key-title">
         <strong>{{ apiKey.name }}</strong>
         <Tag :value="$t(`api_keys.scope_${apiKey.scope}`)" severity="secondary" />
@@ -155,8 +155,6 @@ const revoke = (apiKey: ApiKeySummary) => {
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
-  border: 1px solid var(--p-content-border-color, #ddd);
-  border-radius: 6px;
 }
 .api-key.inactive {
   opacity: 0.6;

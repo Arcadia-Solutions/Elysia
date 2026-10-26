@@ -83,8 +83,6 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 2px;
   padding: 14px 16px;
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 8px;
   color: inherit;
   text-decoration: none;
   transition: background-color 0.15s;
