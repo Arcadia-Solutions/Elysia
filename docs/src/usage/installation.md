@@ -72,3 +72,8 @@ and the frontend (`npm ci && npm run build` in `frontend/`). Serve
 `frontend/dist` as a single page app and route the same paths as
 `frontend/Caddyfile` to the backend. Migrations run automatically when the
 backend starts.
+
+## Favicon
+
+Place your icon at `frontend/public/favicon.ico` before building the frontend.
+The file is gitignored.
