@@ -77,3 +77,14 @@ backend starts.
 
 Place your icon at `frontend/public/favicon.ico` before building the frontend.
 The file is gitignored.
+
+## Custom CSS and JS
+
+Two optional files, gitignored, are linked into every page when they exist at
+build time:
+
+- `frontend/public/custom.css`: css applied after the app styles
+- `frontend/public/custom.js`: js executed once the app is mounted
+
+Leaving them out is a valid setup. Creating, editing or removing them requires
+rebuilding the frontend.

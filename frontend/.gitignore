@@ -7,3 +7,7 @@ playwright-report
 
 # instance favicon
 public/favicon.ico
+
+# instance custom css/js, loaded on every page
+public/custom.css
+public/custom.js
