@@ -8,6 +8,20 @@
 - cmake, nasm and a C++ compiler: the JPEG XL encoder is built from vendored
   source and the AVIF encoder needs nasm on x86_64. The first build is slow.
 
+## Compose override
+
+`compose.yml` doesn't publish the database port. Docker Compose automatically
+merges `compose.override.yml` (git ignored) on top of `compose.yml`, use it for
+local tweaks like exposing ports. The backend and `cargo sqlx` reach the
+database from the host, so create it at the repository root with:
+
+```yaml
+services:
+  db:
+    ports:
+      - "5432:5432"
+```
+
 ## Running locally
 
 From the repository root:

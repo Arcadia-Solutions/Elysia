@@ -6,3 +6,4 @@ node_modules
 .env
 CLAUDE.md
 docs/book
+compose.override.yml
