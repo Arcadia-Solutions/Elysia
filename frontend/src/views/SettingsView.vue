@@ -1,5 +1,5 @@
 <template>
-  <div class="settings-wrap">
+  <div class="settings-wrap" @click="toggleSection">
     <h2>{{ $t('settings.title') }}</h2>
     <p class="intro">{{ $t('settings.intro') }}</p>
 
@@ -252,6 +252,13 @@ import { showToast } from '@/services/toast'
 
 const vTooltip = Tooltip
 
+// Clicking anywhere on a panel header toggles it, not only the toggle button.
+const toggleSection = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (target.closest('button')) return
+  target.closest('.p-panel-header')?.querySelector('button')?.click()
+}
+
 const { t } = useI18n()
 const loading = ref(true)
 const saving = ref(false)
@@ -380,6 +387,9 @@ const save = () => {
 }
 .field small {
   color: var(--p-text-muted-color, #666);
+}
+:deep(.p-panel-header) {
+  cursor: pointer;
 }
 /* Panel content is a plain block; space the fields like the rest of the page. */
 :deep(.p-panel-content) {
