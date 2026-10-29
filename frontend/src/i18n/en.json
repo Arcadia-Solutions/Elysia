@@ -82,6 +82,7 @@
     "too_large": "Image is too large (max {max})",
     "too_wide": "Image is too wide (max {max}px)",
     "too_tall": "Image is too tall (max {max}px)",
+    "already_selected": "{name} is already selected",
     "logout": "Logout",
     "copy": "Copy",
     "copied": "Copied",

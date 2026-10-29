@@ -317,11 +317,15 @@ const remove = (index: number) => {
 }
 
 // Adds the files that pass the limits, in the order given, toasting the
-// reason for each rejected one.
+// reason for each rejected one. A file matching an already selected one by
+// name and size counts as a duplicate and is skipped with a warning.
 const pick = (files: File[]) => {
   Promise.all(files.map(validate)).then((errors) =>
     files.forEach((file, i) => {
       if (errors[i]) return showToast(`${file.name}: ${errors[i]}`, 'error')
+      if (selected.value.some((item) => item.file.name === file.name && item.file.size === file.size)) {
+        return showToast(t('upload.already_selected', { name: file.name }), 'warn')
+      }
       selected.value.push({ file, preview: URL.createObjectURL(file), status: 'pending', progress: 0 })
     }),
   )
