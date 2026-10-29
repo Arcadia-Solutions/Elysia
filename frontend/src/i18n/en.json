@@ -241,9 +241,20 @@
   },
   "settings": {
     "title": "Elysia settings",
-    "intro": "Limits and image processing applied to every upload. A value of 0 disables that check. Changes apply immediately, no restart needed.",
+    "intro": "A value of 0 means no limit. Changes apply once the save button is clicked, no restart needed.",
     "save": "Save",
     "saved": "Settings saved",
+    "sections": {
+      "limits": "Limits",
+      "conversion": "Conversion",
+      "exif": "EXIF",
+      "expiry": "Expiry",
+      "uploads": "Uploads",
+      "accounts": "Accounts",
+      "referrers": "Referrers",
+      "thumbnails": "Thumbnails",
+      "legal": "Legal"
+    },
     "disabled_reason": "Select a default target format to enable this.",
     "errors": {
       "max_file_size_required": "Required: uploads need a byte ceiling.",
@@ -252,15 +263,15 @@
     },
     "max_file_size": {
       "label": "Maximum file size (bytes)",
-      "help": "Reject uploads larger than this. 0 means no limit."
+      "help": "Reject uploads larger than this."
     },
     "max_width": {
       "label": "Maximum width (pixels)",
-      "help": "Reject images wider than this. 0 means no limit. Required when a target format is set (it bounds server-side decoding)."
+      "help": "Reject images wider than this. Required when a target format is set (it bounds server-side decoding)."
     },
     "max_height": {
       "label": "Maximum height (pixels)",
-      "help": "Reject images taller than this. 0 means no limit. Required when a target format is set (it bounds server-side decoding)."
+      "help": "Reject images taller than this. Required when a target format is set (it bounds server-side decoding)."
     },
     "target_format": {
       "label": "Default convert uploads to",
@@ -273,15 +284,15 @@
     },
     "target_width": {
       "label": "Resize to fit width (pixels)",
-      "help": "Shrink images to fit within this width, keeping aspect ratio. 0 means no resize; images are never upscaled."
+      "help": "Shrink images to fit within this width, keeping aspect ratio. Images are never upscaled."
     },
     "target_height": {
       "label": "Resize to fit height (pixels)",
-      "help": "Shrink images to fit within this height, keeping aspect ratio. 0 means no resize; images are never upscaled."
+      "help": "Shrink images to fit within this height, keeping aspect ratio. Images are never upscaled."
     },
     "target_file_size": {
       "label": "Target file size (bytes)",
-      "help": "If a processed image is still larger than this, lossy-compress it down to fit. 0 means off."
+      "help": "If a processed image is still larger than this, lossy-compress it down to fit."
     },
     "default_compression": {
       "label": "Default compression quality (1-100)",
@@ -302,7 +313,7 @@
     },
     "default_expiry_days": {
       "label": "Default expiry (days)",
-      "help": "Delete uploads this many days after upload, unless they request otherwise. 0 means uploads never expire."
+      "help": "Delete uploads this many days after upload, unless they request otherwise."
     },
     "allow_overriding_expiry": {
       "label": "Allow overriding expiry",
@@ -311,11 +322,11 @@
     "thumbnails_intro": "A smaller preview served from /t/ instead of /i/. Enabled when a width or height is set. Not overridable per upload; images already within the box are served unchanged.",
     "thumbnail_width": {
       "label": "Thumbnail width (pixels)",
-      "help": "Shrink the thumbnail to fit within this width, keeping aspect ratio. 0 means unconstrained on this axis."
+      "help": "Shrink the thumbnail to fit within this width, keeping aspect ratio."
     },
     "thumbnail_height": {
       "label": "Thumbnail height (pixels)",
-      "help": "Shrink the thumbnail to fit within this height, keeping aspect ratio. 0 means unconstrained on this axis."
+      "help": "Shrink the thumbnail to fit within this height, keeping aspect ratio."
     },
     "thumbnail_quality": {
       "label": "Thumbnail quality (1-100)",
@@ -332,7 +343,7 @@
     },
     "default_storage_quota": {
       "label": "Default storage quota per user",
-      "help": "Total size of the available and trashed images each user may keep. 0 means no limit. Admins are exempt, and admins can override it per user from their profile."
+      "help": "Total size of the available and trashed images each user may keep. Admins are exempt, and admins can override it per user from their profile."
     },
     "allowed_referrers": {
       "label": "Allowed referrers",

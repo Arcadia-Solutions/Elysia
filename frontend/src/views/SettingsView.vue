@@ -3,210 +3,212 @@
     <h2>{{ $t('settings.title') }}</h2>
     <p class="intro">{{ $t('settings.intro') }}</p>
 
-    <div class="field">
-      <label>{{ $t('settings.max_file_size.label') }}</label>
-      <small>{{ $t('settings.max_file_size.help') }}</small>
-      <ByteInput v-model="form.max_file_size_bytes" :invalid="!!errors.max_file_size_bytes" />
-      <Message v-if="errors.max_file_size_bytes" severity="error" size="small" variant="simple">{{ errors.max_file_size_bytes }}</Message>
-    </div>
-
-    <div class="field">
-      <label>{{ $t('settings.max_width.label') }}</label>
-      <small>{{ $t('settings.max_width.help') }}</small>
-      <InputNumber v-model="form.max_width_pixels" size="small" :min="0" suffix=" px" fluid :invalid="!!errors.max_width_pixels" />
-      <Message v-if="errors.max_width_pixels" severity="error" size="small" variant="simple">{{ errors.max_width_pixels }}</Message>
-    </div>
-
-    <div class="field">
-      <label>{{ $t('settings.max_height.label') }}</label>
-      <small>{{ $t('settings.max_height.help') }}</small>
-      <InputNumber v-model="form.max_height_pixels" size="small" :min="0" suffix=" px" fluid :invalid="!!errors.max_height_pixels" />
-      <Message v-if="errors.max_height_pixels" severity="error" size="small" variant="simple">{{ errors.max_height_pixels }}</Message>
-    </div>
-
-    <hr />
-
-    <div class="field">
-      <label>{{ $t('settings.target_format.label') }}</label>
-      <small>{{ $t('settings.target_format.help') }}</small>
-      <Select
-        v-model="targetFormat"
-        size="small"
-        fluid
-        :options="[
-          { label: $t('settings.target_format.store_as_is'), value: 'store_as_is' },
-          { label: 'WebP', value: 'webp' },
-          { label: 'JPEG XL', value: 'jpegxl' },
-          { label: 'AVIF', value: 'avif' },
-          { label: 'PNG', value: 'png' },
-          { label: 'JPEG', value: 'jpg' },
-        ]"
-        option-label="label"
-        option-value="value"
-      />
-    </div>
-
-    <div class="field">
-      <label>{{ $t('settings.allow_overriding_file_format.label') }}</label>
-      <small>{{ $t('settings.allow_overriding_file_format.help') }}</small>
-      <ToggleSwitch v-model="form.allow_overriding_file_format" />
-    </div>
-
-    <div
-      class="section"
-      :class="{ disabled: !form.default_target_file_format }"
-      v-tooltip="!form.default_target_file_format ? { value: $t('settings.disabled_reason'), showDelay: 150 } : undefined"
-    >
+    <Panel :header="$t('settings.sections.limits')" toggleable collapsed>
       <div class="field">
-        <label>{{ $t('settings.target_width.label') }}</label>
-        <small>{{ $t('settings.target_width.help') }}</small>
-        <InputNumber v-model="form.target_width_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.default_target_file_format" />
+        <label>{{ $t('settings.max_file_size.label') }}</label>
+        <small>{{ $t('settings.max_file_size.help') }}</small>
+        <ByteInput v-model="form.max_file_size_bytes" :invalid="!!errors.max_file_size_bytes" />
+        <Message v-if="errors.max_file_size_bytes" severity="error" size="small" variant="simple">{{ errors.max_file_size_bytes }}</Message>
       </div>
 
       <div class="field">
-        <label>{{ $t('settings.target_height.label') }}</label>
-        <small>{{ $t('settings.target_height.help') }}</small>
-        <InputNumber v-model="form.target_height_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.default_target_file_format" />
+        <label>{{ $t('settings.max_width.label') }}</label>
+        <small>{{ $t('settings.max_width.help') }}</small>
+        <InputNumber v-model="form.max_width_pixels" size="small" :min="0" suffix=" px" fluid :invalid="!!errors.max_width_pixels" />
+        <Message v-if="errors.max_width_pixels" severity="error" size="small" variant="simple">{{ errors.max_width_pixels }}</Message>
       </div>
 
       <div class="field">
-        <label>{{ $t('settings.target_file_size.label') }}</label>
-        <small>{{ $t('settings.target_file_size.help') }}</small>
-        <ByteInput v-model="form.target_file_size_bytes" :disabled="!form.default_target_file_format" />
+        <label>{{ $t('settings.max_height.label') }}</label>
+        <small>{{ $t('settings.max_height.help') }}</small>
+        <InputNumber v-model="form.max_height_pixels" size="small" :min="0" suffix=" px" fluid :invalid="!!errors.max_height_pixels" />
+        <Message v-if="errors.max_height_pixels" severity="error" size="small" variant="simple">{{ errors.max_height_pixels }}</Message>
+      </div>
+    </Panel>
+
+    <Panel :header="$t('settings.sections.conversion')" toggleable collapsed>
+      <div class="field">
+        <label>{{ $t('settings.target_format.label') }}</label>
+        <small>{{ $t('settings.target_format.help') }}</small>
+        <Select
+          v-model="targetFormat"
+          size="small"
+          fluid
+          :options="[
+            { label: $t('settings.target_format.store_as_is'), value: 'store_as_is' },
+            { label: 'WebP', value: 'webp' },
+            { label: 'JPEG XL', value: 'jpegxl' },
+            { label: 'AVIF', value: 'avif' },
+            { label: 'PNG', value: 'png' },
+            { label: 'JPEG', value: 'jpg' },
+          ]"
+          option-label="label"
+          option-value="value"
+        />
       </div>
 
       <div class="field">
-        <label>{{ $t('settings.default_compression.label') }}</label>
-        <small>{{ $t('settings.default_compression.help') }}</small>
-        <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.default_target_file_format" />
+        <label>{{ $t('settings.allow_overriding_file_format.label') }}</label>
+        <small>{{ $t('settings.allow_overriding_file_format.help') }}</small>
+        <ToggleSwitch v-model="form.allow_overriding_file_format" />
       </div>
 
       <div
-        class="field"
-        v-tooltip="
-          compressionOverrideForced && form.default_target_file_format
-            ? { value: $t('settings.allow_overriding_compression.forced_help'), showDelay: 150 }
-            : undefined
-        "
+        class="section"
+        :class="{ disabled: !form.default_target_file_format }"
+        v-tooltip="!form.default_target_file_format ? { value: $t('settings.disabled_reason'), showDelay: 150 } : undefined"
       >
-        <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
-        <small>{{
-          compressionOverrideForced ? $t('settings.allow_overriding_compression.forced_help') : $t('settings.allow_overriding_compression.help')
-        }}</small>
-        <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.default_target_file_format || compressionOverrideForced" />
+        <div class="field">
+          <label>{{ $t('settings.target_width.label') }}</label>
+          <small>{{ $t('settings.target_width.help') }}</small>
+          <InputNumber v-model="form.target_width_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.default_target_file_format" />
+        </div>
+
+        <div class="field">
+          <label>{{ $t('settings.target_height.label') }}</label>
+          <small>{{ $t('settings.target_height.help') }}</small>
+          <InputNumber v-model="form.target_height_pixels" size="small" :min="0" suffix=" px" fluid :disabled="!form.default_target_file_format" />
+        </div>
+
+        <div class="field">
+          <label>{{ $t('settings.target_file_size.label') }}</label>
+          <small>{{ $t('settings.target_file_size.help') }}</small>
+          <ByteInput v-model="form.target_file_size_bytes" :disabled="!form.default_target_file_format" />
+        </div>
+
+        <div class="field">
+          <label>{{ $t('settings.default_compression.label') }}</label>
+          <small>{{ $t('settings.default_compression.help') }}</small>
+          <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.default_target_file_format" />
+        </div>
+
+        <div
+          class="field"
+          v-tooltip="
+            compressionOverrideForced && form.default_target_file_format
+              ? { value: $t('settings.allow_overriding_compression.forced_help'), showDelay: 150 }
+              : undefined
+          "
+        >
+          <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
+          <small>{{
+            compressionOverrideForced ? $t('settings.allow_overriding_compression.forced_help') : $t('settings.allow_overriding_compression.help')
+          }}</small>
+          <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.default_target_file_format || compressionOverrideForced" />
+        </div>
       </div>
-    </div>
+    </Panel>
 
-    <hr />
+    <Panel :header="$t('settings.sections.exif')" toggleable collapsed>
+      <div class="field">
+        <label>{{ $t('settings.strip_exif_by_default.label') }}</label>
+        <small>{{ $t('settings.strip_exif_by_default.help') }}</small>
+        <ToggleSwitch v-model="form.strip_exif_by_default" />
+      </div>
 
-    <div class="field">
-      <label>{{ $t('settings.strip_exif_by_default.label') }}</label>
-      <small>{{ $t('settings.strip_exif_by_default.help') }}</small>
-      <ToggleSwitch v-model="form.strip_exif_by_default" />
-    </div>
+      <div class="field">
+        <label>{{ $t('settings.allow_overriding_strip_exif.label') }}</label>
+        <small>{{ $t('settings.allow_overriding_strip_exif.help') }}</small>
+        <ToggleSwitch v-model="form.allow_overriding_strip_exif" />
+      </div>
+    </Panel>
 
-    <div class="field">
-      <label>{{ $t('settings.allow_overriding_strip_exif.label') }}</label>
-      <small>{{ $t('settings.allow_overriding_strip_exif.help') }}</small>
-      <ToggleSwitch v-model="form.allow_overriding_strip_exif" />
-    </div>
+    <Panel :header="$t('settings.sections.expiry')" toggleable collapsed>
+      <div class="field">
+        <label>{{ $t('settings.default_expiry_days.label') }}</label>
+        <small>{{ $t('settings.default_expiry_days.help') }}</small>
+        <InputNumber v-model="form.default_expiry_days" size="small" :min="0" :max="MAX_EXPIRY_DAYS" fluid />
+      </div>
 
-    <hr />
+      <div class="field">
+        <label>{{ $t('settings.allow_overriding_expiry.label') }}</label>
+        <small>{{ $t('settings.allow_overriding_expiry.help') }}</small>
+        <ToggleSwitch v-model="form.allow_overriding_expiry" />
+      </div>
+    </Panel>
 
-    <div class="field">
-      <label>{{ $t('settings.default_expiry_days.label') }}</label>
-      <small>{{ $t('settings.default_expiry_days.help') }}</small>
-      <InputNumber v-model="form.default_expiry_days" size="small" :min="0" :max="MAX_EXPIRY_DAYS" fluid />
-    </div>
+    <Panel :header="$t('settings.sections.uploads')" toggleable collapsed>
+      <div class="field">
+        <label>{{ $t('settings.uploads_enabled.label') }}</label>
+        <small>{{ $t('settings.uploads_enabled.help') }}</small>
+        <ToggleSwitch v-model="form.uploads_enabled" />
+      </div>
+    </Panel>
 
-    <div class="field">
-      <label>{{ $t('settings.allow_overriding_expiry.label') }}</label>
-      <small>{{ $t('settings.allow_overriding_expiry.help') }}</small>
-      <ToggleSwitch v-model="form.allow_overriding_expiry" />
-    </div>
+    <Panel :header="$t('settings.sections.accounts')" toggleable collapsed>
+      <p class="intro">{{ $t('settings.accounts_intro') }}</p>
 
-    <hr />
+      <div class="field">
+        <label>{{ $t('settings.allow_registration.label') }}</label>
+        <small>{{ $t('settings.allow_registration.help') }}</small>
+        <ToggleSwitch v-model="form.allow_registration" />
+      </div>
 
-    <div class="field">
-      <label>{{ $t('settings.uploads_enabled.label') }}</label>
-      <small>{{ $t('settings.uploads_enabled.help') }}</small>
-      <ToggleSwitch v-model="form.uploads_enabled" />
-    </div>
+      <div class="field">
+        <label>{{ $t('settings.default_storage_quota.label') }}</label>
+        <small>{{ $t('settings.default_storage_quota.help') }}</small>
+        <ByteInput v-model="form.default_storage_quota_bytes" />
+      </div>
+    </Panel>
 
-    <hr />
+    <Panel :header="$t('settings.sections.referrers')" toggleable collapsed>
+      <div class="field">
+        <label>{{ $t('settings.allowed_referrers.label') }}</label>
+        <small>{{ $t('settings.allowed_referrers.help') }}</small>
+        <AutoComplete v-model="form.allowed_referrers" size="small" multiple :typeahead="false" fluid placeholder="example.com" />
+      </div>
 
-    <p class="intro">{{ $t('settings.accounts_intro') }}</p>
+      <div class="field">
+        <label>{{ $t('settings.record_referrer_views.label') }}</label>
+        <small>{{ $t('settings.record_referrer_views.help') }}</small>
+        <ToggleSwitch v-model="form.record_referrer_views" />
+      </div>
+    </Panel>
 
-    <div class="field">
-      <label>{{ $t('settings.allow_registration.label') }}</label>
-      <small>{{ $t('settings.allow_registration.help') }}</small>
-      <ToggleSwitch v-model="form.allow_registration" />
-    </div>
+    <Panel :header="$t('settings.sections.thumbnails')" toggleable collapsed>
+      <p class="intro">{{ $t('settings.thumbnails_intro') }}</p>
 
-    <div class="field">
-      <label>{{ $t('settings.default_storage_quota.label') }}</label>
-      <small>{{ $t('settings.default_storage_quota.help') }}</small>
-      <ByteInput v-model="form.default_storage_quota_bytes" />
-    </div>
+      <div class="field">
+        <label>{{ $t('settings.thumbnail_width.label') }}</label>
+        <small>{{ $t('settings.thumbnail_width.help') }}</small>
+        <InputNumber v-model="form.thumbnail_width_pixels" size="small" :min="0" suffix=" px" fluid />
+      </div>
 
-    <hr />
+      <div class="field">
+        <label>{{ $t('settings.thumbnail_height.label') }}</label>
+        <small>{{ $t('settings.thumbnail_height.help') }}</small>
+        <InputNumber v-model="form.thumbnail_height_pixels" size="small" :min="0" suffix=" px" fluid />
+      </div>
 
-    <div class="field">
-      <label>{{ $t('settings.allowed_referrers.label') }}</label>
-      <small>{{ $t('settings.allowed_referrers.help') }}</small>
-      <AutoComplete v-model="form.allowed_referrers" size="small" multiple :typeahead="false" fluid placeholder="example.com" />
-    </div>
+      <div class="field" :class="{ disabled: !thumbnailsEnabled }">
+        <label>{{ $t('settings.thumbnail_quality.label') }}</label>
+        <small>{{ $t('settings.thumbnail_quality.help') }}</small>
+        <InputNumber
+          v-model="form.thumbnail_quality"
+          size="small"
+          :min="1"
+          :max="100"
+          fluid
+          :disabled="!thumbnailsEnabled"
+          :invalid="!!errors.thumbnail_quality"
+        />
+        <Message v-if="errors.thumbnail_quality" severity="error" size="small" variant="simple">{{ errors.thumbnail_quality }}</Message>
+      </div>
+    </Panel>
 
-    <div class="field">
-      <label>{{ $t('settings.record_referrer_views.label') }}</label>
-      <small>{{ $t('settings.record_referrer_views.help') }}</small>
-      <ToggleSwitch v-model="form.record_referrer_views" />
-    </div>
+    <Panel :header="$t('settings.sections.legal')" toggleable collapsed>
+      <p class="intro">{{ $t('settings.legal_intro') }}</p>
 
-    <hr />
+      <div class="field">
+        <label>{{ $t('settings.terms_of_service.label') }}</label>
+        <Textarea v-model="form.terms_of_service" size="small" rows="8" autoResize fluid />
+      </div>
 
-    <p class="intro">{{ $t('settings.thumbnails_intro') }}</p>
-
-    <div class="field">
-      <label>{{ $t('settings.thumbnail_width.label') }}</label>
-      <small>{{ $t('settings.thumbnail_width.help') }}</small>
-      <InputNumber v-model="form.thumbnail_width_pixels" size="small" :min="0" suffix=" px" fluid />
-    </div>
-
-    <div class="field">
-      <label>{{ $t('settings.thumbnail_height.label') }}</label>
-      <small>{{ $t('settings.thumbnail_height.help') }}</small>
-      <InputNumber v-model="form.thumbnail_height_pixels" size="small" :min="0" suffix=" px" fluid />
-    </div>
-
-    <div class="field" :class="{ disabled: !thumbnailsEnabled }">
-      <label>{{ $t('settings.thumbnail_quality.label') }}</label>
-      <small>{{ $t('settings.thumbnail_quality.help') }}</small>
-      <InputNumber
-        v-model="form.thumbnail_quality"
-        size="small"
-        :min="1"
-        :max="100"
-        fluid
-        :disabled="!thumbnailsEnabled"
-        :invalid="!!errors.thumbnail_quality"
-      />
-      <Message v-if="errors.thumbnail_quality" severity="error" size="small" variant="simple">{{ errors.thumbnail_quality }}</Message>
-    </div>
-
-    <hr />
-
-    <p class="intro">{{ $t('settings.legal_intro') }}</p>
-
-    <div class="field">
-      <label>{{ $t('settings.terms_of_service.label') }}</label>
-      <Textarea v-model="form.terms_of_service" size="small" rows="8" autoResize fluid />
-    </div>
-
-    <div class="field">
-      <label>{{ $t('settings.privacy_policy.label') }}</label>
-      <Textarea v-model="form.privacy_policy" size="small" rows="8" autoResize fluid />
-    </div>
+      <div class="field">
+        <label>{{ $t('settings.privacy_policy.label') }}</label>
+        <Textarea v-model="form.privacy_policy" size="small" rows="8" autoResize fluid />
+      </div>
+    </Panel>
 
     <Button :label="$t('settings.save')" size="small" :loading="saving" :disabled="loading || Object.keys(errors).length > 0" @click="save" />
   </div>
@@ -221,6 +223,7 @@ import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Panel from 'primevue/panel'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Tooltip from 'primevue/tooltip'
 import { useI18n } from 'vue-i18n'
@@ -327,7 +330,7 @@ const save = () => {
 
 <style scoped>
 .settings-wrap {
-  max-width: 520px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: 20px;
   display: flex;
@@ -357,10 +360,10 @@ const save = () => {
 .field small {
   color: var(--p-text-muted-color, #666);
 }
-hr {
-  width: 100%;
-  border: none;
-  border-top: 1px solid var(--p-content-border-color, #ddd);
-  margin: 4px 0;
+/* Panel content is a plain block; space the fields like the rest of the page. */
+:deep(.p-panel-content) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>
