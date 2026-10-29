@@ -98,6 +98,7 @@ pub(crate) fn test_settings() -> ElysiaSettings {
         allow_overriding_expiry: true,
         albums_enabled: true,
         url_uploads_enabled: true,
+        uploads_disabled_message: String::new(),
     }
 }
 

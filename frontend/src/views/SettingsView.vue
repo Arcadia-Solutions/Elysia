@@ -134,6 +134,12 @@
         <ToggleSwitch v-model="form.uploads_enabled" />
       </div>
 
+      <div v-if="!form.uploads_enabled" class="field">
+        <label>{{ $t('settings.uploads_disabled_message.label') }}</label>
+        <small>{{ $t('settings.uploads_disabled_message.help') }}</small>
+        <Textarea v-model="form.uploads_disabled_message" size="small" rows="3" autoResize fluid />
+      </div>
+
       <div class="field">
         <label>{{ $t('settings.url_uploads_enabled.label') }}</label>
         <small>{{ $t('settings.url_uploads_enabled.help') }}</small>
@@ -277,6 +283,7 @@ const form = reactive<Required<ElysiaSettings>>({
   allow_overriding_expiry: true,
   albums_enabled: true,
   url_uploads_enabled: true,
+  uploads_disabled_message: '',
 })
 
 // Thumbnails are on when a box is set on either axis.

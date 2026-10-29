@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads_enabled\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads_enabled, uploads_disabled_message\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -301,6 +301,17 @@
             "name": "url_uploads_enabled"
           }
         }
+      },
+      {
+        "ordinal": 26,
+        "name": "uploads_disabled_message",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "uploads_disabled_message"
+          }
+        }
       }
     ],
     "parameters": {
@@ -334,8 +345,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "801053f7c0a9baa575343fd4ccf18e24d3e5d9b5a85eb6af49cfb55097ae473d"
+  "hash": "2c04af46cfe6972e50ec180554b4a3b2a75b35cdd9183821190c269442f7921c"
 }

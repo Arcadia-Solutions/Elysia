@@ -300,7 +300,8 @@ create table elysia_settings (
    default_expiry_days int not null default 0 check (default_expiry_days >= 0),
    allow_overriding_expiry boolean not null default true,
    albums_enabled boolean not null default true,
-   url_uploads_enabled boolean not null default true
+   url_uploads_enabled boolean not null default true,
+   uploads_disabled_message text not null default ''
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -330,6 +331,7 @@ comment on column elysia_settings.default_expiry_days is 'Days after which an up
 comment on column elysia_settings.allow_overriding_expiry is 'When false, uploads may not request their own expiry; the default is always used';
 comment on column elysia_settings.albums_enabled is 'When false, images cannot be added to or removed from albums';
 comment on column elysia_settings.url_uploads_enabled is 'When false, images cannot be rehosted from a URL';
+comment on column elysia_settings.uploads_disabled_message is 'Shown on the upload page while uploads are disabled; empty shows a generic notice';
 
 -- Default row
 insert into elysia_settings

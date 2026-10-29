@@ -107,6 +107,10 @@ pub struct ElysiaSettings {
     /// When false, images cannot be rehosted from a URL, admins included.
     #[serde(default = "default_url_uploads_enabled")]
     pub url_uploads_enabled: bool,
+    /// Shown on the upload page while uploads are disabled; empty shows a
+    /// generic notice.
+    #[serde(default)]
+    pub uploads_disabled_message: String,
 }
 
 /// Longest expiry, in days, an upload or the default may set.
@@ -130,7 +134,7 @@ fn default_url_uploads_enabled() -> bool {
 
 /// The subset of [`ElysiaSettings`] exposed to logged-in users, loaded once
 /// by the frontend (upload validation, quota defaults).
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PublicElysiaSettings {
     pub max_file_size_bytes: u64,
     pub max_width_pixels: u32,
@@ -167,6 +171,9 @@ pub struct PublicElysiaSettings {
     /// Whether images may be rehosted from a URL; drives the URL field on the
     /// upload page.
     pub url_uploads_enabled: bool,
+    /// Shown on the upload page while uploads are disabled; empty shows a
+    /// generic notice.
+    pub uploads_disabled_message: String,
 }
 
 impl From<ElysiaSettings> for PublicElysiaSettings {
@@ -190,6 +197,7 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             allow_overriding_expiry: s.allow_overriding_expiry,
             albums_enabled: s.albums_enabled,
             url_uploads_enabled: s.url_uploads_enabled,
+            uploads_disabled_message: s.uploads_disabled_message,
         }
     }
 }

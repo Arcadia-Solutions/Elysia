@@ -1,6 +1,12 @@
 <template>
   <div class="upload-wrap">
-    <Message v-if="settings && !settings.uploads_enabled" severity="warn" size="small">{{ $t('upload.disabled') }}</Message>
+    <Message
+      v-if="settings && !settings.uploads_enabled"
+      severity="warn"
+      size="small"
+      :pt="{ content: { style: 'justify-content: center; text-align: center; white-space: pre-line' } }"
+      >{{ settings.uploads_disabled_message || $t('upload.disabled') }}</Message
+    >
     <template v-else>
       <section class="card">
         <header class="card-head">

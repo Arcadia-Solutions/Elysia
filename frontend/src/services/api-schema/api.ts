@@ -406,6 +406,10 @@ export interface ElysiaSettings {
      */
     'thumbnail_width_pixels'?: number;
     /**
+     * Shown on the upload page while uploads are disabled; empty shows a generic notice.
+     */
+    'uploads_disabled_message'?: string;
+    /**
      * When false, every upload (file or URL) is rejected, admins included.
      */
     'uploads_enabled'?: boolean;
@@ -898,6 +902,10 @@ export interface PublicElysiaSettings {
     'target_file_size_bytes': number;
     'target_height_pixels': number;
     'target_width_pixels': number;
+    /**
+     * Shown on the upload page while uploads are disabled; empty shows a generic notice.
+     */
+    'uploads_disabled_message': string;
     /**
      * Whether uploads are accepted; lets the upload page say they are paused.
      */
