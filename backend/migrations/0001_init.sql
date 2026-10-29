@@ -299,7 +299,8 @@ create table elysia_settings (
    privacy_policy text not null default '',
    default_expiry_days int not null default 0 check (default_expiry_days >= 0),
    allow_overriding_expiry boolean not null default true,
-   albums_enabled boolean not null default true
+   albums_enabled boolean not null default true,
+   url_uploads_enabled boolean not null default true
  );
 
 comment on table elysia_settings is 'Single-row (id = singleton) runtime elysia settings edited from the web UI';
@@ -328,6 +329,7 @@ comment on column elysia_settings.privacy_policy is 'Privacy policy shown to eve
 comment on column elysia_settings.default_expiry_days is 'Days after which an upload that requests no expiry is deleted; 0 never expires';
 comment on column elysia_settings.allow_overriding_expiry is 'When false, uploads may not request their own expiry; the default is always used';
 comment on column elysia_settings.albums_enabled is 'When false, images cannot be added to or removed from albums';
+comment on column elysia_settings.url_uploads_enabled is 'When false, images cannot be rehosted from a URL';
 
 -- Default row
 insert into elysia_settings

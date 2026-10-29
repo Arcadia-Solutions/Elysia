@@ -211,6 +211,30 @@ async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn rehost_rejected_while_url_uploads_disabled(pool: PgPool) {
+    let (_, token) = test_user(&pool, "url-uploader").await;
+    let (storage, _dir) = temp_storage();
+    let mut settings = test_settings();
+    settings.url_uploads_enabled = false;
+    let app = actix_web::test::init_service(
+        actix_web::App::new()
+            .app_data(actix_web::web::Data::new(test_config()))
+            .app_data(actix_web::web::Data::new(pool))
+            .app_data(actix_web::web::Data::new(storage))
+            .app_data(actix_web::web::Data::new(std::sync::RwLock::new(settings)))
+            .configure(elysia::routes::init),
+    )
+    .await;
+    let request = actix_web::test::TestRequest::post()
+        .uri("/api/upload-url")
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .set_json(serde_json::json!({ "url": "https://example.com/x.png" }))
+        .to_request();
+    let response = actix_web::test::call_service(&app, request).await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn upload_respects_storage_quota(pool: PgPool) {
     // 1000 bytes already stored against a 1000 byte global quota: full, until
     // an unlimited (0) override lifts it.

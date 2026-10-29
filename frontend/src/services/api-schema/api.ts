@@ -409,6 +409,10 @@ export interface ElysiaSettings {
      * When false, every upload (file or URL) is rejected, admins included.
      */
     'uploads_enabled'?: boolean;
+    /**
+     * When false, images cannot be rehosted from a URL, admins included.
+     */
+    'url_uploads_enabled'?: boolean;
 }
 
 
@@ -898,6 +902,10 @@ export interface PublicElysiaSettings {
      * Whether uploads are accepted; lets the upload page say they are paused.
      */
     'uploads_enabled': boolean;
+    /**
+     * Whether images may be rehosted from a URL; drives the URL field on the upload page.
+     */
+    'url_uploads_enabled': boolean;
 }
 
 

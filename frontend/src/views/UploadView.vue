@@ -45,7 +45,7 @@
         </div>
 
         <InputText
-          v-if="!selected.length"
+          v-if="!selected.length && settings?.url_uploads_enabled !== false"
           v-model="urlInput"
           size="small"
           :placeholder="$t('upload.url_placeholder')"

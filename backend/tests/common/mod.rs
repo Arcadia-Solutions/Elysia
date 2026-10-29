@@ -97,6 +97,7 @@ pub(crate) fn test_settings() -> ElysiaSettings {
         default_expiry_days: 0,
         allow_overriding_expiry: true,
         albums_enabled: true,
+        url_uploads_enabled: true,
     }
 }
 
