@@ -96,6 +96,7 @@ pub(crate) fn test_settings() -> ElysiaSettings {
         privacy_policy: String::new(),
         default_expiry_days: 0,
         allow_overriding_expiry: true,
+        albums_enabled: true,
     }
 }
 

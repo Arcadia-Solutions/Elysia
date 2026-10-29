@@ -5,11 +5,12 @@ use actix_web::{
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::handlers::images::trash_images::ImageIdsRequest;
 use crate::middlewares::AuthUser;
 use crate::repository::albums;
 use crate::services::albums::check_can_edit;
+use crate::settings::SharedElysiaSettings;
 
 #[utoipa::path(
     tag = "Albums",
@@ -23,16 +24,24 @@ use crate::services::albums::check_can_edit;
     responses(
         (status = 204, description = "Images removed"),
         (status = 401, description = "Missing or invalid session"),
-        (status = 403, description = "Not the album's owner, and not an admin"),
+        (status = 403, description = "Not the album's owner, and not an admin, or albums are disabled in settings"),
         (status = 404, description = "No such album"),
     )
 )]
 pub async fn remove_album_images(
     authenticated: AuthUser,
     pool: Data<PgPool>,
+    settings: SharedElysiaSettings,
     id: Path<Uuid>,
     body: Json<ImageIdsRequest>,
 ) -> Result<HttpResponse> {
+    if !settings
+        .read()
+        .expect("settings lock poisoned")
+        .albums_enabled
+    {
+        return Err(Error::Forbidden);
+    }
     check_can_edit(pool.get_ref(), *id, &authenticated).await?;
     albums::remove_images(pool.get_ref(), *id, &body.ids).await?;
     Ok(HttpResponse::NoContent().finish())

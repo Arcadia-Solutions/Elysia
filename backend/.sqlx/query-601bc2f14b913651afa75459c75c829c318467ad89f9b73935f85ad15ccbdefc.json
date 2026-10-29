@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -279,6 +279,17 @@
             "name": "allow_overriding_expiry"
           }
         }
+      },
+      {
+        "ordinal": 24,
+        "name": "albums_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "albums_enabled"
+          }
+        }
       }
     ],
     "parameters": {
@@ -310,8 +321,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "3cad7cf3014c3c7a1b1f72c3bb7d06ab1ad37c58b9d091565bc0b3b9a2b44981"
+  "hash": "601bc2f14b913651afa75459c75c829c318467ad89f9b73935f85ad15ccbdefc"
 }

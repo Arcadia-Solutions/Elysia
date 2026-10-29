@@ -22,7 +22,7 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                    allow_registration, allowed_referrers, uploads_enabled,
                    default_storage_quota_bytes, record_referrer_views,
                    terms_of_service, privacy_policy,
-                   default_expiry_days, allow_overriding_expiry
+                   default_expiry_days, allow_overriding_expiry, albums_enabled
            from elysia_settings where id = $1"#,
         SINGLETON_ID,
     )
@@ -54,6 +54,7 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         privacy_policy: row.privacy_policy,
         default_expiry_days: row.default_expiry_days as u32,
         allow_overriding_expiry: row.allow_overriding_expiry,
+        albums_enabled: row.albums_enabled,
     })
 }
 
@@ -73,8 +74,9 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             allowed_referrers = $17, uploads_enabled = $18,
             default_storage_quota_bytes = $19, record_referrer_views = $20,
             terms_of_service = $21, privacy_policy = $22,
-            default_expiry_days = $23, allow_overriding_expiry = $24
-         where id = $25"#,
+            default_expiry_days = $23, allow_overriding_expiry = $24,
+            albums_enabled = $25
+         where id = $26"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
         settings.max_height_pixels as i32,
@@ -99,6 +101,7 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         &settings.privacy_policy,
         settings.default_expiry_days as i32,
         settings.allow_overriding_expiry,
+        settings.albums_enabled,
         SINGLETON_ID,
     )
     .execute(pool)

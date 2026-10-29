@@ -28,7 +28,7 @@
     <ImageResults
       v-else
       v-model:selected="selected"
-      :readonly="!canEdit"
+      :readonly="!canEdit || !albumsEnabled"
       :images
       :page
       :pageSize
@@ -53,7 +53,14 @@ import { api } from '@/services/api/http'
 import { formatDate, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
-import { ImagesSortBy, ImagesStatus, SortOrder, type Album, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
+import {
+  ImagesSortBy,
+  ImagesStatus,
+  SortOrder,
+  type Album,
+  type PaginatedResultsImageSummaryResultsInner,
+  type PublicElysiaSettings,
+} from '@/services/api-schema'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -69,6 +76,9 @@ const selected = ref(new Set<string>())
 
 const albumId = computed(() => String(route.params.id))
 const canEdit = computed(() => album.value?.mine || isAdmin())
+// Images may only be removed while albums are enabled.
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
+const albumsEnabled = settings?.albums_enabled !== false
 const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) ?? ImagesSortBy.CreatedAt)
 const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)
 const pageSize = computed(() => Number(route.query.page_size) || 100)

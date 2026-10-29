@@ -55,12 +55,12 @@
         />
       </section>
 
-      <section class="card">
+      <section v-if="hasOptions" class="card">
         <header class="card-head">
           <h2>{{ $t('upload.step.options') }}</h2>
         </header>
 
-        <div class="format-row">
+        <div v-if="settings?.albums_enabled !== false" class="format-row">
           <label>{{ $t('albums.album') }}</label>
           <AlbumSelect v-model="albumId" mine :disabled="uploading" :placeholder="$t('albums.none')" />
         </div>
@@ -181,6 +181,15 @@ const showCompression = computed(() => !!settings?.allow_overriding_compression 
 // PNG is always lossless and AVIF/JPEG never are, so only WebP and JPEG XL get the toggle.
 const showLosslessToggle = computed(() => showCompression.value && ['webp', 'jpegxl'].includes(effectiveFormat.value ?? ''))
 const losslessSelected = computed(() => showLosslessToggle.value && lossless.value)
+// The lossless toggle only shows alongside compression, so it needs no check here.
+const hasOptions = computed(
+  () =>
+    settings?.albums_enabled !== false ||
+    !!settings?.allow_overriding_file_format ||
+    showCompression.value ||
+    !!settings?.allow_overriding_strip_exif ||
+    !!settings?.allow_overriding_expiry,
+)
 // 0 asks the backend for lossless, overriding its default quality, which PNG refuses.
 const qualityValue = () =>
   losslessSelected.value || (settings?.allow_overriding_compression && effectiveFormat.value === 'png') ? 0 : showCompression.value ? quality.value : undefined

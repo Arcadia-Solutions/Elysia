@@ -101,6 +101,9 @@ pub struct ElysiaSettings {
     /// always used.
     #[serde(default)]
     pub allow_overriding_expiry: bool,
+    /// When false, images cannot be added to or removed from albums.
+    #[serde(default = "default_albums_enabled")]
+    pub albums_enabled: bool,
 }
 
 /// Longest expiry, in days, an upload or the default may set.
@@ -111,6 +114,10 @@ fn default_allow_registration() -> bool {
 }
 
 fn default_uploads_enabled() -> bool {
+    true
+}
+
+fn default_albums_enabled() -> bool {
     true
 }
 
@@ -147,6 +154,9 @@ pub struct PublicElysiaSettings {
     /// Whether an upload may pick its own expiry; drives the expiry control on
     /// the upload page.
     pub allow_overriding_expiry: bool,
+    /// Whether images may be added to or removed from albums; drives the album
+    /// controls on the upload, image and album pages.
+    pub albums_enabled: bool,
 }
 
 impl From<ElysiaSettings> for PublicElysiaSettings {
@@ -168,6 +178,7 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             default_storage_quota_bytes: s.default_storage_quota_bytes,
             default_expiry_days: s.default_expiry_days,
             allow_overriding_expiry: s.allow_overriding_expiry,
+            albums_enabled: s.albums_enabled,
         }
     }
 }

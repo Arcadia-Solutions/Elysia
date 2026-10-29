@@ -310,6 +310,10 @@ export interface DiskSpace {
  */
 export interface ElysiaSettings {
     /**
+     * When false, images cannot be added to or removed from albums.
+     */
+    'albums_enabled'?: boolean;
+    /**
      * When false, an upload may not request its own compression and the default is always used.
      */
     'allow_overriding_compression'?: boolean;
@@ -847,6 +851,10 @@ export interface ProfileResponse {
  * The subset of [`ElysiaSettings`] exposed to logged-in users, loaded once by the frontend (upload validation, quota defaults).
  */
 export interface PublicElysiaSettings {
+    /**
+     * Whether images may be added to or removed from albums; drives the album controls on the upload, image and album pages.
+     */
+    'albums_enabled': boolean;
     /**
      * Whether an upload may request its own compression quality; drives the quality slider on the upload page.
      */

@@ -336,6 +336,10 @@
       "label": "Enable uploads",
       "help": "When off, nobody can upload or rehost images, admins included. Existing images stay online."
     },
+    "albums_enabled": {
+      "label": "Enable albums",
+      "help": "When off, nobody can add images to or remove them from albums, admins included. Existing albums stay visible."
+    },
     "accounts_intro": "Who may create an account on this instance.",
     "allow_registration": {
       "label": "Allow open registration",

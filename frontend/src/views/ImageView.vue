@@ -62,14 +62,14 @@
           <Chip
             v-for="album in showAllAlbums ? meta.albums : meta.albums.slice(0, 10)"
             :key="album.id"
-            :removable="album.mine"
+            :removable="album.mine && albumsEnabled"
             @remove="removeFromAlbum(album)"
           >
             <router-link :to="{ name: 'Album', params: { id: album.id } }">{{ albumLabel(album) }}</router-link>
           </Chip>
           <Button v-if="!showAllAlbums && meta.albums.length > 10" label="..." size="small" severity="secondary" text rounded @click="showAllAlbums = true" />
           <Button
-            v-if="!meta.trashed_at"
+            v-if="!meta.trashed_at && albumsEnabled"
             icon="pi pi-plus"
             size="small"
             severity="secondary"
@@ -123,7 +123,7 @@ import { api } from '@/services/api/http'
 import { formatBytes, formatDate, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
-import type { ImageAlbum, MetadataResponse } from '@/services/api-schema'
+import type { ImageAlbum, MetadataResponse, PublicElysiaSettings } from '@/services/api-schema'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -170,6 +170,8 @@ const report = () => {
 }
 
 const albumDialogVisible = ref(false)
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
+const albumsEnabled = settings?.albums_enabled !== false
 const showAllAlbums = ref(false)
 
 const albumLabel = (album: ImageAlbum) => (album.mine ? album.name : `${album.name} (${album.owner_username})`)

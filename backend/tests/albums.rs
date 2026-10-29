@@ -32,11 +32,12 @@ async fn albums_are_public_and_hold_any_image(pool: PgPool) {
     .token;
     common::seed_files(&pool, owner.id, "mine", 1, 10).await;
     common::seed_files(&pool, uploader.id, "theirs", 1, 10).await;
+    let settings = Data::new(std::sync::RwLock::new(common::test_settings()));
     let app = actix_test::init_service(
         App::new()
             .app_data(Data::new(common::test_config()))
             .app_data(Data::new(pool.clone()))
-            .app_data(Data::new(std::sync::RwLock::new(common::test_settings())))
+            .app_data(settings.clone())
             .configure(routes::init),
     )
     .await;
@@ -83,6 +84,11 @@ async fn albums_are_public_and_hold_any_image(pool: PgPool) {
     // Other users may not change it.
     let response = actix_test::call_service(&app, add(&other_token)).await;
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    // Nobody may while albums are disabled.
+    settings.write().unwrap().albums_enabled = false;
+    let response = actix_test::call_service(&app, add(&owner_token)).await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    settings.write().unwrap().albums_enabled = true;
     let album_images = |token: &str| {
         call(
             actix_test::TestRequest::get().uri(&format!(

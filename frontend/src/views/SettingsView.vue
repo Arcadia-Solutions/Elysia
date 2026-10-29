@@ -133,6 +133,12 @@
         <small>{{ $t('settings.uploads_enabled.help') }}</small>
         <ToggleSwitch v-model="form.uploads_enabled" />
       </div>
+
+      <div class="field">
+        <label>{{ $t('settings.albums_enabled.label') }}</label>
+        <small>{{ $t('settings.albums_enabled.help') }}</small>
+        <ToggleSwitch v-model="form.albums_enabled" />
+      </div>
     </Panel>
 
     <Panel :header="$t('settings.sections.accounts')" toggleable collapsed>
@@ -263,6 +269,7 @@ const form = reactive<Required<ElysiaSettings>>({
   privacy_policy: '',
   default_expiry_days: 0,
   allow_overriding_expiry: true,
+  albums_enabled: true,
 })
 
 // Thumbnails are on when a box is set on either axis.
