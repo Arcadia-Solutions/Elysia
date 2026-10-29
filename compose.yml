@@ -5,8 +5,6 @@ services:
       POSTGRES_USER: elysia
       POSTGRES_PASSWORD: password
       POSTGRES_DB: elysia
-    ports:
-      - "5432:5432"
     volumes:
       - elysia_pgdata:/var/lib/postgresql
     healthcheck:
