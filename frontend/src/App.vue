@@ -7,7 +7,7 @@
     <router-link v-if="legal.terms_of_service" to="/terms">{{ $t('legal.terms_of_service') }}</router-link>
     <router-link v-if="legal.privacy_policy" to="/privacy">{{ $t('legal.privacy_policy') }}</router-link>
   </footer>
-  <Toast position="top-right" group="tr" />
+  <Toast position="top-right" group="tr" @mouse-enter="stopToastTimer" @mouse-leave="startToastTimer" />
 </template>
 
 <script setup lang="ts">
@@ -18,6 +18,7 @@ import TopBar from '@/components/TopBar.vue'
 import { api } from '@/services/api/http'
 import type { UnauthElysiaSettings } from '@/services/api-schema'
 import { getToken, setAdmin } from '@/services/session'
+import { startToastTimer, stopToastTimer } from '@/services/toast'
 
 const route = useRoute()
 const legal = ref<UnauthElysiaSettings>()
@@ -52,6 +53,37 @@ body {
   font-family: system-ui, sans-serif;
   background: var(--p-content-background);
   color: var(--p-text-color);
+}
+/* PrimeVue renders the summary even when empty, and the text gap then pushes
+   the detail below the icon. Toasts here only use detail. */
+.p-toast-summary:empty {
+  display: none;
+}
+/* Time left before the toast closes. Hovering restarts the timer, so the bar
+   resets too. Duration matches LIFE in services/toast.ts. */
+.p-toast-message {
+  position: relative;
+  overflow: hidden;
+}
+.p-toast-message::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.5;
+  transform-origin: left;
+  animation: toast-life 4s linear forwards;
+}
+.p-toast-message:hover::after {
+  animation: none;
+}
+@keyframes toast-life {
+  to {
+    transform: scaleX(0);
+  }
 }
 .card {
   padding: 20px;
