@@ -1,7 +1,9 @@
 <template>
-  <TopBar />
-  <router-view />
-  <footer v-if="route.meta.auth && (legal?.terms_of_service || legal?.privacy_policy)" class="footer">
+  <template v-if="isAppReady">
+    <TopBar />
+    <router-view />
+  </template>
+  <footer v-if="isAppReady && route.meta.auth && (legal?.terms_of_service || legal?.privacy_policy)" class="footer">
     <router-link v-if="legal.terms_of_service" to="/terms">{{ $t('legal.terms_of_service') }}</router-link>
     <router-link v-if="legal.privacy_policy" to="/privacy">{{ $t('legal.privacy_policy') }}</router-link>
   </footer>
@@ -19,23 +21,28 @@ import { getToken, setAdmin } from '@/services/session'
 
 const route = useRoute()
 const legal = ref<UnauthElysiaSettings>()
+const isAppReady = ref(!getToken())
 
-// The admin flag in storage can go stale (role changed elsewhere), so refresh
-// it once per page load. The server stays the source of truth for authz.
-// The interceptor already clears the session and redirects on 401, so there is
-// nothing left to do on failure.
+// The public settings and admin flag in storage can go stale (changed
+// elsewhere), so refresh them once per page load, before rendering: views read
+// them from storage when they are set up. The server stays the source of truth
+// for authz. The interceptor already clears the session and redirects on 401,
+// so failures only need to unblock rendering.
 onMounted(() => {
   api.getElysiaUnauthSettings().then((response) => {
     legal.value = response.data
   })
-  if (!getToken()) return
-  api.getPublicElysiaSettings().then((response) => {
-    localStorage.setItem('public_settings', JSON.stringify(response.data))
-  })
-  api
-    .me()
-    .then((response) => setAdmin(response.data.is_admin))
+  if (isAppReady.value) return
+  Promise.all([
+    api.getPublicElysiaSettings().then((response) => {
+      localStorage.setItem('public_settings', JSON.stringify(response.data))
+    }),
+    api.me().then((response) => setAdmin(response.data.is_admin)),
+  ])
     .catch(() => {})
+    .finally(() => {
+      isAppReady.value = true
+    })
 })
 </script>
 
