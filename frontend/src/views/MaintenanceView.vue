@@ -43,6 +43,8 @@ const tab = computed(() => TABS.find((value) => value === route.query.tab) ?? TA
 
 <style scoped>
 .maintenance {
+  max-width: 1100px;
+  margin: 0 auto;
   padding: 24px 16px;
 }
 </style>

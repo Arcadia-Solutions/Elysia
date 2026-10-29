@@ -243,7 +243,6 @@ onMounted(refresh)
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 720px;
 }
 .chevereto-import small {
   margin: 0;
@@ -256,6 +255,9 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.field > :not(label, small) {
+  max-width: 720px;
 }
 .toolbar {
   display: flex;
