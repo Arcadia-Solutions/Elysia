@@ -299,6 +299,36 @@ pub async fn store_from_url(
     uploaded_by_user_id: Uuid,
     api_key_id: Option<Uuid>,
 ) -> Result<StoredFile> {
+    let (temp, size) = fetch_to_temp(storage, settings, client, url).await?;
+    let original_name = original_name.or_else(|| {
+        url.rsplit('/')
+            .next()
+            .map(|s| s.split(['?', '#']).next().unwrap_or(s).to_string())
+            .filter(|s| !s.is_empty())
+    });
+
+    store_upload(
+        pool,
+        storage,
+        settings,
+        temp,
+        size,
+        original_name,
+        options,
+        uploaded_by_user_id,
+        api_key_id,
+    )
+    .await
+}
+
+/// Download `url` to a temp file, rejecting it once it exceeds the size limit.
+/// Returns the file and its size.
+pub async fn fetch_to_temp(
+    storage: &Storage,
+    settings: &ElysiaSettings,
+    client: &reqwest::Client,
+    url: &str,
+) -> Result<(NamedTempFile, u64)> {
     let mut response = client.get(url).send().await.map_err(|e| {
         // The guard's refusal is buried in reqwest's error chain.
         let mut source: Option<&(dyn std::error::Error + 'static)> = Some(&e);
@@ -329,26 +359,33 @@ pub async fn store_from_url(
         check_size(settings, size)?;
         temp.write_all(&chunk)?;
     }
+    Ok((temp, size))
+}
 
-    let original_name = original_name.or_else(|| {
-        url.rsplit('/')
-            .next()
-            .map(|s| s.split(['?', '#']).next().unwrap_or(s).to_string())
-            .filter(|s| !s.is_empty())
-    });
-
-    store_upload(
-        pool,
-        storage,
-        settings,
-        temp,
-        size,
-        original_name,
-        options,
-        uploaded_by_user_id,
-        api_key_id,
-    )
-    .await
+/// Size limit, type sniff (png, jpg, gif, webp) and dimension limits of a
+/// file, from its header only. Returns its extension, mime type and dimensions.
+pub async fn check_image(
+    settings: &ElysiaSettings,
+    path: &std::path::Path,
+    size: u64,
+) -> Result<(&'static str, String, imagesize::ImageSize)> {
+    check_size(settings, size)?;
+    let mut header = [0u8; 512];
+    let read = {
+        let mut handle = tokio::fs::File::open(path).await?;
+        handle.read(&mut header).await?
+    };
+    let kind = infer::get(&header[..read]).ok_or(Error::UnsupportedMediaType)?;
+    let ext = match kind.mime_type() {
+        "image/png" => "png",
+        "image/jpeg" => "jpg",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        _ => return Err(Error::UnsupportedMediaType),
+    };
+    let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
+    check_dimensions(settings, dimensions.width as u32, dimensions.height as u32)?;
+    Ok((ext, kind.mime_type().to_string(), dimensions))
 }
 
 /// Validate, inspect and store an uploaded temp file: size check, type sniff,
@@ -366,30 +403,8 @@ pub async fn store_upload(
     uploaded_by_user_id: Uuid,
     api_key_id: Option<Uuid>,
 ) -> Result<StoredFile> {
-    check_size(settings, size)?;
-
     let path = temp.path();
-
-    // Sniff the type from the file header only, no need to read the whole file.
-    let mut header = [0u8; 512];
-    let read = {
-        let mut handle = tokio::fs::File::open(path).await?;
-        handle.read(&mut header).await?
-    };
-    let kind = infer::get(&header[..read]).ok_or(Error::UnsupportedMediaType)?;
-    let ext = match kind.mime_type() {
-        "image/png" => "png",
-        "image/jpeg" => "jpg",
-        "image/gif" => "gif",
-        "image/webp" => "webp",
-        _ => return Err(Error::UnsupportedMediaType),
-    };
-    let mime = kind.mime_type().to_string();
-
-    // Pixel dimensions, read from the image header (no full decode).
-    let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
-    check_dimensions(settings, dimensions.width as u32, dimensions.height as u32)?;
-    let source_ext = ext;
+    let (source_ext, mime, dimensions) = check_image(settings, path, size).await?;
     // Browsers and the pipeline apply the EXIF orientation, so record the upright size.
     let orientation = image::orientation(path);
     let (source_width, source_height) = match orientation {

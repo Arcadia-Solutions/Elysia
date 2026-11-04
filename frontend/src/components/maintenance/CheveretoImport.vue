@@ -69,6 +69,11 @@
       <small>{{ $t('maintenance.chevereto_import.concurrency.help') }}</small>
       <InputNumber v-model="form.concurrency" size="small" :min="1" fluid :disabled />
     </div>
+    <div class="field">
+      <label>{{ $t('maintenance.chevereto_import.dry_run.label') }}</label>
+      <small>{{ $t('maintenance.chevereto_import.dry_run.help') }}</small>
+      <ToggleSwitch v-model="form.dry_run" :disabled />
+    </div>
 
     <div class="toolbar">
       <Button
@@ -111,6 +116,7 @@
     <template v-if="progress?.started_at">
       <RunProgress :progress />
       <small>{{ $t('maintenance.chevereto_import.progress', { ...progress }) }}</small>
+      <small v-if="progress.dry_run">{{ $t('maintenance.chevereto_import.dry_run_progress') }}</small>
       <small :title="formatDate(progress.started_at)">{{ $t('maintenance.chevereto_import.started', { when: timeAgo(progress.started_at) }) }}</small>
       <small v-if="progress.running && stopping">{{ $t('maintenance.chevereto_import.stopping') }}</small>
       <Message v-else-if="!progress.running && progress.error" severity="error" size="small">{{ progress.error }}</Message>
@@ -182,6 +188,7 @@ const form = ref<Omit<CheveretoImportParams, 'start' | 'link_hosts' | 'backend_u
   fallback_username: 'chevereto-import',
   batch_size: 100,
   concurrency: 4,
+  dry_run: false,
 })
 const linkHosts = ref('')
 const matchUsers = ref(false)

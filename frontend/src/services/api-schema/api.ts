@@ -192,6 +192,10 @@ export interface CheveretoImportParams {
      */
     'concurrency': number;
     /**
+     * Check every image (downloaded and validated like an upload) without storing anything, creating users or rewriting links. Failures are listed, real ones are kept and the saved resume point stays.
+     */
+    'dry_run'?: boolean;
+    /**
      * Elysia user (created if missing) owning guest uploads and images of Chevereto users without a backend account.
      */
     'fallback_username': string;
@@ -211,6 +215,10 @@ export interface CheveretoImportProgress {
      * Images the current or last run processed, failed ones included.
      */
     'done': number;
+    /**
+     * Whether the current or last run was a dry run.
+     */
+    'dry_run': boolean;
     /**
      * Why the last run stopped early, if it did.
      */

@@ -508,6 +508,10 @@
         "label": "Concurrency",
         "help": "Images downloaded and processed in parallel."
       },
+      "dry_run": {
+        "label": "Dry run",
+        "help": "Runs the same checks and downloads every image to validate it (reachable and a supported image), but stores nothing: no image, no user, no rewritten link. Images that would fail are listed below, failures of real runs stay listed, and the saved resume point does not move."
+      },
       "start": "Start",
       "resume": "Resume",
       "retry_failed": "Retry failed ({count})",
@@ -516,6 +520,7 @@
       "buttons_help": "Resume continues after the last saved chunk. Retry failed imports only the failed images again, without moving the saved resume point. Restart from scratch starts over from the first image and forgets the failures. Replayed images are deduplicated, so no copy is stored twice. Stop ends the run once its current chunk is saved.",
       "restart_confirm": "Start over from the first Chevereto image? Already imported images are deduplicated, but every image is downloaded again.",
       "progress": "{done} / {total} images processed, {imported} imported, {failed} failed in total, {rewritten_rows} backend rows rewritten, last saved image id {last_image_id}",
+      "dry_run_progress": "This was a dry run: imported counts the images that would import, nothing was stored.",
       "started": "Started {when}",
       "stopping": "Stopping after the current chunk...",
       "interrupted": "The last run was interrupted by a server restart. Resume to continue.",

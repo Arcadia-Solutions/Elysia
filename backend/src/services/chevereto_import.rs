@@ -424,6 +424,11 @@ pub struct CheveretoImportParams {
     /// Images downloaded and processed in parallel.
     pub concurrency: u32,
     pub start: CheveretoImportStart,
+    /// Check every image (downloaded and validated like an upload) without
+    /// storing anything, creating users or rewriting links. Failures are listed,
+    /// real ones are kept and the saved resume point stays.
+    #[serde(default)]
+    pub dry_run: bool,
 }
 
 /// State of the current or last run.
@@ -439,6 +444,8 @@ pub struct CheveretoImportProgress {
     pub imported: i64,
     /// Backend rows whose links the current or last run rewrote.
     pub rewritten_rows: i64,
+    /// Whether the current or last run was a dry run.
+    pub dry_run: bool,
     /// Images in the failures list.
     pub failed: i64,
     /// RFC 3339, UTC. None before the first run.
@@ -469,6 +476,7 @@ pub async fn progress(pool: &PgPool) -> Result<CheveretoImportProgress> {
         done,
         imported,
         rewritten_rows,
+        dry_run,
         failed,
         started_at,
         finished_at,
@@ -481,6 +489,7 @@ pub async fn progress(pool: &PgPool) -> Result<CheveretoImportProgress> {
         done,
         imported,
         rewritten_rows,
+        dry_run,
         failed,
         started_at,
         finished_at,
@@ -831,11 +840,12 @@ impl Uploaders {
     }
 }
 
-/// Downloads one image, stores it and returns its link rewrites.
+/// Downloads one image, stores it and returns its link rewrites. Without an
+/// uploader (dry run) it is only validated, with no rewrites.
 async fn import_image(
     context: &Context,
     image: &CheveretoImage,
-    uploader: Uuid,
+    uploader: Option<Uuid>,
 ) -> std::result::Result<Vec<(String, String)>, Failure> {
     let fetch_url = fetch_url(image, &context.link_settings);
     let failure = |error: String| Failure {
@@ -850,6 +860,20 @@ async fn import_image(
     let options = UploadOptionsQuery::default()
         .into_options(&context.settings)
         .map_err(|error| failure(error.to_string()))?;
+    let Some(uploader) = uploader else {
+        let (temp, size) = files::fetch_to_temp(
+            &context.storage,
+            &context.settings,
+            &context.http_client,
+            url,
+        )
+        .await
+        .map_err(|error| failure(error.to_string()))?;
+        files::check_image(&context.settings, temp.path(), size)
+            .await
+            .map_err(|error| failure(error.to_string()))?;
+        return Ok(Vec::new());
+    };
     let stored = files::store_from_url(
         &context.pool,
         &context.storage,
@@ -891,6 +915,7 @@ struct Job {
     retry_image_ids: Option<Vec<i64>>,
     batch_size: u32,
     concurrency: u32,
+    dry_run: bool,
 }
 
 /// Bounds each health check, so a dead host fails the start request quickly.
@@ -1016,7 +1041,9 @@ async fn prepare(
         CheveretoImportStart::Restart => (0, None),
     };
     match &retry_image_ids {
-        Some(image_ids) => import_repo::start(pool, None, image_ids.len() as i64).await?,
+        Some(image_ids) => {
+            import_repo::start(pool, None, image_ids.len() as i64, params.dry_run).await?;
+        }
         None => {
             let total: i64 = sqlx::query_scalar(
                 r#"select count(*) from chv_images where image_type = 1 and image_id > ?"#,
@@ -1025,7 +1052,8 @@ async fn prepare(
             .fetch_one(&chevereto)
             .await
             .map_err(chevereto_error)?;
-            import_repo::start(pool, Some(last_image_id), total).await?;
+            let saved_image_id = (!params.dry_run).then_some(last_image_id);
+            import_repo::start(pool, saved_image_id, total, params.dry_run).await?;
         }
     }
 
@@ -1057,6 +1085,7 @@ async fn prepare(
         retry_image_ids,
         batch_size: params.batch_size,
         concurrency: params.concurrency,
+        dry_run: params.dry_run,
     })
 }
 
@@ -1072,6 +1101,7 @@ impl Job {
             retry_image_ids,
             batch_size,
             concurrency,
+            dry_run,
         } = self;
         let pool = &context.pool;
         let semaphore = Arc::new(Semaphore::new(concurrency as usize));
@@ -1137,9 +1167,15 @@ impl Job {
                     storage_url: row.7,
                     uploader_username: row.8,
                 };
-                let uploader = uploaders
-                    .resolve(pool, backend.as_mut(), image.uploader_username.as_deref())
-                    .await?;
+                // A dry run creates no user, so it resolves no uploader.
+                let uploader = match dry_run {
+                    true => None,
+                    false => Some(
+                        uploaders
+                            .resolve(pool, backend.as_mut(), image.uploader_username.as_deref())
+                            .await?,
+                    ),
+                };
                 let context = context.clone();
                 let permit = semaphore
                     .clone()
@@ -1157,7 +1193,9 @@ impl Job {
             while let Some(result) = tasks.join_next().await {
                 match result.map_err(|_| Error::Internal)? {
                     Ok((image_id, image_rewrites)) => {
-                        import_repo::record_imported(pool, image_id as i64).await?;
+                        // A dry run keeps a real failure listed until a real run imports it.
+                        import_repo::record_imported(pool, (!dry_run).then_some(image_id as i64))
+                            .await?;
                         rewrites.extend(image_rewrites);
                     }
                     Err(failure) => {
@@ -1178,7 +1216,7 @@ impl Job {
             }
 
             let rewritten_rows = match backend.as_mut() {
-                Some(backend) => rewrite_links(backend, &link_pattern, &rewrites)
+                Some(backend) if !dry_run => rewrite_links(backend, &link_pattern, &rewrites)
                     .await
                     .map_err(|error| {
                         Error::BadRequest(format!(
@@ -1188,14 +1226,14 @@ impl Job {
                          resume): {error}"
                         ))
                     })?,
-                None => 0,
+                _ => 0,
             };
             if retry_chunks.is_none() {
                 last_image_id = chunk_last_image_id as i64;
             }
             import_repo::finish_chunk(
                 pool,
-                retry_chunks.is_none().then_some(last_image_id),
+                (retry_chunks.is_none() && !dry_run).then_some(last_image_id),
                 rewritten_rows as i64,
             )
             .await?;

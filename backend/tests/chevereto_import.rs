@@ -278,6 +278,7 @@ fn import_params(backend_users: Option<BackendUsers>) -> CheveretoImportParams {
         batch_size: 10,
         concurrency: 2,
         start: CheveretoImportStart::Resume,
+        dry_run: false,
     }
 }
 
@@ -319,7 +320,7 @@ async fn import_checks_params_and_services_before_starting(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn retry_keeps_resume_point_and_clears_retried_failures(pool: PgPool) {
     use elysia::repository::chevereto_import as import_repo;
-    import_repo::start(&pool, Some(0), 10).await.unwrap();
+    import_repo::start(&pool, Some(0), 10, false).await.unwrap();
     import_repo::record_failure(&pool, 3, None, "first")
         .await
         .unwrap();
@@ -328,9 +329,9 @@ async fn retry_keeps_resume_point_and_clears_retried_failures(pool: PgPool) {
         .unwrap();
     import_repo::finish_chunk(&pool, Some(10), 0).await.unwrap();
 
-    import_repo::start(&pool, None, 2).await.unwrap();
+    import_repo::start(&pool, None, 2, false).await.unwrap();
     assert_eq!(import_repo::failed_image_ids(&pool).await.unwrap(), [3, 7]);
-    import_repo::record_imported(&pool, 3).await.unwrap();
+    import_repo::record_imported(&pool, Some(3)).await.unwrap();
     import_repo::record_failure(&pool, 7, None, "again")
         .await
         .unwrap();
@@ -346,11 +347,33 @@ async fn retry_keeps_resume_point_and_clears_retried_failures(pool: PgPool) {
         (7, "again")
     );
 
-    import_repo::start(&pool, Some(5), 0).await.unwrap();
+    import_repo::start(&pool, Some(5), 0, false).await.unwrap();
     assert!(
         import_repo::failed_image_ids(&pool)
             .await
             .unwrap()
             .is_empty()
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn dry_run_keeps_resume_point_and_real_failures(pool: PgPool) {
+    use elysia::repository::chevereto_import as import_repo;
+    import_repo::start(&pool, Some(0), 10, false).await.unwrap();
+    import_repo::record_failure(&pool, 3, None, "real")
+        .await
+        .unwrap();
+    import_repo::finish_chunk(&pool, Some(10), 0).await.unwrap();
+
+    import_repo::start(&pool, None, 20, true).await.unwrap();
+    import_repo::record_imported(&pool, None).await.unwrap();
+    import_repo::record_failure(&pool, 15, None, "dry")
+        .await
+        .unwrap();
+    import_repo::finish_chunk(&pool, None, 0).await.unwrap();
+    let row = import_repo::get(&pool).await.unwrap();
+    assert_eq!(
+        (row.dry_run, row.last_image_id, row.imported, row.failed),
+        (true, 10, 1, 2)
     );
 }

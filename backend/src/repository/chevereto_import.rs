@@ -9,6 +9,7 @@ pub struct CheveretoImportRow {
     pub done: i64,
     pub imported: i64,
     pub rewritten_rows: i64,
+    pub dry_run: bool,
     pub failed: i64,
     /// RFC 3339, UTC.
     pub started_at: Option<String>,
@@ -20,7 +21,7 @@ pub struct CheveretoImportRow {
 pub async fn get(pool: &PgPool) -> Result<CheveretoImportRow> {
     Ok(sqlx::query_as!(
         CheveretoImportRow,
-        r#"select last_image_id, total, done, imported, rewritten_rows,
+        r#"select last_image_id, total, done, imported, rewritten_rows, dry_run,
                 (select count(*) from chevereto_import_failures) as "failed!",
                 to_char(started_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as started_at,
                 to_char(finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as finished_at,
@@ -42,8 +43,13 @@ pub async fn failed_image_ids(pool: &PgPool) -> Result<Vec<i64>> {
 
 /// Start a run resuming after `last_image_id`, with `total` images to process.
 /// Failures after `last_image_id` are dropped, the run replays those images.
-/// None (retrying failures) keeps the saved id and every failure.
-pub async fn start(pool: &PgPool, last_image_id: Option<i64>, total: i64) -> Result<()> {
+/// None (retrying failures, dry run) keeps the saved id and every failure.
+pub async fn start(
+    pool: &PgPool,
+    last_image_id: Option<i64>,
+    total: i64,
+    dry_run: bool,
+) -> Result<()> {
     let mut transaction = pool.begin().await?;
     sqlx::query!(
         r#"delete from chevereto_import_failures where image_id > $1"#,
@@ -53,9 +59,10 @@ pub async fn start(pool: &PgPool, last_image_id: Option<i64>, total: i64) -> Res
     .await?;
     sqlx::query!(
         r#"update chevereto_import set last_image_id = coalesce($1, last_image_id), total = $2, done = 0, imported = 0,
-         rewritten_rows = 0, started_at = now(), finished_at = null, error = null"#,
+         rewritten_rows = 0, dry_run = $3, started_at = now(), finished_at = null, error = null"#,
         last_image_id,
-        total
+        total,
+        dry_run
     )
     .execute(&mut *transaction)
     .await?;
@@ -63,8 +70,9 @@ pub async fn start(pool: &PgPool, last_image_id: Option<i64>, total: i64) -> Res
     Ok(())
 }
 
-/// Count one processed image, and drop it from the failures list.
-pub async fn record_imported(pool: &PgPool, image_id: i64) -> Result<()> {
+/// Count one processed image, and drop `image_id` from the failures list.
+/// None (dry run) keeps the list as is.
+pub async fn record_imported(pool: &PgPool, image_id: Option<i64>) -> Result<()> {
     let mut transaction = pool.begin().await?;
     sqlx::query!(
         r#"delete from chevereto_import_failures where image_id = $1"#,
@@ -104,7 +112,7 @@ pub async fn record_failure(
 }
 
 /// Save a fully processed chunk: the next run resumes after `last_image_id`,
-/// None (retrying failures) keeps the saved id.
+/// None (retrying failures, dry run) keeps the saved id.
 pub async fn finish_chunk(
     pool: &PgPool,
     last_image_id: Option<i64>,

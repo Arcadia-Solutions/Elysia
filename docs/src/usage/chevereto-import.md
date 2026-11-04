@@ -45,3 +45,13 @@ by a restart, and resumed later. Images that fail are listed in the page without
 stopping the run; "Retry failed" imports only those images again, in chunks,
 without moving the saved resume point. Images that succeed leave the list, the
 others stay with their new error.
+
+## Dry run
+
+With "Dry run" on, a run does all the checks above and downloads every image it
+would import to validate it (reachable and a supported image), but stores
+nothing in Elysia, creates no user and rewrites no link. The progress then
+counts the images that would import. Images that would fail are added to the
+failures list (a later real run replays them anyway), while failures of real
+runs stay listed even when they would now succeed. The saved resume point does
+not move, so a real "Resume" afterwards starts where the last real run stopped.
