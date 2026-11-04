@@ -9,7 +9,8 @@ in the site that embeds them. Every field of the form is explained in the page.
 Images are read from Chevereto's MySQL database and downloaded over HTTP, then
 go through the normal upload pipeline: thumbnails, EXIF stripping and
 deduplication apply, size and pixel limits do not. Each image keeps its upload
-date and its uploader:
+date (unless it already existed in Elysia, then its date is left untouched) and
+its uploader:
 
 - When user matching is on, a Chevereto user whose username exists in the
   embedding site's users table becomes their single sign-on account in Elysia

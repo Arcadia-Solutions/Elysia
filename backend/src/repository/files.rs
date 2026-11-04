@@ -254,11 +254,10 @@ pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<Referrer
     .await?)
 }
 
-/// Move a file's upload date back to `uploaded_at` (unix seconds) when that is
-/// earlier, so a deduplicated import keeps its oldest date.
-pub async fn backdate_created_at(pool: &PgPool, id: &str, uploaded_at: i64) -> Result<()> {
+/// Set a file's upload date to `uploaded_at` (unix seconds).
+pub async fn set_created_at(pool: &PgPool, id: &str, uploaded_at: i64) -> Result<()> {
     sqlx::query!(
-        r#"update files set created_at = least(created_at, to_timestamp($2)) where id = $1"#,
+        r#"update files set created_at = to_timestamp($2) where id = $1"#,
         id,
         uploaded_at as f64
     )

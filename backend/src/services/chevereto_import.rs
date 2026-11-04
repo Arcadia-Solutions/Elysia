@@ -854,8 +854,9 @@ async fn import_image(
     )
     .await
     .map_err(|error| failure(error.to_string()))?;
-    if let Some(uploaded_at) = image.uploaded_at {
-        files_repo::backdate_created_at(&context.pool, &stored.id, uploaded_at)
+    // A deduplicated file keeps its existing upload date.
+    if let (false, Some(uploaded_at)) = (stored.existed, image.uploaded_at) {
+        files_repo::set_created_at(&context.pool, &stored.id, uploaded_at)
             .await
             .map_err(|error| failure(error.to_string()))?;
     }

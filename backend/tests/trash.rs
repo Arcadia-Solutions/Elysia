@@ -91,7 +91,7 @@ async fn trashes_own_files(pool: PgPool) {
         .unwrap();
 
     // Past the first hour, only an admin may trash it.
-    files::backdate_created_at(&pool, kept, 1_577_836_800)
+    files::set_created_at(&pool, kept, 1_577_836_800)
         .await
         .unwrap();
     let kept_ids = [kept.to_string()];

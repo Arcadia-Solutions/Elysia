@@ -75,27 +75,6 @@ async fn sorts_by_column_and_direction(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn backdate_only_moves_created_at_earlier(pool: PgPool) {
-    let uploader = common::test_user(&pool, "importer").await.0.id;
-    common::seed_files(&pool, uploader, "id", 1, 1).await;
-    let id = "id000000";
-
-    // 2020-01-01T00:00:00Z is before now, so the date moves.
-    files::backdate_created_at(&pool, id, 1_577_836_800)
-        .await
-        .unwrap();
-    let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
-    assert_eq!(metadata.created_at, "2020-01-01T00:00:00Z");
-
-    // A later date is ignored.
-    files::backdate_created_at(&pool, id, 1_609_459_200)
-        .await
-        .unwrap();
-    let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
-    assert_eq!(metadata.created_at, "2020-01-01T00:00:00Z");
-}
-
-#[sqlx::test(migrations = "./migrations")]
 async fn counts_image_and_thumbnail_views(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 1, 1).await;
