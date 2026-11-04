@@ -894,7 +894,9 @@ async fn prepare(
     lookup: Option<UserLookup>,
     elysia_public_url: String,
 ) -> Result<Job> {
+    // Imports run even while uploads are disabled.
     let settings = ElysiaSettings {
+        uploads_enabled: true,
         max_file_size_bytes: 0,
         max_width_pixels: 0,
         max_height_pixels: 0,
