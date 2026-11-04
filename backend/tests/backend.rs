@@ -370,6 +370,29 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn concurrent_identical_uploads_are_deduplicated(pool: PgPool) {
+    // Same bytes stored in parallel, as a Chevereto import chunk does: every
+    // upload ends on one id.
+    let (storage, _dir) = temp_storage();
+    let settings = webp_settings();
+    let image = noisy_png(64, 64);
+    let uploader = test_user(&pool, "racer").await.0.id;
+    let client = reqwest::Client::new();
+    let options = Default::default();
+    let urls: Vec<_> = (0..8)
+        .map(|_| serve_once("HTTP/1.1 200 OK", "image/png", image.clone()))
+        .collect();
+    let uploads = urls.iter().map(|url| {
+        store_from_url(
+            &pool, &storage, &settings, &client, url, None, &options, uploader, None,
+        )
+    });
+    let stored: Vec<_> = futures_util::future::join_all(uploads).await;
+    let ids: std::collections::HashSet<_> = stored.into_iter().map(|s| s.unwrap().id).collect();
+    assert_eq!(ids.len(), 1);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn rehost_rejects_a_non_image_link(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
