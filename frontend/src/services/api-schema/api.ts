@@ -237,6 +237,10 @@ export interface CheveretoImportProgress {
      */
     'last_image_id': number;
     /**
+     * Backend rows still holding Chevereto links when the last run reached its end (failed images keep theirs). None while running, without a backend database, or when the run stopped early.
+     */
+    'remaining_link_rows'?: number | null;
+    /**
      * Backend rows whose links the current or last run rewrote.
      */
     'rewritten_rows': number;

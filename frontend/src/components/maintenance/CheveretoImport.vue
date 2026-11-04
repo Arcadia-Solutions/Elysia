@@ -117,6 +117,12 @@
       <RunProgress :progress />
       <small>{{ $t('maintenance.chevereto_import.progress', { ...progress }) }}</small>
       <small v-if="progress.dry_run">{{ $t('maintenance.chevereto_import.dry_run_progress') }}</small>
+      <template v-if="progress.remaining_link_rows != null">
+        <Message v-if="progress.remaining_link_rows > 0" severity="warn" size="small">{{
+          $t('maintenance.chevereto_import.remaining_link_rows', { count: progress.remaining_link_rows })
+        }}</Message>
+        <small v-else>{{ $t('maintenance.chevereto_import.remaining_link_rows', { count: 0 }) }}</small>
+      </template>
       <small :title="formatDate(progress.started_at)">{{ $t('maintenance.chevereto_import.started', { when: timeAgo(progress.started_at) }) }}</small>
       <small v-if="progress.running && stopping">{{ $t('maintenance.chevereto_import.stopping') }}</small>
       <Message v-else-if="!progress.running && progress.error" severity="error" size="small">{{ progress.error }}</Message>

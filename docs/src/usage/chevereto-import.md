@@ -27,6 +27,14 @@ rewritten in one transaction and only rows whose content changes are updated.
 
 A column too short to hold the new link aborts the chunk: widen it and resume.
 
+Once a run has processed its last chunk, it counts the rows of that database
+that still contain a Chevereto link and shows the number, highlighted when it is
+not zero. Links of images that did not import (failed, unsupported storage,
+deleted from Chevereto) are left untouched, so they are counted: retry the
+failed images, then check again. A dry run counts too, which tells how many
+rows hold Chevereto links before importing. Nothing is counted when the run
+stops early or without a backend database.
+
 Each chunk scans every text column of that database, so time one chunk on a
 production-size copy first. A bigger batch size means fewer scans.
 

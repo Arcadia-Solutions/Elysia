@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update chevereto_import set last_image_id = coalesce($1, last_image_id), total = $2, done = 0, imported = 0,\n         rewritten_rows = 0, remaining_link_rows = null, dry_run = $3, started_at = now(), finished_at = null, error = null",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "af39273ab6d6b59b279032491c05fae42450c6a6af5d85eae9fdcd7598441120"
+}

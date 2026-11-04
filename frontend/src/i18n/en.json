@@ -521,6 +521,7 @@
       "restart_confirm": "Start over from the first Chevereto image? Already imported images are deduplicated, but every image is downloaded again.",
       "progress": "{done} / {total} images processed, {imported} imported, {failed} failed in total, {rewritten_rows} backend rows rewritten, last saved image id {last_image_id}",
       "dry_run_progress": "This was a dry run: imported counts the images that would import, nothing was stored.",
+      "remaining_link_rows": "{count} backend rows still contain Chevereto links, counted at the end of the run. Links of images that did not import (failed, unsupported, deleted from Chevereto) stay untouched.",
       "started": "Started {when}",
       "stopping": "Stopping after the current chunk...",
       "interrupted": "The last run was interrupted by a server restart. Resume to continue.",

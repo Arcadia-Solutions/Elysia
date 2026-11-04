@@ -226,6 +226,37 @@ end
 $function$
 "#;
 
+/// Every table with its text-like columns (text, json, arrays and domains of
+/// them), the columns link rewriting and counting scan.
+const TARGETS_FUNCTION_SQL: &str = r#"
+create or replace function pg_temp.link_targets()
+returns table(schema_name name, table_name name, column_names name[], column_types text[])
+language sql stable as $function$
+    select n.nspname as schema_name, c.relname as table_name,
+           array_agg(a.attname order by a.attnum) as column_names,
+           array_agg(format_type(a.atttypid, null) order by a.attnum) as column_types
+    from pg_catalog.pg_attribute a
+    join pg_catalog.pg_class c on c.oid = a.attrelid
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    join pg_catalog.pg_type column_type on column_type.oid = a.atttypid
+    join pg_catalog.pg_type base_type
+      on base_type.oid = coalesce(nullif(column_type.typbasetype, 0), column_type.oid)
+    left join pg_catalog.pg_type element_type
+      on element_type.oid = base_type.typelem and base_type.typcategory = 'A'
+    where c.relkind = 'r'
+      and n.nspname not in ('pg_catalog', 'information_schema')
+      and n.nspname not like 'pg\_toast%'
+      and n.nspname not like 'pg\_temp%'
+      and a.attnum > 0
+      and not a.attisdropped
+      and a.attgenerated = ''
+      and (base_type.typcategory = 'S'
+           or base_type.oid in ('json'::regtype, 'jsonb'::regtype)
+           or element_type.typcategory = 'S')
+    group by n.nspname, c.relname
+$function$
+"#;
+
 const REWRITE_FUNCTION_SQL: &str = r#"
 create or replace function pg_temp.rewrite_links(pattern text)
 returns bigint language plpgsql as $function$
@@ -236,30 +267,7 @@ declare
     updated_rows bigint;
     total bigint := 0;
 begin
-    for target in
-        select n.nspname as schema_name, c.relname as table_name,
-               array_agg(a.attname order by a.attnum) as column_names,
-               array_agg(format_type(a.atttypid, null) order by a.attnum) as column_types
-        from pg_catalog.pg_attribute a
-        join pg_catalog.pg_class c on c.oid = a.attrelid
-        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-        join pg_catalog.pg_type column_type on column_type.oid = a.atttypid
-        join pg_catalog.pg_type base_type
-          on base_type.oid = coalesce(nullif(column_type.typbasetype, 0), column_type.oid)
-        left join pg_catalog.pg_type element_type
-          on element_type.oid = base_type.typelem and base_type.typcategory = 'A'
-        where c.relkind = 'r'
-          and n.nspname not in ('pg_catalog', 'information_schema')
-          and n.nspname not like 'pg\_toast%'
-          and n.nspname not like 'pg\_temp%'
-          and a.attnum > 0
-          and not a.attisdropped
-          and a.attgenerated = ''
-          and (base_type.typcategory = 'S'
-               or base_type.oid in ('json'::regtype, 'jsonb'::regtype)
-               or element_type.typcategory = 'S')
-        group by n.nspname, c.relname
-    loop
+    for target in select * from pg_temp.link_targets() loop
         select string_agg(format('%I = pg_temp.apply_link_rewrites(%I::text, $1)::%s',
                                  column_name, column_name, column_type), ', '),
                string_agg(format('(%I::text ~ $1 and pg_temp.apply_link_rewrites(%I::text, $1) is distinct from %I::text)',
@@ -271,6 +279,30 @@ begin
         using pattern;
         get diagnostics updated_rows = row_count;
         total := total + updated_rows;
+    end loop;
+    return total;
+end
+$function$
+"#;
+
+const COUNT_FUNCTION_SQL: &str = r#"
+create or replace function pg_temp.count_link_rows(pattern text)
+returns bigint language plpgsql stable as $function$
+declare
+    target record;
+    filters text;
+    matching_rows bigint;
+    total bigint := 0;
+begin
+    for target in select * from pg_temp.link_targets() loop
+        select string_agg(format('%I::text ~ $1', column_name), ' or ')
+        into filters
+        from unnest(target.column_names) as target_columns(column_name);
+        execute format('select count(*) from only %I.%I where %s',
+                       target.schema_name, target.table_name, filters)
+        into matching_rows
+        using pattern;
+        total := total + matching_rows;
     end loop;
     return total;
 end
@@ -303,13 +335,15 @@ pub struct BackendUsers {
     pub email_column: Option<String>,
 }
 
-/// Creates the session-temporary link table, rewrite and user lookup functions.
+/// Creates the session-temporary link table, rewrite, count and user lookup functions.
 /// They only exist on this connection, so use one `PgConnection` for all later calls.
 pub async fn install_backend_functions(connection: &mut PgConnection) -> Result<()> {
     for sql in [
         TABLE_SQL,
         APPLY_FUNCTION_SQL,
+        TARGETS_FUNCTION_SQL,
         REWRITE_FUNCTION_SQL,
+        COUNT_FUNCTION_SQL,
         FIND_USER_FUNCTION_SQL,
     ] {
         sqlx::query(sql).execute(&mut *connection).await?;
@@ -367,6 +401,14 @@ pub async fn rewrite_links(
         .await?;
     transaction.commit().await?;
     Ok(updated as u64)
+}
+
+/// Rows of every table with a Chevereto link left in a text-like column.
+pub async fn count_link_rows(connection: &mut PgConnection, pattern: &str) -> Result<i64> {
+    Ok(sqlx::query_scalar(r#"select pg_temp.count_link_rows($1)"#)
+        .bind(pattern)
+        .fetch_one(connection)
+        .await?)
 }
 
 /// Applies the rewrites to one string, for checking the regex output.
@@ -444,6 +486,10 @@ pub struct CheveretoImportProgress {
     pub imported: i64,
     /// Backend rows whose links the current or last run rewrote.
     pub rewritten_rows: i64,
+    /// Backend rows still holding Chevereto links when the last run reached its
+    /// end (failed images keep theirs). None while running, without a backend
+    /// database, or when the run stopped early.
+    pub remaining_link_rows: Option<i64>,
     /// Whether the current or last run was a dry run.
     pub dry_run: bool,
     /// Images in the failures list.
@@ -476,6 +522,7 @@ pub async fn progress(pool: &PgPool) -> Result<CheveretoImportProgress> {
         done,
         imported,
         rewritten_rows,
+        remaining_link_rows,
         dry_run,
         failed,
         started_at,
@@ -489,6 +536,7 @@ pub async fn progress(pool: &PgPool) -> Result<CheveretoImportProgress> {
         done,
         imported,
         rewritten_rows,
+        remaining_link_rows,
         dry_run,
         failed,
         started_at,
@@ -636,8 +684,13 @@ pub async fn start(
             if let Err(error) = &result {
                 tracing::error!("chevereto import failed: {error}");
             }
-            let error = result.err().map(|error| error.to_string());
-            if let Err(error) = import_repo::finish(&pool, error.as_deref()).await {
+            let (remaining_link_rows, error) = match result {
+                Ok(remaining_link_rows) => (remaining_link_rows, None),
+                Err(error) => (None, Some(error.to_string())),
+            };
+            if let Err(error) =
+                import_repo::finish(&pool, remaining_link_rows, error.as_deref()).await
+            {
                 tracing::error!("failed to save the chevereto import end: {error}");
             }
         }
@@ -1090,7 +1143,9 @@ async fn prepare(
 }
 
 impl Job {
-    async fn run(self) -> Result<()> {
+    /// Returns the backend rows still holding Chevereto links once every chunk
+    /// is processed, None without a backend database.
+    async fn run(self) -> Result<Option<i64>> {
         let Job {
             chevereto,
             mut backend,
@@ -1124,7 +1179,7 @@ impl Job {
             let rows: Vec<ChunkRow> = match retry_chunks.as_mut() {
                 Some(chunks) => {
                     let Some(image_ids) = chunks.next() else {
-                        return Ok(());
+                        break;
                     };
                     let mut query =
                         QueryBuilder::new(concat!(chunk_select!(), "and i.image_id in ("));
@@ -1151,7 +1206,7 @@ impl Job {
                 if retry_chunks.is_some() {
                     continue;
                 }
-                return Ok(());
+                break;
             };
 
             let mut tasks = JoinSet::new();
@@ -1237,6 +1292,14 @@ impl Job {
                 rewritten_rows as i64,
             )
             .await?;
+        }
+        match backend.as_mut() {
+            Some(backend) => Ok(Some(
+                count_link_rows(backend, &link_pattern)
+                    .await
+                    .map_err(backend_error)?,
+            )),
+            None => Ok(None),
         }
     }
 }

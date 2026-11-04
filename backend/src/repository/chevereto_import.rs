@@ -9,6 +9,7 @@ pub struct CheveretoImportRow {
     pub done: i64,
     pub imported: i64,
     pub rewritten_rows: i64,
+    pub remaining_link_rows: Option<i64>,
     pub dry_run: bool,
     pub failed: i64,
     /// RFC 3339, UTC.
@@ -21,7 +22,7 @@ pub struct CheveretoImportRow {
 pub async fn get(pool: &PgPool) -> Result<CheveretoImportRow> {
     Ok(sqlx::query_as!(
         CheveretoImportRow,
-        r#"select last_image_id, total, done, imported, rewritten_rows, dry_run,
+        r#"select last_image_id, total, done, imported, rewritten_rows, remaining_link_rows, dry_run,
                 (select count(*) from chevereto_import_failures) as "failed!",
                 to_char(started_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as started_at,
                 to_char(finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as finished_at,
@@ -59,7 +60,7 @@ pub async fn start(
     .await?;
     sqlx::query!(
         r#"update chevereto_import set last_image_id = coalesce($1, last_image_id), total = $2, done = 0, imported = 0,
-         rewritten_rows = 0, dry_run = $3, started_at = now(), finished_at = null, error = null"#,
+         rewritten_rows = 0, remaining_link_rows = null, dry_run = $3, started_at = now(), finished_at = null, error = null"#,
         last_image_id,
         total,
         dry_run
@@ -128,9 +129,15 @@ pub async fn finish_chunk(
     Ok(())
 }
 
-pub async fn finish(pool: &PgPool, error: Option<&str>) -> Result<()> {
+/// Save the run end, with the backend rows still holding Chevereto links when counted.
+pub async fn finish(
+    pool: &PgPool,
+    remaining_link_rows: Option<i64>,
+    error: Option<&str>,
+) -> Result<()> {
     sqlx::query!(
-        r#"update chevereto_import set finished_at = now(), error = $1"#,
+        r#"update chevereto_import set finished_at = now(), remaining_link_rows = $1, error = $2"#,
+        remaining_link_rows,
         error
     )
     .execute(pool)

@@ -199,6 +199,7 @@ async fn rewrite_links_updates_text_like_columns(pool: sqlx::PgPool) {
     install_backend_functions(&mut connection).await.unwrap();
     let rewrites = rewrite_test_rewrites();
     let pattern = test_pattern();
+    assert_eq!(count_link_rows(&mut connection, &pattern).await.unwrap(), 7);
     // Rows 1 to 4, 6 and 7, each counted once even with several changed columns.
     assert_eq!(
         rewrite_links(&mut connection, &pattern, &rewrites)
@@ -216,6 +217,8 @@ async fn rewrite_links_updates_text_like_columns(pool: sqlx::PgPool) {
         rewrite_links(&mut connection, &pattern, &[]).await.unwrap(),
         0
     );
+    // Row 8 links an image with no rewrite.
+    assert_eq!(count_link_rows(&mut connection, &pattern).await.unwrap(), 1);
 }
 
 #[sqlx::test(

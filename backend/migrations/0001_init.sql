@@ -241,6 +241,7 @@ create table chevereto_import (
   done bigint not null default 0,
   imported bigint not null default 0,
   rewritten_rows bigint not null default 0,
+  remaining_link_rows bigint,
   dry_run boolean not null default false,
   started_at timestamptz,
   finished_at timestamptz,
@@ -255,6 +256,7 @@ comment on column chevereto_import.total is 'Chevereto images the current or las
 comment on column chevereto_import.done is 'Images the current or last run processed, failed ones included';
 comment on column chevereto_import.imported is 'Images the current or last run imported';
 comment on column chevereto_import.rewritten_rows is 'Backend rows whose links the current or last run rewrote';
+comment on column chevereto_import.remaining_link_rows is 'Backend rows still holding Chevereto links when the last run reached its end; null when not counted (no backend database, run stopped early)';
 comment on column chevereto_import.dry_run is 'Whether the current or last run only checked the images, storing nothing';
 comment on column chevereto_import.finished_at is 'When the last run ended; null while running or after a restart interrupted it';
 comment on column chevereto_import.error is 'Why the last run stopped early, if it did';
