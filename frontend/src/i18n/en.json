@@ -513,7 +513,7 @@
       "retry_failed": "Retry failed ({count})",
       "restart": "Restart from scratch",
       "stop": "Stop",
-      "buttons_help": "Resume continues after the last saved chunk. Retry failed restarts from the lowest failed image and replays everything after it. Restart from scratch starts over from the first image and forgets the failures. Replayed images are deduplicated, so no copy is stored twice. Stop ends the run once its current chunk is saved.",
+      "buttons_help": "Resume continues after the last saved chunk. Retry failed imports only the failed images again, without moving the saved resume point. Restart from scratch starts over from the first image and forgets the failures. Replayed images are deduplicated, so no copy is stored twice. Stop ends the run once its current chunk is saved.",
       "restart_confirm": "Start over from the first Chevereto image? Already imported images are deduplicated, but every image is downloaded again.",
       "progress": "{done} / {total} images processed, {imported} imported, {failed} failed in total, {rewritten_rows} backend rows rewritten, last saved image id {last_image_id}",
       "started": "Started {when}",

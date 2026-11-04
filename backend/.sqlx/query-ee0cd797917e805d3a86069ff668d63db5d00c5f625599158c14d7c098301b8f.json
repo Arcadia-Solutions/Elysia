@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select image_id from chevereto_import_failures order by image_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "chevereto_import_failures",
+            "name": "image_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ee0cd797917e805d3a86069ff668d63db5d00c5f625599158c14d7c098301b8f"
+}

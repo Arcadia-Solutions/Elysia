@@ -16,7 +16,7 @@ use actix_web::web::Data;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
-use sqlx::{Connection, PgConnection, PgPool};
+use sqlx::{Connection, PgConnection, PgPool, QueryBuilder};
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use utoipa::ToSchema;
@@ -393,7 +393,7 @@ pub async fn apply_link_rewrites(
 pub enum CheveretoImportStart {
     /// After the last fully processed chunk of the previous run.
     Resume,
-    /// From the lowest failed image, replaying everything after it.
+    /// Only the images in the failures list, the saved resume point stays.
     RetryFailed,
     /// From the first image, forgetting every failure.
     Restart,
@@ -653,18 +653,27 @@ struct Failure {
     error: String,
 }
 
-/// One chunk of images after the saved id, with storage and uploader.
-const CHUNK_QUERY: &str = r#"select cast(i.image_id as unsigned), i.image_name, i.image_extension,
+/// Images with storage and uploader, shared by the chunk queries.
+macro_rules! chunk_select {
+    () => {
+        r#"select cast(i.image_id as unsigned), i.image_name, i.image_extension,
      cast(i.image_storage_mode as char), date_format(i.image_date, '%Y/%m/%d'),
      cast(nullif(unix_timestamp(i.image_date_gmt), 0) as signed), i.image_original_filename,
      s.storage_url, u.user_username
      from chv_images i
      left join chv_storages s on s.storage_id = i.image_storage_id
      left join chv_users u on u.user_id = i.image_user_id
-     where i.image_type = 1 and i.image_id > ?
-     order by i.image_id limit ?"#;
+     where i.image_type = 1 "#
+    };
+}
 
-/// A `CHUNK_QUERY` row, in select order.
+/// One chunk of images after the saved id.
+const CHUNK_QUERY: &str = concat!(
+    chunk_select!(),
+    "and i.image_id > ? order by i.image_id limit ?"
+);
+
+/// A chunk query row, in select order.
 type ChunkRow = (
     u64,
     String,
@@ -878,6 +887,8 @@ struct Job {
     uploaders: Uploaders,
     link_pattern: String,
     last_image_id: i64,
+    /// Failed image ids when retrying them, None for a normal run.
+    retry_image_ids: Option<Vec<i64>>,
     batch_size: u32,
     concurrency: u32,
 }
@@ -993,24 +1004,30 @@ async fn prepare(
         )));
     }
 
-    let last_image_id = match params.start {
-        CheveretoImportStart::Resume => import_repo::get(pool).await?.last_image_id,
+    let (last_image_id, retry_image_ids) = match params.start {
+        CheveretoImportStart::Resume => (import_repo::get(pool).await?.last_image_id, None),
         CheveretoImportStart::RetryFailed => {
-            import_repo::first_failed_image_id(pool)
-                .await?
-                .ok_or_else(|| Error::BadRequest("no failed image to retry".into()))?
-                - 1
+            let image_ids = import_repo::failed_image_ids(pool).await?;
+            if image_ids.is_empty() {
+                return Err(Error::BadRequest("no failed image to retry".into()));
+            }
+            (import_repo::get(pool).await?.last_image_id, Some(image_ids))
         }
-        CheveretoImportStart::Restart => 0,
+        CheveretoImportStart::Restart => (0, None),
     };
-    let total: i64 = sqlx::query_scalar(
-        r#"select count(*) from chv_images where image_type = 1 and image_id > ?"#,
-    )
-    .bind(last_image_id)
-    .fetch_one(&chevereto)
-    .await
-    .map_err(chevereto_error)?;
-    import_repo::start(pool, last_image_id, total).await?;
+    match &retry_image_ids {
+        Some(image_ids) => import_repo::start(pool, None, image_ids.len() as i64).await?,
+        None => {
+            let total: i64 = sqlx::query_scalar(
+                r#"select count(*) from chv_images where image_type = 1 and image_id > ?"#,
+            )
+            .bind(last_image_id)
+            .fetch_one(&chevereto)
+            .await
+            .map_err(chevereto_error)?;
+            import_repo::start(pool, Some(last_image_id), total).await?;
+        }
+    }
 
     let link_settings = LinkSettings {
         public_url: params.chevereto_public_url,
@@ -1037,6 +1054,7 @@ async fn prepare(
             by_username: HashMap::new(),
         },
         last_image_id,
+        retry_image_ids,
         batch_size: params.batch_size,
         concurrency: params.concurrency,
     })
@@ -1051,11 +1069,15 @@ impl Job {
             mut uploaders,
             link_pattern,
             mut last_image_id,
+            retry_image_ids,
             batch_size,
             concurrency,
         } = self;
         let pool = &context.pool;
         let semaphore = Arc::new(Semaphore::new(concurrency as usize));
+        let mut retry_chunks = retry_image_ids
+            .as_deref()
+            .map(|image_ids| image_ids.chunks(batch_size as usize));
 
         // The saved id only advances after a chunk is fully stored and its links
         // rewritten, so an interruption replays at most that chunk: dedup returns
@@ -1069,13 +1091,36 @@ impl Job {
             check_shutdown().map_err(|_| {
                 Error::BadRequest("interrupted by a server shutdown, resume to continue".into())
             })?;
-            let rows: Vec<ChunkRow> = sqlx::query_as(CHUNK_QUERY)
-                .bind(last_image_id)
-                .bind(batch_size)
-                .fetch_all(&chevereto)
-                .await
-                .map_err(chevereto_error)?;
-            let Some(chunk_last_image_id) = rows.last().map(|row| row.0) else {
+            let rows: Vec<ChunkRow> = match retry_chunks.as_mut() {
+                Some(chunks) => {
+                    let Some(image_ids) = chunks.next() else {
+                        return Ok(());
+                    };
+                    let mut query =
+                        QueryBuilder::new(concat!(chunk_select!(), "and i.image_id in ("));
+                    let mut separated = query.separated(", ");
+                    for image_id in image_ids {
+                        separated.push_bind(*image_id);
+                    }
+                    separated.push_unseparated(") order by i.image_id");
+                    query.build_query_as().fetch_all(&chevereto).await
+                }
+                None => {
+                    sqlx::query_as(CHUNK_QUERY)
+                        .bind(last_image_id)
+                        .bind(batch_size)
+                        .fetch_all(&chevereto)
+                        .await
+                }
+            }
+            .map_err(chevereto_error)?;
+            // A retried chunk whose images are all gone from Chevereto is empty.
+            let (Some(chunk_first_image_id), Some(chunk_last_image_id)) =
+                (rows.first().map(|row| row.0), rows.last().map(|row| row.0))
+            else {
+                if retry_chunks.is_some() {
+                    continue;
+                }
                 return Ok(());
             };
 
@@ -1104,15 +1149,15 @@ impl Job {
                 tasks.spawn(async move {
                     let result = import_image(&context, &image, uploader).await;
                     drop(permit);
-                    result
+                    result.map(|image_rewrites| (image.id, image_rewrites))
                 });
             }
 
             let mut rewrites = Vec::new();
             while let Some(result) = tasks.join_next().await {
                 match result.map_err(|_| Error::Internal)? {
-                    Ok(image_rewrites) => {
-                        import_repo::record_imported(pool).await?;
+                    Ok((image_id, image_rewrites)) => {
+                        import_repo::record_imported(pool, image_id as i64).await?;
                         rewrites.extend(image_rewrites);
                     }
                     Err(failure) => {
@@ -1133,20 +1178,27 @@ impl Job {
             }
 
             let rewritten_rows = match backend.as_mut() {
-            Some(backend) => rewrite_links(backend, &link_pattern, &rewrites)
-                .await
-                .map_err(|error| {
-                    Error::BadRequest(format!(
-                        "rewriting backend links for images {} to {chunk_last_image_id} failed, \
-                         nothing was committed and the progress was not advanced \
-                         (fix the cause, e.g. widen a too short column, and resume): {error}",
-                        last_image_id + 1
-                    ))
-                })?,
-            None => 0,
-        };
-            last_image_id = chunk_last_image_id as i64;
-            import_repo::finish_chunk(pool, last_image_id, rewritten_rows as i64).await?;
+                Some(backend) => rewrite_links(backend, &link_pattern, &rewrites)
+                    .await
+                    .map_err(|error| {
+                        Error::BadRequest(format!(
+                            "rewriting backend links for images {chunk_first_image_id} to \
+                         {chunk_last_image_id} failed, nothing was committed and the progress \
+                         was not advanced (fix the cause, e.g. widen a too short column, and \
+                         resume): {error}"
+                        ))
+                    })?,
+                None => 0,
+            };
+            if retry_chunks.is_none() {
+                last_image_id = chunk_last_image_id as i64;
+            }
+            import_repo::finish_chunk(
+                pool,
+                retry_chunks.is_none().then_some(last_image_id),
+                rewritten_rows as i64,
+            )
+            .await?;
         }
     }
 }

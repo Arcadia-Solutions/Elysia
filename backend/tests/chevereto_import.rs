@@ -315,3 +315,42 @@ async fn import_checks_params_and_services_before_starting(pool: PgPool) {
     assert!(!progress.running);
     assert!(progress.started_at.is_none());
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn retry_keeps_resume_point_and_clears_retried_failures(pool: PgPool) {
+    use elysia::repository::chevereto_import as import_repo;
+    import_repo::start(&pool, Some(0), 10).await.unwrap();
+    import_repo::record_failure(&pool, 3, None, "first")
+        .await
+        .unwrap();
+    import_repo::record_failure(&pool, 7, None, "first")
+        .await
+        .unwrap();
+    import_repo::finish_chunk(&pool, Some(10), 0).await.unwrap();
+
+    import_repo::start(&pool, None, 2).await.unwrap();
+    assert_eq!(import_repo::failed_image_ids(&pool).await.unwrap(), [3, 7]);
+    import_repo::record_imported(&pool, 3).await.unwrap();
+    import_repo::record_failure(&pool, 7, None, "again")
+        .await
+        .unwrap();
+    import_repo::finish_chunk(&pool, None, 0).await.unwrap();
+    let row = import_repo::get(&pool).await.unwrap();
+    assert_eq!(
+        (row.last_image_id, row.total, row.done, row.failed),
+        (10, 2, 2, 1)
+    );
+    let failures = import_repo::failures_page(&pool, 0, 10).await.unwrap();
+    assert_eq!(
+        (failures[0].image_id, failures[0].error.as_str()),
+        (7, "again")
+    );
+
+    import_repo::start(&pool, Some(5), 0).await.unwrap();
+    assert!(
+        import_repo::failed_image_ids(&pool)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}

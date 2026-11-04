@@ -42,5 +42,6 @@ rewriting.
 
 Progress is saved after each chunk, so the import can be stopped, or interrupted
 by a restart, and resumed later. Images that fail are listed in the page without
-stopping the run; "Retry failed" restarts from the first failed image, which is
-safe thanks to deduplication.
+stopping the run; "Retry failed" imports only those images again, in chunks,
+without moving the saved resume point. Images that succeed leave the list, the
+others stay with their new error.
