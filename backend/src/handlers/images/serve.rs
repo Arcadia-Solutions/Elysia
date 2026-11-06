@@ -32,10 +32,10 @@ pub async fn serve(
 ) -> Result<HttpResponse> {
     let decision = check_referrer(&req, &settings)?;
     let (id, ext) = parse_filename(&filename)?;
-    let file = match storage.open(id, ext).await {
+    let file = match storage.open(id, ext) {
         Ok(file) => file,
         Err(_) => {
-            let trashed_file = storage.open_trashed(id, ext).await;
+            let trashed_file = storage.open_trashed(id, ext);
             return trashed_response(&req, &decision, trashed_file);
         }
     };

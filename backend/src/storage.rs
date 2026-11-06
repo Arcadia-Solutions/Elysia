@@ -82,8 +82,8 @@ impl Storage {
 
     /// Open a stored file for streaming. NamedFile handles range requests and
     /// conditional GET (ETag/Last-Modified) for free.
-    pub async fn open(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
-        NamedFile::open_async(self.path_for(id, ext)).await
+    pub fn open(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
+        NamedFile::open(self.path_for(id, ext))
     }
 
     /// On-disk path for a file's thumbnail: `<root>/<shard>/<id>.t.webp`.
@@ -100,8 +100,8 @@ impl Storage {
     }
 
     /// Open a stored thumbnail for streaming.
-    pub async fn open_thumbnail(&self, id: &str) -> std::io::Result<NamedFile> {
-        NamedFile::open_async(self.thumbnail_path_for(id)).await
+    pub fn open_thumbnail(&self, id: &str) -> std::io::Result<NamedFile> {
+        NamedFile::open(self.thumbnail_path_for(id))
     }
 
     /// Trash dir: `<root>/trash`. Shard dirs are 2 chars, so it never clashes.
@@ -152,16 +152,16 @@ impl Storage {
     }
 
     /// Open a trashed file for streaming.
-    pub async fn open_trashed(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
-        NamedFile::open_async(self.trash_path_for(id, ext)).await
+    pub fn open_trashed(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
+        NamedFile::open(self.trash_path_for(id, ext))
     }
 
     /// Open a trashed file's thumbnail, or the trashed file itself when it has
     /// none (same fallback as `/t/`).
-    pub async fn open_trashed_thumbnail(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
-        match NamedFile::open_async(self.trash_thumbnail_path_for(id)).await {
+    pub fn open_trashed_thumbnail(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
+        match NamedFile::open(self.trash_thumbnail_path_for(id)) {
             Ok(file) => Ok(file),
-            Err(_) => NamedFile::open_async(self.trash_path_for(id, ext)).await,
+            Err(_) => NamedFile::open(self.trash_path_for(id, ext)),
         }
     }
 

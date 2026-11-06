@@ -34,12 +34,12 @@ pub async fn serve_thumbnail(
 ) -> Result<HttpResponse> {
     let decision = check_referrer(&req, &settings)?;
     let (id, ext) = parse_filename(&filename)?;
-    let file = match storage.open_thumbnail(id).await {
+    let file = match storage.open_thumbnail(id) {
         Ok(file) => file,
-        Err(_) => match storage.open(id, ext).await {
+        Err(_) => match storage.open(id, ext) {
             Ok(file) => file,
             Err(_) => {
-                let trashed_file = storage.open_trashed_thumbnail(id, ext).await;
+                let trashed_file = storage.open_trashed_thumbnail(id, ext);
                 return trashed_response(&req, &decision, trashed_file);
             }
         },

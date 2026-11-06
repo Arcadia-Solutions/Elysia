@@ -136,12 +136,7 @@ async fn wipes_trash(pool: PgPool) {
     // Same upload date, so the id breaks the tie, descending.
     assert_eq!(trashed_ids().await, ["recent00", "expired0"]);
     // The trash view serves thumbnails from the trash, falling back to the file.
-    assert!(
-        storage
-            .open_trashed_thumbnail("recent00", "png")
-            .await
-            .is_ok()
-    );
+    assert!(storage.open_trashed_thumbnail("recent00", "png").is_ok());
 
     // The scheduled wipe only takes files past their 30 days.
     wipe_trash(&pool, &storage, TRASH_RETENTION_DAYS, None)
