@@ -60,7 +60,7 @@ const refreshTokens = (): Promise<void> => {
 
 const logOut = (error: unknown) => {
   clearSession()
-  window.location.replace('/login')
+  window.location.replace(`${import.meta.env.BASE_URL}login`)
   return Promise.reject(error)
 }
 
@@ -95,8 +95,9 @@ export default http
 // The generated client, bound to our auth-aware axios instance. The generator
 // emits one factory per utoipa tag; merge them so views call methods directly
 // (api.login, api.upload). Operation ids are unique, so nothing collides.
-// An empty basePath keeps request URLs relative (vite proxy).
-const factoryArgs = [undefined, '', http] as const
+// basePath is the base the UI is built for (`vite build --base`) without its trailing slash:
+// empty at the root (the vite proxy forwards /api), e.g. /elysia when served under a subpath.
+const factoryArgs = [undefined, import.meta.env.BASE_URL.replace(/\/$/, ''), http] as const
 export const api = {
   ...AlbumsApiFactory(...factoryArgs),
   ...APIKeysApiFactory(...factoryArgs),
