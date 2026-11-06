@@ -1,7 +1,7 @@
 //! Tests for the image-processing feature: the pure pipeline, the processing
 //! store path, config validation for processing, and the quality query option.
 
-mod common;
+use crate::common;
 
 use actix_web::http::StatusCode;
 use sqlx::PgPool;

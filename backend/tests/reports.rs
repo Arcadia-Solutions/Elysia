@@ -1,6 +1,6 @@
 //! Reports: users flag images, admins work through the moderation queue.
 
-mod common;
+use crate::common;
 
 use actix_web::App;
 use actix_web::http::StatusCode;

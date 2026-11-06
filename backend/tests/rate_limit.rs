@@ -1,7 +1,7 @@
 //! Rate limiting of unauthenticated routes per client IP (behind trusted
 //! proxies too), of login per IP, and of authenticated routes per user.
 
-mod common;
+use crate::common;
 
 use std::net::SocketAddr;
 use std::sync::RwLock;

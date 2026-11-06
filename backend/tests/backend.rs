@@ -3,7 +3,7 @@
 //! path, and the repository layer. The DB-backed tests run against a real
 //! Postgres database via `#[sqlx::test]`.
 
-mod common;
+use crate::common;
 
 use actix_web::ResponseError;
 use actix_web::http::StatusCode;

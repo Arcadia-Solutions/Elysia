@@ -1,7 +1,7 @@
 //! The SSO provider uploading on behalf of its users with its client
 //! credentials.
 
-mod common;
+use crate::common;
 
 use actix_web::App;
 use actix_web::http::StatusCode;

@@ -1,5 +1,4 @@
 //! Helpers shared by the integration test binaries.
-#![expect(dead_code)]
 
 use std::sync::RwLock;
 

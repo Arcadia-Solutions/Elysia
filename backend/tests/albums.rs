@@ -1,6 +1,6 @@
 //! Albums: ownership, images from other uploaders, listing and the image page.
 
-mod common;
+use crate::common;
 
 use actix_web::App;
 use actix_web::http::StatusCode;

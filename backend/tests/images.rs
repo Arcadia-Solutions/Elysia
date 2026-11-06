@@ -1,6 +1,6 @@
 //! Browse pagination: page size, total count, the empty tail page and sorting.
 
-mod common;
+use crate::common;
 
 use sqlx::PgPool;
 

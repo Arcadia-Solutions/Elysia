@@ -1,6 +1,6 @@
 //! Finding images that look alike by their perceptual hash.
 
-mod common;
+use crate::common;
 
 use std::num::NonZeroU32;
 

@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use actix_web::web::Data;
 use sqlx::PgPool;

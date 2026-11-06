@@ -1,7 +1,7 @@
 //! OpenID Connect client: discovery, authorize URL, callback provisioning,
 //! conflict handling and live ban checks against a mock provider.
 
-mod common;
+use crate::common;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};

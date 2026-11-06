@@ -1,6 +1,6 @@
 //! Admin user management: listing, profiles, bans, admin rights and the browse username filter.
 
-mod common;
+use crate::common;
 
 use actix_web::App;
 use actix_web::dev::ServiceResponse;

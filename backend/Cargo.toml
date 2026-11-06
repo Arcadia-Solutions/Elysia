@@ -3,6 +3,8 @@ name = "elysia"
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-only"
+# most of tests/ are modules of the single `it` binary, so the app is linked once
+autotests = false
 
 [lints.rust]
 unreachable_pub = "warn"
@@ -60,3 +62,22 @@ rustix = { version = "1", features = ["fs"] }
 # Argon2 and the image codecs crawl unoptimized; optimize dependencies even in dev and tests.
 [profile.dev.package."*"]
 opt-level = 3
+
+[[test]]
+name = "it"
+path = "tests/main.rs"
+
+# needs a process of its own
+[[test]]
+name = "config"
+path = "tests/config.rs"
+
+# needs a process of its own
+[[test]]
+name = "fixtures"
+path = "tests/fixtures.rs"
+
+# needs a process of its own
+[[test]]
+name = "outbound_proxy"
+path = "tests/outbound_proxy.rs"

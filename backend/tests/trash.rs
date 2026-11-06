@@ -1,6 +1,6 @@
 //! Trashing images: permissions, the moved files, the wipe and the stats.
 
-mod common;
+use crate::common;
 
 use std::sync::RwLock;
 

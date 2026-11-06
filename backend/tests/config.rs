@@ -1,3 +1,4 @@
+#[expect(dead_code, reason = "each binary uses only part of the shared helpers")]
 mod common;
 
 use elysia::config::{Config, SsoConfig};

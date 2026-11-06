@@ -1,7 +1,7 @@
 //! Tests for the elysia-settings endpoints: an admin round-trip through
 //! GET/PUT, persistence to the DB, and rejection of contradictory settings.
 
-mod common;
+use crate::common;
 
 use std::sync::RwLock;
 

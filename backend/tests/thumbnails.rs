@@ -1,7 +1,7 @@
 //! Tests for thumbnail generation: config validation, when a thumbnail is made
 //! versus when /t/ falls back to the main file, and the stored thumbnail format.
 
-mod common;
+use crate::common;
 
 use sqlx::PgPool;
 

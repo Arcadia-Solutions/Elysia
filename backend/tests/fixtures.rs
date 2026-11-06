@@ -2,6 +2,7 @@
 //!
 //! Keep a single test here: runs share one process-wide progress state.
 
+#[expect(dead_code, reason = "each binary uses only part of the shared helpers")]
 mod common;
 
 use actix_web::web::Data;

@@ -1,6 +1,6 @@
 //! API keys: scopes, upload tracking and revocation.
 
-mod common;
+use crate::common;
 
 use actix_web::App;
 use actix_web::http::StatusCode;

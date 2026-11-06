@@ -1,7 +1,7 @@
 //! Local account auth: register, login, session checks, bans, ownership and
 //! admin-only settings access.
 
-mod common;
+use crate::common;
 
 use std::sync::RwLock;
 

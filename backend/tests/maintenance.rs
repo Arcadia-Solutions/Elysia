@@ -1,6 +1,6 @@
 //! Finding images no longer linked from an application's database.
 
-mod common;
+use crate::common;
 
 use std::collections::HashSet;
 use std::num::NonZeroU32;

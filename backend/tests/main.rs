@@ -1,0 +1,20 @@
+mod common;
+
+mod albums;
+mod api_keys;
+mod auth;
+mod backend;
+mod chevereto_import;
+mod compression;
+mod images;
+mod maintenance;
+mod rate_limit;
+mod reports;
+mod settings;
+mod similar_images;
+mod sso;
+mod stats;
+mod thumbnails;
+mod trash;
+mod upload_delegation;
+mod users;

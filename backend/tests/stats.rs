@@ -1,6 +1,6 @@
 //! Admin dashboard stats: running totals, format breakdown and uploader ranking.
 
-mod common;
+use crate::common;
 
 use sqlx::PgPool;
 
