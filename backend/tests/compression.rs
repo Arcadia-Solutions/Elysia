@@ -809,3 +809,35 @@ fn gif_frame_larger_than_its_screen_is_rejected() {
         Err(ProcessError::Undecodable)
     ));
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn conversion_larger_than_source_keeps_source(pool: PgPool) {
+    let (storage, _dir) = temp_storage();
+    // A low-quality JPEG re-encoded at quality 100 can only grow.
+    let pixels = image::load_from_memory(&noisy_png(64, 64))
+        .unwrap()
+        .to_rgb8();
+    let mut source = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut source, 30)
+        .encode_image(&pixels)
+        .unwrap();
+    let uploader = test_user(&pool, "growthguard").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &webp_settings(),
+        &reqwest::Client::new(),
+        &serve_once("HTTP/1.1 200 OK", "image/jpeg", source),
+        None,
+        &UploadOptions {
+            lossy_compression_value: Some(100),
+            ..Default::default()
+        },
+        uploader,
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(stored.ext, "jpg");
+    assert!(stored.actions.is_none());
+}

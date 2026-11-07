@@ -493,6 +493,12 @@ pub async fn store_upload(
         }
         None => (None, None, None),
     };
+    // A re-encode that is not smaller and did not resize only wastes space
+    // (typically a lossy source re-encoded at a high quality): keep the source.
+    let processed = processed.filter(|processed| {
+        processed.bytes.len() < size as usize
+            || (processed.width as i32, processed.height as i32) != (source_width, source_height)
+    });
 
     let output = match processed {
         Some(p) => {
