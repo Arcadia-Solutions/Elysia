@@ -32,20 +32,22 @@ const login = async (page: Page) => {
 }
 
 // A canvas of random pixels, so every image is new to the deduplication.
-const image = async (page: Page, name: string, width = 200, height = 100): Promise<FilePayload> => {
+// `flat` uses one random color instead, for an image that compresses well.
+const image = async (page: Page, name: string, width = 200, height = 100, flat = false): Promise<FilePayload> => {
   const mimeType = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' }[name.split('.').pop() ?? ''] ?? 'image/png'
   const base64 = await page.evaluate(
-    ([mimeType, width, height]) => {
+    ([mimeType, width, height, flat]) => {
       const canvas = document.createElement('canvas')
       canvas.width = width
       canvas.height = height
       const context = canvas.getContext('2d')!
       const pixels = context.createImageData(width, height)
-      pixels.data.forEach((_, i) => (pixels.data[i] = i % 4 === 3 ? 255 : Math.random() * 256))
+      const color = [0, 1, 2].map(() => Math.random() * 256)
+      pixels.data.forEach((_, i) => (pixels.data[i] = i % 4 === 3 ? 255 : flat ? color[i % 4] : Math.random() * 256))
       context.putImageData(pixels, 0, 0)
       return canvas.toDataURL(mimeType).split(',')[1]
     },
-    [mimeType, width, height] as const,
+    [mimeType, width, height, flat] as const,
   )
   return { name, mimeType, buffer: Buffer.from(base64, 'base64') }
 }
@@ -346,7 +348,8 @@ test.describe('upload settings', () => {
     await page.locator('.p-select', { hasText: 'Use default' }).click()
     await page.getByRole('option', { name: 'PNG' }).click()
     await expect(quality).toBeHidden()
-    await choose(page, [await image(page, 'to-png.jpg')])
+    // Noise would be heavier as PNG than as JPG, and the source would be kept.
+    await choose(page, [await image(page, 'to-png.jpg', 200, 100, true)])
     const [png] = await upload(page, 1)
     await view(page, png)
     await expect(metaValue(page, 'Format')).toHaveText('image/png')
