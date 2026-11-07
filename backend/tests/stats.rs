@@ -111,7 +111,11 @@ async fn groups_referrers_past_the_top_ones(pool: PgPool) {
             } else {
                 "seen000001"
             };
-            views.count(id, &format!("h{host:02}.com"), view == 0);
+            views.count(
+                id,
+                &format!("h{host:02}.com"),
+                (view == 0).then_some(elysia::storage::Preview::Medium),
+            );
         }
     }
     views.flush(&pool).await;
@@ -121,6 +125,7 @@ async fn groups_referrers_past_the_top_ones(pool: PgPool) {
         &["old000000".into()],
         &["old.com".into()],
         &[100],
+        &[0],
         &[0],
     )
     .await

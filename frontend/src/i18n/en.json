@@ -119,7 +119,7 @@
     "format": "Format",
     "uploaded_by": "Uploaded by",
     "views": "Views",
-    "views_value": "{views} image, {medium_views} medium",
+    "views_value": "{views} image, {medium_views} medium, {thumbnail_views} thumbnail",
     "no_referrer": "No referrer",
     "trashed_at": "Deleted at",
     "trashed_by": "Deleted by",
@@ -164,7 +164,9 @@
       "height": "Height",
       "original_hash": "Original hash",
       "views": "Image views",
-      "medium_views": "Medium views"
+      "medium_views": "Medium views",
+      "thumbnail_views": "Thumbnail views",
+      "thumbnail_views": "Thumbnail views"
     },
     "order": {
       "asc": "Ascending",
@@ -238,6 +240,7 @@
     "referrers": "Views per referrer",
     "views": "Views",
     "medium_views": "Medium views",
+    "thumbnail_views": "Thumbnail views",
     "other_referrers": "Others"
   },
   "settings": {

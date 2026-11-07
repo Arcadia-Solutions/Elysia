@@ -247,8 +247,8 @@ async fn run(
     let mut random = Random(seed | 1);
     let history_seconds = f64::from(params.history_days) * 86400.0;
     // Views of every stored image, one entry per (id, referrer), added at the end.
-    let (mut view_ids, mut view_referrers, mut views, mut medium_views) =
-        (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let (mut view_ids, mut view_referrers, mut views, mut medium_views, mut thumbnail_views) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
 
     for index in 0..params.image_count {
         check_shutdown()?;
@@ -307,13 +307,22 @@ async fn run(
                     view_referrers.push(REFERRERS[(first + offset) % REFERRERS.len()].to_owned());
                     views.push((random.unit().powi(3) * 5000.0) as i64);
                     medium_views.push((random.unit().powi(3) * 1000.0) as i64);
+                    thumbnail_views.push((random.unit().powi(3) * 1000.0) as i64);
                 }
             }
             Err(error) => tracing::warn!("fixture image {index} rejected: {error}"),
         }
         update(|progress| progress.done = index + 1);
     }
-    files_repository::add_views(pool, &view_ids, &view_referrers, &views, &medium_views).await?;
+    files_repository::add_views(
+        pool,
+        &view_ids,
+        &view_referrers,
+        &views,
+        &medium_views,
+        &thumbnail_views,
+    )
+    .await?;
     // Users were created now; move each sign-up back to their first upload so
     // the new users count matches the upload history.
     sqlx::query!(

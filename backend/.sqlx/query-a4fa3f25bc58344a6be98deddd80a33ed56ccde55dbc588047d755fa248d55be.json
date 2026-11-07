@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select referrer, views, medium_views from file_referrer_views\n         where file_id = $1 order by views desc, medium_views desc, referrer",
+  "query": "select referrer, views, medium_views, thumbnail_views from file_referrer_views\n         where file_id = $1\n         order by views desc, medium_views desc, thumbnail_views desc, referrer",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,17 @@
             "name": "medium_views"
           }
         }
+      },
+      {
+        "ordinal": 3,
+        "name": "thumbnail_views",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "file_referrer_views",
+            "name": "thumbnail_views"
+          }
+        }
       }
     ],
     "parameters": {
@@ -45,8 +56,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "0a0d8bbfa770f30808c54c3077ca620024029fab1147aea18179c3d49acc2634"
+  "hash": "a4fa3f25bc58344a6be98deddd80a33ed56ccde55dbc588047d755fa248d55be"
 }

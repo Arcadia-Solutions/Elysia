@@ -35,7 +35,7 @@ pub async fn serve_medium(
     serve_preview(
         &req,
         &storage,
-        Some(&views),
+        &views,
         &settings,
         &filename,
         Preview::Medium,
@@ -47,8 +47,7 @@ pub async fn serve_medium(
     get,
     path = "/t/{filename}",
     description = "The image cropped to the thumbnail box, used by the browse pages. Served \
-        like `/m/`, falling back to the original file when no thumbnail was generated. \
-        Views are not counted.",
+        like `/m/`, falling back to the original file when no thumbnail was generated.",
     params(("filename" = String, Path, description = "<id>.<ext>")),
     responses(
         (status = 200, description = "The thumbnail bytes, or the original image when it is within the thumbnail box"),
@@ -59,13 +58,14 @@ pub async fn serve_medium(
 pub async fn serve_thumbnail(
     req: HttpRequest,
     storage: Data<Storage>,
+    views: Data<ViewCounter>,
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
     serve_preview(
         &req,
         &storage,
-        None,
+        &views,
         &settings,
         &filename,
         Preview::Thumbnail,
@@ -73,11 +73,11 @@ pub async fn serve_thumbnail(
 }
 
 /// Serve a preview, or the original file when none was generated, counting a
-/// view when `views` is set.
+/// view of it.
 fn serve_preview(
     req: &HttpRequest,
     storage: &Storage,
-    views: Option<&ViewCounter>,
+    views: &ViewCounter,
     settings: &SharedElysiaSettings,
     filename: &str,
     preview: Preview,
@@ -94,10 +94,8 @@ fn serve_preview(
             }
         },
     };
-    if let Some(views) = views
-        && !decision.from_own_page
-    {
-        views.count(id, &decision.referrer, true);
+    if !decision.from_own_page {
+        views.count(id, &decision.referrer, Some(preview));
     }
     Ok(file_response(req, file, decision.cache_control))
 }

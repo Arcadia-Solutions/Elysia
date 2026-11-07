@@ -43,10 +43,11 @@
         <dd>{{ meta.mime }}</dd>
         <dt>{{ $t('image.views') }}</dt>
         <dd>
-          {{ $t('image.views_value', { views: meta.views, medium_views: meta.medium_views }) }}
+          {{ $t('image.views_value', { views: meta.views, medium_views: meta.medium_views, thumbnail_views: meta.thumbnail_views }) }}
           <ul v-if="meta.referrers.length" class="list">
             <li v-for="row in meta.referrers" :key="row.referrer">
-              {{ row.referrer || $t('image.no_referrer') }}: {{ $t('image.views_value', { views: row.views, medium_views: row.medium_views }) }}
+              {{ row.referrer || $t('image.no_referrer') }}:
+              {{ $t('image.views_value', { views: row.views, medium_views: row.medium_views, thumbnail_views: row.thumbnail_views }) }}
             </li>
           </ul>
         </dd>

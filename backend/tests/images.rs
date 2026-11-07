@@ -9,6 +9,7 @@ use elysia::handlers::images::parse_filename;
 use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder};
 use elysia::services::files::list_images;
 use elysia::services::views::ViewCounter;
+use elysia::storage::Preview;
 
 #[sqlx::test(migrations = "./migrations")]
 async fn paginates_with_total(pool: PgPool) {
@@ -75,47 +76,66 @@ async fn sorts_by_column_and_direction(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn counts_image_and_medium_views(pool: PgPool) {
+async fn counts_image_and_preview_views(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 1, 1).await;
     common::seed_files(&pool, uploader, "unseen", 1, 1).await;
     let id = "seen000000";
 
     let views = ViewCounter::default();
-    for (referrer, medium) in [
-        ("a.com", false),
-        ("a.com", false),
-        ("", true),
-        ("b.com", false),
+    for (referrer, preview) in [
+        ("a.com", None),
+        ("a.com", None),
+        ("", Some(Preview::Medium)),
+        ("b.com", None),
+        ("b.com", Some(Preview::Thumbnail)),
     ] {
-        views.count(id, referrer, medium);
+        views.count(id, referrer, preview);
     }
-    views.count("missing0", "a.com", false);
+    views.count("missing0", "a.com", None);
     views.flush(&pool).await;
     // Flushed counts are cleared, so a second flush adds nothing.
     views.flush(&pool).await;
 
     let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
-    assert_eq!((metadata.views, metadata.medium_views), (3, 1));
+    assert_eq!(
+        (
+            metadata.views,
+            metadata.medium_views,
+            metadata.thumbnail_views
+        ),
+        (3, 1, 1)
+    );
     // A second batch adds onto the existing referrer rows.
-    views.count(id, "b.com", false);
+    views.count(id, "b.com", None);
     views.flush(&pool).await;
     let referrers: Vec<_> = files::find_referrer_views(&pool, id)
         .await
         .unwrap()
         .into_iter()
-        .map(|row| (row.referrer, row.views, row.medium_views))
+        .map(|row| {
+            (
+                row.referrer,
+                row.views,
+                row.medium_views,
+                row.thumbnail_views,
+            )
+        })
         .collect();
     assert_eq!(
         referrers,
         [
-            ("a.com".into(), 2, 0),
-            ("b.com".into(), 2, 0),
-            (String::new(), 0, 1)
+            ("b.com".into(), 2, 0, 1),
+            ("a.com".into(), 2, 0, 0),
+            (String::new(), 0, 1, 0)
         ]
     );
 
-    for sort_by in [ImagesSortBy::Views, ImagesSortBy::MediumViews] {
+    for sort_by in [
+        ImagesSortBy::Views,
+        ImagesSortBy::MediumViews,
+        ImagesSortBy::ThumbnailViews,
+    ] {
         let rows = list_images(
             &pool,
             &ImagesQuery {

@@ -265,7 +265,7 @@ const formatsChart = computed(
   }),
 )
 
-// Share of the views (image and medium) per referrer, the split in the tooltip.
+// Share of the views (image, medium and thumbnail) per referrer, the split in the tooltip.
 const referrerName = (referrer: string | null | undefined) => (referrer == null ? t('dashboard.other_referrers') : referrer || t('image.no_referrer'))
 const referrersChart = computed(
   (): Highcharts.Options => ({
@@ -276,7 +276,7 @@ const referrersChart = computed(
       {
         type: 'pie',
         name: t('dashboard.views'),
-        data: (stats.value?.referrers ?? []).map((row) => ({ name: referrerName(row.referrer), y: row.views + row.medium_views })),
+        data: (stats.value?.referrers ?? []).map((row) => ({ name: referrerName(row.referrer), y: row.views + row.medium_views + row.thumbnail_views })),
         dataLabels: { style: { color: themeColors.value.muted, textOutline: 'none' } },
       },
     ],
@@ -284,7 +284,7 @@ const referrersChart = computed(
       formatter() {
         const row = stats.value?.referrers[this.index]
         if (!row) return false
-        return `<b>${referrerName(row.referrer)}</b> (${(this.percentage ?? 0).toFixed(1)}%)<br/>${t('dashboard.views')}: ${formatCount(row.views)}<br/>${t('dashboard.medium_views')}: ${formatCount(row.medium_views)}`
+        return `<b>${referrerName(row.referrer)}</b> (${(this.percentage ?? 0).toFixed(1)}%)<br/>${t('dashboard.views')}: ${formatCount(row.views)}<br/>${t('dashboard.medium_views')}: ${formatCount(row.medium_views)}<br/>${t('dashboard.thumbnail_views')}: ${formatCount(row.thumbnail_views)}`
       },
     },
   }),

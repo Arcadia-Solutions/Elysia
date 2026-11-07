@@ -40,7 +40,7 @@ pub async fn serve(
         }
     };
     if !decision.from_own_page {
-        views.count(id, &decision.referrer, false);
+        views.count(id, &decision.referrer, None);
     }
     Ok(file_response(&req, file, decision.cache_control))
 }

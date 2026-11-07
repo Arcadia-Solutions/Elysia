@@ -36,6 +36,8 @@ pub struct MetadataResponse {
     pub views: i64,
     /// Times the medium was served from `/m/`.
     pub medium_views: i64,
+    /// Times the thumbnail was served from `/t/`.
+    pub thumbnail_views: i64,
     /// Views split by `Referer` host, most image views first.
     pub referrers: Vec<ReferrerViews>,
     pub uploader_username: String,
@@ -116,6 +118,7 @@ pub async fn metadata(
         applied_quality: row.applied_quality,
         views: row.views,
         medium_views: row.medium_views,
+        thumbnail_views: row.thumbnail_views,
         referrers,
         albums,
         uploader_username: row.uploader_username,

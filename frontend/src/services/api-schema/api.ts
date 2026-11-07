@@ -549,7 +549,8 @@ export const ImagesSortBy = {
     Height: 'height',
     OriginalHash: 'original_hash',
     Views: 'views',
-    MediumViews: 'medium_views'
+    MediumViews: 'medium_views',
+    ThumbnailViews: 'thumbnail_views'
 } as const;
 
 export type ImagesSortBy = typeof ImagesSortBy[keyof typeof ImagesSortBy];
@@ -658,6 +659,10 @@ export interface MetadataResponse {
      */
     'referrers': Array<ReferrerViews>;
     'size': number;
+    /**
+     * Times the thumbnail was served from `/t/`.
+     */
+    'thumbnail_views': number;
     /**
      * When the image was trashed, as a UTC ISO-8601 string. Null while available.
      */
@@ -950,7 +955,7 @@ export interface PublicElysiaSettings {
 
 
 /**
- * Image and medium views from one `Referer` host, of the files uploaded within the period.
+ * Image, medium and thumbnail views from one `Referer` host, of the files uploaded within the period.
  */
 export interface ReferrerTotal {
     'medium_views': number;
@@ -958,6 +963,7 @@ export interface ReferrerTotal {
      * Lowercased `Referer` host; empty for requests without a `Referer`, null for the hosts past the top ones, summed together.
      */
     'referrer'?: string | null;
+    'thumbnail_views': number;
     'views': number;
 }
 /**
@@ -969,6 +975,7 @@ export interface ReferrerViews {
      * Lowercased `Referer` host; empty for requests without a `Referer`.
      */
     'referrer': string;
+    'thumbnail_views': number;
     'views': number;
 }
 /**
@@ -3274,7 +3281,7 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3556,7 +3563,7 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3690,7 +3697,7 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serveMedium(filename, options).then((request) => request(axios, basePath));
         },
         /**
-         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3817,7 +3824,7 @@ export class ImagesApi extends BaseAPI {
     }
 
     /**
-     * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+     * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

@@ -113,6 +113,7 @@ create table files (
   phash bigint not null,
   views bigint not null default 0,
   medium_views bigint not null default 0,
+  thumbnail_views bigint not null default 0,
   uploaded_by_user_id uuid not null references users(id),
   api_key_id uuid references api_keys(id),
   created_at timestamptz not null default now(),
@@ -148,6 +149,7 @@ comment on column files.has_thumbnail is 'True when a separate <first 2 id chars
 comment on column files.phash is '64-bit DCT perceptual hash, close for visually similar images (compare with the Hamming distance), computed on upload';
 comment on column files.views is 'Times the image was served from /i/';
 comment on column files.medium_views is 'Times the medium was served from /m/';
+comment on column files.thumbnail_views is 'Times the thumbnail was served from /t/';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
 comment on column files.api_key_id is 'The API key the file was uploaded with; null for session and SSO delegated uploads';
 comment on column files.created_at is 'When the file was uploaded';
@@ -170,13 +172,15 @@ create table file_referrer_views (
   referrer text not null,
   views bigint not null default 0,
   medium_views bigint not null default 0,
+  thumbnail_views bigint not null default 0,
   primary key (file_id, referrer)
 );
 
-comment on table file_referrer_views is 'Views of a file split by the Referer host they came from; files.views and files.medium_views hold the totals';
+comment on table file_referrer_views is 'Views of a file split by the Referer host they came from; files.views, files.medium_views and files.thumbnail_views hold the totals';
 comment on column file_referrer_views.referrer is 'Lowercased Referer host; empty for requests without a Referer';
 comment on column file_referrer_views.views is 'Times the image was served from /i/ to this referrer';
 comment on column file_referrer_views.medium_views is 'Times the medium was served from /m/ to this referrer';
+comment on column file_referrer_views.thumbnail_views is 'Times the thumbnail was served from /t/ to this referrer';
 
 -- Named sets of images a user curates. Any available image may go in any of
 -- its owner's albums, whoever uploaded it.

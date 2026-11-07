@@ -103,32 +103,38 @@ pub async fn add_views(
     referrers: &[String],
     views: &[i64],
     medium_views: &[i64],
+    thumbnail_views: &[i64],
 ) -> Result<()> {
     sqlx::query!(
         r#"with pending as (
            select pending.*
-           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[])
-             as pending(id, referrer, views, medium_views)
+           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[], $5::bigint[])
+             as pending(id, referrer, views, medium_views, thumbnail_views)
            join files on files.id = pending.id
          ), totals as (
            update files set
              views = files.views + per_file.views,
-             medium_views = files.medium_views + per_file.medium_views
+             medium_views = files.medium_views + per_file.medium_views,
+             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views
            from (select id, sum(views)::bigint as views,
-                        sum(medium_views)::bigint as medium_views
+                        sum(medium_views)::bigint as medium_views,
+                        sum(thumbnail_views)::bigint as thumbnail_views
                  from pending group by id) as per_file
            where files.id = per_file.id
          )
-         insert into file_referrer_views (file_id, referrer, views, medium_views)
-         select id, referrer, sum(views)::bigint, sum(medium_views)::bigint
+         insert into file_referrer_views (file_id, referrer, views, medium_views, thumbnail_views)
+         select id, referrer, sum(views)::bigint, sum(medium_views)::bigint,
+                sum(thumbnail_views)::bigint
          from pending group by 1, 2
          on conflict (file_id, referrer) do update set
            views = file_referrer_views.views + excluded.views,
-           medium_views = file_referrer_views.medium_views + excluded.medium_views"#,
+           medium_views = file_referrer_views.medium_views + excluded.medium_views,
+           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views"#,
         ids,
         referrers,
         views,
         medium_views,
+        thumbnail_views,
     )
     .execute(pool)
     .await?;
@@ -186,6 +192,7 @@ pub struct FileMetadata {
     pub has_medium: bool,
     pub views: i64,
     pub medium_views: i64,
+    pub thumbnail_views: i64,
     pub uploaded_by_user_id: Uuid,
     pub uploader_username: String,
     pub created_at: String,
@@ -212,7 +219,7 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
         FileMetadata,
         r#"select files.id, ext, mime, original_name, size, width, height,
                 original_ext, original_width, original_height, applied_quality,
-                has_medium, views, medium_views, uploaded_by_user_id,
+                has_medium, views, medium_views, thumbnail_views, uploaded_by_user_id,
                 users.username as uploader_username,
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -243,14 +250,16 @@ pub struct ReferrerViews {
     pub referrer: String,
     pub views: i64,
     pub medium_views: i64,
+    pub thumbnail_views: i64,
 }
 
 /// A file's views per referrer, most image views first.
 pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<ReferrerViews>> {
     Ok(sqlx::query_as!(
         ReferrerViews,
-        r#"select referrer, views, medium_views from file_referrer_views
-         where file_id = $1 order by views desc, medium_views desc, referrer"#,
+        r#"select referrer, views, medium_views, thumbnail_views from file_referrer_views
+         where file_id = $1
+         order by views desc, medium_views desc, thumbnail_views desc, referrer"#,
         id
     )
     .fetch_all(pool)
@@ -298,6 +307,7 @@ pub enum ImagesSortBy {
     OriginalHash,
     Views,
     MediumViews,
+    ThumbnailViews,
 }
 
 impl ImagesSortBy {
@@ -310,6 +320,7 @@ impl ImagesSortBy {
             ImagesSortBy::OriginalHash => "original_hash",
             ImagesSortBy::Views => "views",
             ImagesSortBy::MediumViews => "medium_views",
+            ImagesSortBy::ThumbnailViews => "thumbnail_views",
         }
     }
 }
@@ -389,6 +400,8 @@ pub async fn list_page(
            case when $3 = 'views' and not $4 then f.views end desc,
            case when $3 = 'medium_views' and $4 then f.medium_views end asc,
            case when $3 = 'medium_views' and not $4 then f.medium_views end desc,
+           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
+           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
            f.id desc
          offset $1 limit $2"#,
         offset,
@@ -437,6 +450,8 @@ pub async fn unreferenced_page(
            case when $3 = 'views' and not $4 then f.views end desc,
            case when $3 = 'medium_views' and $4 then f.medium_views end asc,
            case when $3 = 'medium_views' and not $4 then f.medium_views end desc,
+           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
+           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
            f.id desc
          offset $1 limit $2"#,
         offset,

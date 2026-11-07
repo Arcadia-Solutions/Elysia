@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with pending as (\n           select pending.*\n           from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[], $5::bigint[])\n             as pending(id, referrer, views, medium_views, thumbnail_views)\n           join files on files.id = pending.id\n         ), totals as (\n           update files set\n             views = files.views + per_file.views,\n             medium_views = files.medium_views + per_file.medium_views,\n             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views\n           from (select id, sum(views)::bigint as views,\n                        sum(medium_views)::bigint as medium_views,\n                        sum(thumbnail_views)::bigint as thumbnail_views\n                 from pending group by id) as per_file\n           where files.id = per_file.id\n         )\n         insert into file_referrer_views (file_id, referrer, views, medium_views, thumbnail_views)\n         select id, referrer, sum(views)::bigint, sum(medium_views)::bigint,\n                sum(thumbnail_views)::bigint\n         from pending group by 1, 2\n         on conflict (file_id, referrer) do update set\n           views = file_referrer_views.views + excluded.views,\n           medium_views = file_referrer_views.medium_views + excluded.medium_views,\n           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df57da14a9b576b8870072a5c82568e5df4a3ecff4d3139631a118740bf8f4f3"
+}
