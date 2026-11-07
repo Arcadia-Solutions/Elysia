@@ -153,7 +153,7 @@ const urlInput = ref('')
 type Selected = { file: File; preview: string; status: 'pending' | 'uploading' | 'processing' | 'done' | 'failed'; progress: number }
 const selected = ref<Selected[]>([])
 // Cached by App.vue on load and on login.
-const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('elysia_public_settings') ?? 'null')
 // Per-upload output format; 'default' uses the server's default (a non-empty
 // sentinel so PrimeVue shows it as selected). Only honored when the settings
 // allow overriding; the backend rejects it otherwise.

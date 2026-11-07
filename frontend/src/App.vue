@@ -36,7 +36,7 @@ onMounted(() => {
   if (isAppReady.value) return
   Promise.all([
     api.getPublicElysiaSettings().then((response) => {
-      localStorage.setItem('public_settings', JSON.stringify(response.data))
+      localStorage.setItem('elysia_public_settings', JSON.stringify(response.data))
     }),
     api.me().then((response) => setAdmin(response.data.is_admin)),
   ])

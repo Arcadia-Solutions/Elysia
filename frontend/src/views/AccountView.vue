@@ -139,7 +139,7 @@ const storage = ref<StorageUsage | null>(null)
 // Quota override as edited: null follows the global default, 0 is unlimited.
 const quotaMode = ref<'default' | 'unlimited' | 'custom'>('default')
 const quotaBytes = ref(0)
-const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('elysia_public_settings') ?? 'null')
 
 // Switching to a custom quota starts from the global default, not 0 (unlimited).
 watch(quotaMode, (mode) => {

@@ -77,7 +77,7 @@ const selected = ref(new Set<string>())
 const albumId = computed(() => String(route.params.id))
 const canEdit = computed(() => album.value?.mine || isAdmin())
 // Images may only be removed while albums are enabled.
-const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('elysia_public_settings') ?? 'null')
 const albumsEnabled = settings?.albums_enabled !== false
 const sortBy = computed(() => (route.query.sort_by as ImagesSortBy | undefined) ?? ImagesSortBy.CreatedAt)
 const order = computed(() => (route.query.order as SortOrder | undefined) ?? SortOrder.Desc)

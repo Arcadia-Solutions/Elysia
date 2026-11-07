@@ -60,7 +60,7 @@ const handleLogin = () => {
       saveSession(response.data.token, response.data.refresh_token, response.data.user.is_admin)
       api
         .getPublicElysiaSettings()
-        .then((settings) => localStorage.setItem('public_settings', JSON.stringify(settings.data)))
+        .then((settings) => localStorage.setItem('elysia_public_settings', JSON.stringify(settings.data)))
         .finally(() => router.push('/'))
     })
     .catch((err) => {

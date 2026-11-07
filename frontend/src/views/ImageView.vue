@@ -170,7 +170,7 @@ const report = () => {
 }
 
 const albumDialogVisible = ref(false)
-const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('public_settings') ?? 'null')
+const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('elysia_public_settings') ?? 'null')
 const albumsEnabled = settings?.albums_enabled !== false
 const showAllAlbums = ref(false)
 

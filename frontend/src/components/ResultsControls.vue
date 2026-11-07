@@ -39,8 +39,8 @@
 import { ref, watch } from 'vue'
 
 // Remembered per browser, shared by every list.
-export const display = ref<'grid' | 'table'>(localStorage.getItem('image_display') === 'table' ? 'table' : 'grid')
-watch(display, (value) => localStorage.setItem('image_display', value))
+export const display = ref<'grid' | 'table'>(localStorage.getItem('elysia_image_display') === 'table' ? 'table' : 'grid')
+watch(display, (value) => localStorage.setItem('elysia_image_display', value))
 </script>
 
 <script setup lang="ts" generic="SortBy extends string">
