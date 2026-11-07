@@ -45,6 +45,7 @@ export default defineConfig({
         // extension is the SPA viewer page, so serve index.html instead.
         bypass: (req) => (/\.[^/]+$/.test(req.url ?? '') ? undefined : '/index.html'),
       },
+      '/m': { target: api, changeOrigin: true },
       '/t': { target: api, changeOrigin: true },
       '/api-docs': { target: api, changeOrigin: true },
     },
