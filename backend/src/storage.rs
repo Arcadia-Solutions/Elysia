@@ -86,22 +86,22 @@ impl Storage {
         NamedFile::open(self.path_for(id, ext))
     }
 
-    /// On-disk path for a file's thumbnail: `<root>/<shard>/<id>.t.webp`.
-    /// Thumbnails are always lossy WebP, so the extension is fixed.
-    pub fn thumbnail_path_for(&self, id: &str) -> PathBuf {
-        self.shard_dir(id).join(format!("{id}.t.webp"))
+    /// On-disk path for a file's medium: `<root>/<shard>/<id>.m.webp`.
+    /// Medium images are always lossy WebP, so the extension is fixed.
+    pub fn medium_path_for(&self, id: &str) -> PathBuf {
+        self.shard_dir(id).join(format!("{id}.m.webp"))
     }
 
-    /// Write a generated thumbnail to disk. Small (a few KiB), so the bytes are
+    /// Write a generated medium to disk. Small (a few KiB), so the bytes are
     /// already in memory and a plain write is enough.
-    pub async fn write_thumbnail(&self, id: &str, bytes: &[u8]) -> Result<()> {
-        tokio::fs::write(self.thumbnail_path_for(id), bytes).await?;
+    pub async fn write_medium(&self, id: &str, bytes: &[u8]) -> Result<()> {
+        tokio::fs::write(self.medium_path_for(id), bytes).await?;
         Ok(())
     }
 
-    /// Open a stored thumbnail for streaming.
-    pub fn open_thumbnail(&self, id: &str) -> std::io::Result<NamedFile> {
-        NamedFile::open(self.thumbnail_path_for(id))
+    /// Open a stored medium for streaming.
+    pub fn open_medium(&self, id: &str) -> std::io::Result<NamedFile> {
+        NamedFile::open(self.medium_path_for(id))
     }
 
     /// Trash dir: `<root>/trash`. Shard dirs are 2 chars, so it never clashes.
@@ -116,38 +116,30 @@ impl Storage {
         self.trash_dir().join(format!("{id}.{ext}"))
     }
 
-    /// Trashed path for a file's thumbnail: `<root>/trash/<id>.t.webp`.
-    fn trash_thumbnail_path_for(&self, id: &str) -> PathBuf {
-        self.trash_dir().join(format!("{id}.t.webp"))
+    /// Trashed path for a file's medium: `<root>/trash/<id>.m.webp`.
+    fn trash_medium_path_for(&self, id: &str) -> PathBuf {
+        self.trash_dir().join(format!("{id}.m.webp"))
     }
 
-    /// Move a file and its thumbnail out of the served tree into the trash, so
-    /// `/i/` and `/t/` stop serving them. Missing files are skipped, so a retry
+    /// Move a file and its medium out of the served tree into the trash, so
+    /// `/i/` and `/m/` stop serving them. Missing files are skipped, so a retry
     /// after a partial failure goes through.
     pub async fn trash(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(
             tokio::fs::rename(self.path_for(id, ext), self.trash_path_for(id, ext)).await,
         )?;
         ignore_missing(
-            tokio::fs::rename(
-                self.thumbnail_path_for(id),
-                self.trash_thumbnail_path_for(id),
-            )
-            .await,
+            tokio::fs::rename(self.medium_path_for(id), self.trash_medium_path_for(id)).await,
         )
     }
 
-    /// Move a trashed file and its thumbnail back into the served tree. A
-    /// missing file is an error (wiped meanwhile), a missing thumbnail is not.
+    /// Move a trashed file and its medium back into the served tree. A
+    /// missing file is an error (wiped meanwhile), a missing medium is not.
     pub async fn restore(&self, id: &str, ext: &str) -> Result<()> {
         self.prepare_shard(id).await?;
         tokio::fs::rename(self.trash_path_for(id, ext), self.path_for(id, ext)).await?;
         ignore_missing(
-            tokio::fs::rename(
-                self.trash_thumbnail_path_for(id),
-                self.thumbnail_path_for(id),
-            )
-            .await,
+            tokio::fs::rename(self.trash_medium_path_for(id), self.medium_path_for(id)).await,
         )
     }
 
@@ -156,25 +148,25 @@ impl Storage {
         NamedFile::open(self.trash_path_for(id, ext))
     }
 
-    /// Open a trashed file's thumbnail, or the trashed file itself when it has
-    /// none (same fallback as `/t/`).
-    pub fn open_trashed_thumbnail(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
-        match NamedFile::open(self.trash_thumbnail_path_for(id)) {
+    /// Open a trashed file's medium, or the trashed file itself when it has
+    /// none (same fallback as `/m/`).
+    pub fn open_trashed_medium(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
+        match NamedFile::open(self.trash_medium_path_for(id)) {
             Ok(file) => Ok(file),
             Err(_) => NamedFile::open(self.trash_path_for(id, ext)),
         }
     }
 
-    /// Delete a served file and its thumbnail. Missing files are skipped.
+    /// Delete a served file and its medium. Missing files are skipped.
     pub async fn delete(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(tokio::fs::remove_file(self.path_for(id, ext)).await)?;
-        ignore_missing(tokio::fs::remove_file(self.thumbnail_path_for(id)).await)
+        ignore_missing(tokio::fs::remove_file(self.medium_path_for(id)).await)
     }
 
-    /// Delete a trashed file and its thumbnail. Missing files are skipped.
+    /// Delete a trashed file and its medium. Missing files are skipped.
     pub async fn wipe_trashed(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(tokio::fs::remove_file(self.trash_path_for(id, ext)).await)?;
-        ignore_missing(tokio::fs::remove_file(self.trash_thumbnail_path_for(id)).await)
+        ignore_missing(tokio::fs::remove_file(self.trash_medium_path_for(id)).await)
     }
 }
 

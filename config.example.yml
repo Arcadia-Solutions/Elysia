@@ -64,11 +64,11 @@ auth:
 # every key is required. Per minute and refilled continuously; 0 disables one.
 # Over a limit the API answers 429 with a Retry-After header.
 # rate_limit:
-#   # Routes that need no login (images, thumbnails, login, registration, SSO,
+#   # Routes that need no login (images, medium images, login, registration, SSO,
 #   # public settings), per client IP. IPv6 clients are grouped by /64. Failed
 #   # authentications spend it too; once it runs out, API keys and the SSO
 #   # client credentials from that IP are refused without being checked.
-#   # A page showing many thumbnails spends one request per thumbnail.
+#   # A page showing many medium images spends one request per medium.
 #   unauthenticated_requests_per_minute_per_ip: 600
 #   # Login, registration and password change attempts per client IP, counted
 #   # on top of the budgets above and below. Keep it low: it is what slows

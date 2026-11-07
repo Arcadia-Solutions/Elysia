@@ -346,7 +346,7 @@ export interface ElysiaSettings {
      */
     'allow_registration'?: boolean;
     /**
-     * Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/t/`. Empty allows any request, including ones without a `Referer`. Elysia\'s own host is always allowed so the web UI keeps showing images.
+     * Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/m/`. Empty allows any request, including ones without a `Referer`. Elysia\'s own host is always allowed so the web UI keeps showing images.
      */
     'allowed_referrers'?: Array<string>;
     /**
@@ -378,6 +378,18 @@ export interface ElysiaSettings {
      */
     'max_width_pixels'?: number;
     /**
+     * Medium box height; 0 on both axes disables medium images.
+     */
+    'medium_height_pixels'?: number;
+    /**
+     * Lossy WebP quality (1-100) for generated medium images.
+     */
+    'medium_quality'?: number;
+    /**
+     * Medium box width; 0 on both axes disables medium images. Not overridable per upload.
+     */
+    'medium_width_pixels'?: number;
+    /**
      * Privacy policy, shown to everyone; empty hides the page and its links.
      */
     'privacy_policy'?: string;
@@ -405,18 +417,6 @@ export interface ElysiaSettings {
      * Terms of service, shown to everyone; empty hides the page and its links.
      */
     'terms_of_service'?: string;
-    /**
-     * Thumbnail box height; 0 on both axes disables thumbnails.
-     */
-    'thumbnail_height_pixels'?: number;
-    /**
-     * Lossy WebP quality (1-100) for generated thumbnails.
-     */
-    'thumbnail_quality'?: number;
-    /**
-     * Thumbnail box width; 0 on both axes disables thumbnails. Not overridable per upload.
-     */
-    'thumbnail_width_pixels'?: number;
     /**
      * Shown on the upload page while uploads are disabled; empty shows a generic notice.
      */
@@ -509,15 +509,15 @@ export interface ImageSummary {
     'ext': string;
     'height': number;
     'id': string;
+    /**
+     * Medium URL from `/m/`. Trashed, it is only served to Elysia\'s own pages.
+     */
+    'medium_url': string;
     'original_name'?: string | null;
     /**
      * Bytes on disk.
      */
     'size': number;
-    /**
-     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
-     */
-    'thumbnail_url': string;
     'uploader_username': string;
     'views': number;
     'width': number;
@@ -533,7 +533,7 @@ export const ImagesSortBy = {
     Height: 'height',
     OriginalHash: 'original_hash',
     Views: 'views',
-    ThumbnailViews: 'thumbnail_views'
+    MediumViews: 'medium_views'
 } as const;
 
 export type ImagesSortBy = typeof ImagesSortBy[keyof typeof ImagesSortBy];
@@ -615,6 +615,14 @@ export interface MetadataResponse {
     'ext': string;
     'height': number;
     'id': string;
+    /**
+     * Public URL for the medium. Trashed, it is only served to Elysia\'s own pages.
+     */
+    'medium_url': string;
+    /**
+     * Times the medium was served from `/m/`.
+     */
+    'medium_views': number;
     'mime': string;
     /**
      * Source extension before processing; differs from `ext` when converted.
@@ -634,14 +642,6 @@ export interface MetadataResponse {
      */
     'referrers': Array<ReferrerViews>;
     'size': number;
-    /**
-     * Public URL for the thumbnail. Trashed, it is only served to Elysia\'s own pages.
-     */
-    'thumbnail_url': string;
-    /**
-     * Times the thumbnail was served from `/t/`.
-     */
-    'thumbnail_views': number;
     /**
      * When the image was trashed, as a UTC ISO-8601 string. Null while available.
      */
@@ -729,15 +729,15 @@ export interface PaginatedResultsImageSummaryResultsInner {
     'ext': string;
     'height': number;
     'id': string;
+    /**
+     * Medium URL from `/m/`. Trashed, it is only served to Elysia\'s own pages.
+     */
+    'medium_url': string;
     'original_name'?: string | null;
     /**
      * Bytes on disk.
      */
     'size': number;
-    /**
-     * Thumbnail URL from `/t/`. Trashed, it is only served to Elysia\'s own pages.
-     */
-    'thumbnail_url': string;
     'uploader_username': string;
     'views': number;
     'width': number;
@@ -829,7 +829,7 @@ export interface PaginatedResultsUserSummaryResultsInner {
  */
 export interface PeriodTotal {
     /**
-     * Bytes of those files (main files, thumbnails excluded).
+     * Bytes of those files (main files, medium images excluded).
      */
     'bytes': number;
     /**
@@ -930,25 +930,25 @@ export interface PublicElysiaSettings {
 
 
 /**
- * Image and thumbnail views from one `Referer` host, of the files uploaded within the period.
+ * Image and medium views from one `Referer` host, of the files uploaded within the period.
  */
 export interface ReferrerTotal {
+    'medium_views': number;
     /**
      * Lowercased `Referer` host; empty for requests without a `Referer`, null for the hosts past the top ones, summed together.
      */
     'referrer'?: string | null;
-    'thumbnail_views': number;
     'views': number;
 }
 /**
  * Views of a file from one `Referer` host.
  */
 export interface ReferrerViews {
+    'medium_views': number;
     /**
      * Lowercased `Referer` host; empty for requests without a `Referer`.
      */
     'referrer': string;
-    'thumbnail_views': number;
     'views': number;
 }
 /**
@@ -1335,9 +1335,9 @@ export interface UploadResponse {
     'ext': string;
     'id': string;
     /**
-     * URL of the thumbnail; a generated WebP when one exists, otherwise the original file served from `/t/`.
+     * URL of the medium; a generated WebP when one exists, otherwise the original file served from `/m/`.
      */
-    'thumbnail_url': string;
+    'medium_url': string;
     'url': string;
 }
 /**
@@ -3221,15 +3221,15 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        serveThumbnail: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        serveMedium: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'filename' is not null or undefined
-            assertParamExists('serveThumbnail', 'filename', filename)
-            const localVarPath = `/t/{filename}`
+            assertParamExists('serveMedium', 'filename', filename)
+            const localVarPath = `/m/{filename}`
                 .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3491,15 +3491,15 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async serveThumbnail(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
+        async serveMedium(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveMedium(filename, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveMedium']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -3616,13 +3616,13 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serve(filename, options).then((request) => request(axios, basePath));
         },
         /**
-         * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+         * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
+        serveMedium(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveMedium(filename, options).then((request) => request(axios, basePath));
         },
         /**
          * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
@@ -3733,13 +3733,13 @@ export class ImagesApi extends BaseAPI {
     }
 
     /**
-     * Served straight from disk, without a database lookup. Falls back to the original file when no thumbnail was generated (the image was within the thumbnail box, or thumbnails were off at store time): its thumbnail URL then carries the original extension. A trashed image\'s thumbnail is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
+     * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
-        return ImagesApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    public serveMedium(filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serveMedium(filename, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -4054,7 +4054,7 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             };
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4277,7 +4277,7 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4397,7 +4397,7 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
             return localVarFp.scanSimilarImages(similarScanParams, options).then((request) => request(axios, basePath));
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4510,7 +4510,7 @@ export class MaintenanceApi extends BaseAPI {
     }
 
     /**
-     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
      * @param {ScanParams} scanParams 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads_enabled, uploads_disabled_message\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   medium_width_pixels, medium_height_pixels, medium_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads_enabled, uploads_disabled_message\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -150,34 +150,34 @@
       },
       {
         "ordinal": 12,
-        "name": "thumbnail_width_pixels",
+        "name": "medium_width_pixels",
         "type_info": "Int4",
         "origin": {
           "Table": {
             "table": "elysia_settings",
-            "name": "thumbnail_width_pixels"
+            "name": "medium_width_pixels"
           }
         }
       },
       {
         "ordinal": 13,
-        "name": "thumbnail_height_pixels",
+        "name": "medium_height_pixels",
         "type_info": "Int4",
         "origin": {
           "Table": {
             "table": "elysia_settings",
-            "name": "thumbnail_height_pixels"
+            "name": "medium_height_pixels"
           }
         }
       },
       {
         "ordinal": 14,
-        "name": "thumbnail_quality",
+        "name": "medium_quality",
         "type_info": "Int4",
         "origin": {
           "Table": {
             "table": "elysia_settings",
-            "name": "thumbnail_quality"
+            "name": "medium_quality"
           }
         }
       },
@@ -349,5 +349,5 @@
       false
     ]
   },
-  "hash": "2c04af46cfe6972e50ec180554b4a3b2a75b35cdd9183821190c269442f7921c"
+  "hash": "7de59258e3484bf0a3601230d247ab21d1bf53496d38a11b1e6a04feaab829e2"
 }

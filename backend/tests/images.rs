@@ -75,20 +75,20 @@ async fn sorts_by_column_and_direction(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn counts_image_and_thumbnail_views(pool: PgPool) {
+async fn counts_image_and_medium_views(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 1, 1).await;
     common::seed_files(&pool, uploader, "unseen", 1, 1).await;
     let id = "seen000000";
 
     let views = ViewCounter::default();
-    for (referrer, thumbnail) in [
+    for (referrer, medium) in [
         ("a.com", false),
         ("a.com", false),
         ("", true),
         ("b.com", false),
     ] {
-        views.count(id, referrer, thumbnail);
+        views.count(id, referrer, medium);
     }
     views.count("missing0", "a.com", false);
     views.flush(&pool).await;
@@ -96,7 +96,7 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
     views.flush(&pool).await;
 
     let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
-    assert_eq!((metadata.views, metadata.thumbnail_views), (3, 1));
+    assert_eq!((metadata.views, metadata.medium_views), (3, 1));
     // A second batch adds onto the existing referrer rows.
     views.count(id, "b.com", false);
     views.flush(&pool).await;
@@ -104,7 +104,7 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
         .await
         .unwrap()
         .into_iter()
-        .map(|row| (row.referrer, row.views, row.thumbnail_views))
+        .map(|row| (row.referrer, row.views, row.medium_views))
         .collect();
     assert_eq!(
         referrers,
@@ -115,7 +115,7 @@ async fn counts_image_and_thumbnail_views(pool: PgPool) {
         ]
     );
 
-    for sort_by in [ImagesSortBy::Views, ImagesSortBy::ThumbnailViews] {
+    for sort_by in [ImagesSortBy::Views, ImagesSortBy::MediumViews] {
         let rows = list_images(
             &pool,
             &ImagesQuery {
@@ -143,7 +143,7 @@ fn parses_only_plain_filenames() {
         "a.png",
         ".png",
         "abc12345.",
-        "abc12345.t.webp",
+        "abc12345.m.webp",
         "../etc.png",
         "ab/cd.png",
         ".tmpAbC.png",

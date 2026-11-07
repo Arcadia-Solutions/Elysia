@@ -268,7 +268,7 @@ const validate = (file: File): Promise<string | null> => {
 const uploadAll = (items: Selected[]) => {
   const ids: string[] = []
   const urls: string[] = []
-  const thumbnailUrls: string[] = []
+  const mediumUrls: string[] = []
   phase.value = 'uploading'
   items
     .reduce(
@@ -288,7 +288,7 @@ const uploadAll = (items: Selected[]) => {
               item.progress = 100
               ids.push(uploaded.data.id)
               urls.push(uploaded.data.url)
-              thumbnailUrls.push(uploaded.data.thumbnail_url)
+              mediumUrls.push(uploaded.data.medium_url)
             })
             .catch(() => {
               item.status = 'failed'
@@ -298,7 +298,7 @@ const uploadAll = (items: Selected[]) => {
     )
     .then(() => addToAlbum(ids))
     .then(() => {
-      if (urls.length) router.push({ name: 'Uploaded', query: { id: ids, url: urls, thumbnailUrl: thumbnailUrls } })
+      if (urls.length) router.push({ name: 'Uploaded', query: { id: ids, url: urls, mediumUrl: mediumUrls } })
     })
     .finally(() => {
       phase.value = 'idle'
@@ -394,7 +394,7 @@ const rehost = () => {
     )
     .then((uploaded) => addToAlbum([uploaded.data.id]).then(() => uploaded))
     .then((uploaded) => {
-      router.push({ name: 'Uploaded', query: { id: uploaded.data.id, url: uploaded.data.url, thumbnailUrl: uploaded.data.thumbnail_url } })
+      router.push({ name: 'Uploaded', query: { id: uploaded.data.id, url: uploaded.data.url, mediumUrl: uploaded.data.medium_url } })
     })
     .finally(() => {
       phase.value = 'idle'

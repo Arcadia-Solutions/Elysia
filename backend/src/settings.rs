@@ -54,21 +54,21 @@ pub struct ElysiaSettings {
     /// the default is always used.
     #[serde(default)]
     pub allow_overriding_strip_exif: bool,
-    /// Thumbnail box width; 0 on both axes disables thumbnails. Not overridable
+    /// Medium box width; 0 on both axes disables medium images. Not overridable
     /// per upload.
     #[serde(default)]
-    pub thumbnail_width_pixels: u32,
-    /// Thumbnail box height; 0 on both axes disables thumbnails.
+    pub medium_width_pixels: u32,
+    /// Medium box height; 0 on both axes disables medium images.
     #[serde(default)]
-    pub thumbnail_height_pixels: u32,
-    /// Lossy WebP quality (1-100) for generated thumbnails.
+    pub medium_height_pixels: u32,
+    /// Lossy WebP quality (1-100) for generated medium images.
     #[serde(default)]
-    pub thumbnail_quality: u8,
+    pub medium_quality: u8,
     /// When true, anyone may create a local account via the register endpoint.
     /// When false, only an external sign-on backend can provision users.
     #[serde(default = "default_allow_registration")]
     pub allow_registration: bool,
-    /// Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/t/`.
+    /// Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/m/`.
     /// Empty allows any request, including ones without a `Referer`. Elysia's
     /// own host is always allowed so the web UI keeps showing images.
     #[serde(default)]
@@ -272,9 +272,9 @@ impl ElysiaSettings {
         !self.terms_of_service.is_empty() || !self.privacy_policy.is_empty()
     }
 
-    /// Whether thumbnail generation is on (a box is set on at least one axis).
-    pub fn thumbnails_enabled(&self) -> bool {
-        self.thumbnail_width_pixels > 0 || self.thumbnail_height_pixels > 0
+    /// Whether medium generation is on (a box is set on at least one axis).
+    pub fn medium_enabled(&self) -> bool {
+        self.medium_width_pixels > 0 || self.medium_height_pixels > 0
     }
 
     /// Reject contradictory settings. Enforced on every save so the running
@@ -340,18 +340,18 @@ impl ElysiaSettings {
                     .into(),
             );
         }
-        // Thumbnail generation decodes the source too, so it needs the same pixel
+        // Medium generation decodes the source too, so it needs the same pixel
         // caps, and a valid lossy WebP quality.
-        if self.thumbnails_enabled() {
+        if self.medium_enabled() {
             if self.max_width_pixels == 0 || self.max_height_pixels == 0 {
                 return Err(
-                    "max_width_pixels and max_height_pixels must be > 0 when thumbnails are \
+                    "max_width_pixels and max_height_pixels must be > 0 when medium images are \
                      enabled (they bound the server-side decode)"
                         .into(),
                 );
             }
-            if self.thumbnail_quality < 1 || self.thumbnail_quality > 100 {
-                return Err("thumbnail_quality must be between 1 and 100".into());
+            if self.medium_quality < 1 || self.medium_quality > 100 {
+                return Err("medium_quality must be between 1 and 100".into());
             }
         }
         // Stored as a signed bigint, so a larger count would wrap negative.

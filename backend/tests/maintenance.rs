@@ -16,13 +16,13 @@ use elysia::services::maintenance::{
 };
 
 #[test]
-fn extracts_image_thumbnail_and_viewer_links() {
+fn extracts_image_medium_and_viewer_links() {
     let mut ids = HashSet::new();
     extract_ids(
-        "<img src=\"https://elysia.test/i/abc123.png\"> [url]http://elysia.test/t/def456.webp[/url] \
+        "<img src=\"https://elysia.test/i/abc123.png\"> [url]http://elysia.test/m/def456.webp[/url] \
          elysia.test/i/ghi789 elysia.test/other/xyz elysia.test/i/ other.test/i/nope0000 \
          HTTPS://Elysia.Test/i/CaSe01 {\"url\":\"https:\\/\\/elysia.test\\/i\\/json01\"} \
-         ?u=https%3A%2F%2Felysia.test%2Ft%2Fencoded1 \
+         ?u=https%3A%2F%2Felysia.test%2Fm%2Fencoded1 \
          {\"{\\\"u\\\":\\\"https:\\\\/\\\\/elysia.test\\\\/i\\\\/array01\\\"}\"} \
          https://cdn.test/i/other01",
         &["elysia.test".into(), "cdn.test".into()],

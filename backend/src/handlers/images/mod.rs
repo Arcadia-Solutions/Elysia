@@ -13,7 +13,7 @@ pub mod metadata;
 pub mod report_image;
 pub mod restore_images;
 pub mod serve;
-pub mod serve_thumbnail;
+pub mod serve_medium;
 pub mod trash_images;
 pub mod upload;
 pub mod upload_url;
@@ -40,16 +40,16 @@ pub fn config_public(cfg: &mut ServiceConfig) {
         get().to(serve::serve).wrap(from_fn(limit_unauthenticated)),
     )
     .route(
-        "/t/{filename}",
+        "/m/{filename}",
         get()
-            .to(serve_thumbnail::serve_thumbnail)
+            .to(serve_medium::serve_medium)
             .wrap(from_fn(limit_unauthenticated)),
     );
 }
 
-/// Split a `/i/` or `/t/` path segment `<id>.<ext>` into its id and extension.
+/// Split a `/i/` or `/m/` path segment `<id>.<ext>` into its id and extension.
 /// Both must be plain ASCII alphanumerics, so the pair can only name a stored
-/// file: no path traversal, no temp or thumbnail file names.
+/// file: no path traversal, no temp or medium file names.
 pub fn parse_filename(filename: &str) -> Result<(&str, &str)> {
     let alphanumeric =
         |part: &str| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_alphanumeric());
@@ -151,7 +151,7 @@ mod tests {
         let req = actix_web::test::TestRequest::default()
             .insert_header((
                 actix_web::http::header::REFERER,
-                "https://Forum.Example/t/1",
+                "https://Forum.Example/m/1",
             ))
             .to_http_request();
         check_referrer(&req, &settings).unwrap().referrer

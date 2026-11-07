@@ -41,7 +41,7 @@
           <div v-for="group in page.results" :key="group.images[0].id" class="group">
             <div v-for="image in group.images" :key="image.id" class="image" :class="{ selected: selected.has(image.id) }">
               <router-link :to="{ name: 'Image', params: { id: image.id } }" class="thumb">
-                <ImageThumbnail :src="image.thumbnail_url" :alt="image.id" />
+                <ImageThumbnail :src="image.medium_url" :alt="image.id" />
               </router-link>
               <label class="details">
                 <Checkbox :modelValue="selected.has(image.id)" binary size="small" @update:modelValue="toggleSelected(image.id)" />

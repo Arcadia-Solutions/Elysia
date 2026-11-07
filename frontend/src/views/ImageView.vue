@@ -43,10 +43,10 @@
         <dd>{{ meta.mime }}</dd>
         <dt>{{ $t('image.views') }}</dt>
         <dd>
-          {{ $t('image.views_value', { views: meta.views, thumbnail_views: meta.thumbnail_views }) }}
+          {{ $t('image.views_value', { views: meta.views, medium_views: meta.medium_views }) }}
           <ul v-if="meta.referrers.length" class="list">
             <li v-for="row in meta.referrers" :key="row.referrer">
-              {{ row.referrer || $t('image.no_referrer') }}: {{ $t('image.views_value', { views: row.views, thumbnail_views: row.thumbnail_views }) }}
+              {{ row.referrer || $t('image.no_referrer') }}: {{ $t('image.views_value', { views: row.views, medium_views: row.medium_views }) }}
             </li>
           </ul>
         </dd>
@@ -82,7 +82,7 @@
         </dd>
       </dl>
       <!-- Trashed images are not served from their public links. -->
-      <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, thumbnailUrl: meta.thumbnail_url }]" />
+      <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, mediumUrl: meta.medium_url }]" />
       <div class="actions">
         <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" @click="deleteDialogVisible = true" />
         <Button v-if="!meta.trashed_at" :label="$t('reports.report')" icon="pi pi-flag" severity="secondary" size="small" @click="reportDialogVisible = true" />

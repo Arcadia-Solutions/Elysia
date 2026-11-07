@@ -35,13 +35,13 @@ New options belong in settings unless the server cannot start without them.
 An upload, whether a file, a URL or an import, goes through the same pipeline
 in `services/files.rs`: the body is streamed to disk under the size cap, the
 image is deduplicated by hash, then optionally re-encoded, stripped of its
-metadata and thumbnailed. Processing jobs are limited to one per CPU.
+metadata and resized. Processing jobs are limited to one per CPU.
 
 URL uploads refuse private and reserved addresses.
 
 ### Serving
 
-`/i/<id>.<ext>` (image) and `/t/<id>.<ext>` (thumbnail) are served straight
+`/i/<id>.<ext>` (image) and `/m/<id>.<ext>` (medium) are served straight
 from disk without touching the database. `storage.rs` owns the on-disk layout:
 files are sharded by the first two characters of their id, and trashed files
 move to a separate directory. View counts are kept in memory per file and

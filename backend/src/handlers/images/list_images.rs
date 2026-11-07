@@ -17,8 +17,8 @@ use crate::services::files;
 #[derive(Serialize, ToSchema)]
 pub struct ImageSummary {
     pub id: String,
-    /// Thumbnail URL from `/t/`. Trashed, it is only served to Elysia's own pages.
-    pub thumbnail_url: String,
+    /// Medium URL from `/m/`. Trashed, it is only served to Elysia's own pages.
+    pub medium_url: String,
     pub original_name: Option<String>,
     /// Stored extension.
     pub ext: String,
@@ -33,10 +33,10 @@ pub struct ImageSummary {
 }
 
 impl ImageSummary {
-    /// Build from a listed row, with thumbnail URLs under `public_url`.
+    /// Build from a listed row, with medium URLs under `public_url`.
     pub fn from_row(row: ImageListRow, public_url: &str) -> Self {
         Self {
-            thumbnail_url: files::thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
+            medium_url: files::medium_url(public_url, &row.id, &row.ext, row.has_medium),
             id: row.id,
             original_name: row.original_name,
             ext: row.ext,

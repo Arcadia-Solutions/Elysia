@@ -23,7 +23,7 @@ pub struct NewFile<'a> {
     pub original_height: i32,
     pub requested_quality: Option<i32>,
     pub applied_quality: Option<i32>,
-    pub has_thumbnail: bool,
+    pub has_medium: bool,
     /// Perceptual hash, see `image::perceptual_hash`.
     pub phash: i64,
     pub uploaded_by_user_id: Uuid,
@@ -37,7 +37,7 @@ pub struct FileRow {
     pub id: String,
     pub ext: String,
     pub mime: String,
-    pub has_thumbnail: bool,
+    pub has_medium: bool,
     pub uploaded_by_user_id: Uuid,
 }
 
@@ -49,7 +49,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         r#"insert into files
          (id, ext, mime, original_name, size, width, height, hash,
           original_hash, original_ext, original_width, original_height,
-          requested_quality, applied_quality, has_thumbnail, phash, uploaded_by_user_id, api_key_id,
+          requested_quality, applied_quality, has_medium, phash, uploaded_by_user_id, api_key_id,
           expires_at)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
                  now() + make_interval(days => $19))"#,
@@ -67,7 +67,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.original_height,
         f.requested_quality,
         f.applied_quality,
-        f.has_thumbnail,
+        f.has_medium,
         f.phash,
         f.uploaded_by_user_id,
         f.api_key_id,
@@ -85,7 +85,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
 pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     Ok(sqlx::query_as!(
         FileRow,
-        r#"select id, ext, mime, has_thumbnail, uploaded_by_user_id from files where id = $1"#,
+        r#"select id, ext, mime, has_medium, uploaded_by_user_id from files where id = $1"#,
         id
     )
     .fetch_optional(pool)
@@ -100,33 +100,33 @@ pub async fn add_views(
     ids: &[String],
     referrers: &[String],
     views: &[i64],
-    thumbnail_views: &[i64],
+    medium_views: &[i64],
 ) -> Result<()> {
     sqlx::query!(
         r#"with pending as (
            select pending.*
            from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[])
-             as pending(id, referrer, views, thumbnail_views)
+             as pending(id, referrer, views, medium_views)
            join files on files.id = pending.id
          ), totals as (
            update files set
              views = files.views + per_file.views,
-             thumbnail_views = files.thumbnail_views + per_file.thumbnail_views
+             medium_views = files.medium_views + per_file.medium_views
            from (select id, sum(views)::bigint as views,
-                        sum(thumbnail_views)::bigint as thumbnail_views
+                        sum(medium_views)::bigint as medium_views
                  from pending group by id) as per_file
            where files.id = per_file.id
          )
-         insert into file_referrer_views (file_id, referrer, views, thumbnail_views)
-         select id, referrer, sum(views)::bigint, sum(thumbnail_views)::bigint
+         insert into file_referrer_views (file_id, referrer, views, medium_views)
+         select id, referrer, sum(views)::bigint, sum(medium_views)::bigint
          from pending group by 1, 2
          on conflict (file_id, referrer) do update set
            views = file_referrer_views.views + excluded.views,
-           thumbnail_views = file_referrer_views.thumbnail_views + excluded.thumbnail_views"#,
+           medium_views = file_referrer_views.medium_views + excluded.medium_views"#,
         ids,
         referrers,
         views,
-        thumbnail_views,
+        medium_views,
     )
     .execute(pool)
     .await?;
@@ -144,7 +144,7 @@ pub struct FileRecord {
     pub width: i32,
     pub height: i32,
     pub applied_quality: Option<i32>,
-    pub has_thumbnail: bool,
+    pub has_medium: bool,
 }
 
 /// Skip-reprocess lookup: same source bytes under the same requested quality.
@@ -157,7 +157,7 @@ pub async fn find_record_by_source(
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
-                width, height, applied_quality, has_thumbnail
+                width, height, applied_quality, has_medium
          from files where original_hash = $1 and status = 'available'
            and requested_quality is not distinct from $2
          order by created_at limit 1"#,
@@ -180,9 +180,9 @@ pub struct FileMetadata {
     pub original_width: i32,
     pub original_height: i32,
     pub applied_quality: Option<i32>,
-    pub has_thumbnail: bool,
+    pub has_medium: bool,
     pub views: i64,
-    pub thumbnail_views: i64,
+    pub medium_views: i64,
     pub uploaded_by_user_id: Uuid,
     pub uploader_username: String,
     pub created_at: String,
@@ -209,7 +209,7 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
         FileMetadata,
         r#"select files.id, ext, mime, original_name, size, width, height,
                 original_ext, original_width, original_height, applied_quality,
-                has_thumbnail, views, thumbnail_views, uploaded_by_user_id,
+                has_medium, views, medium_views, uploaded_by_user_id,
                 users.username as uploader_username,
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -239,15 +239,15 @@ pub struct ReferrerViews {
     /// Lowercased `Referer` host; empty for requests without a `Referer`.
     pub referrer: String,
     pub views: i64,
-    pub thumbnail_views: i64,
+    pub medium_views: i64,
 }
 
 /// A file's views per referrer, most image views first.
 pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<ReferrerViews>> {
     Ok(sqlx::query_as!(
         ReferrerViews,
-        r#"select referrer, views, thumbnail_views from file_referrer_views
-         where file_id = $1 order by views desc, thumbnail_views desc, referrer"#,
+        r#"select referrer, views, medium_views from file_referrer_views
+         where file_id = $1 order by views desc, medium_views desc, referrer"#,
         id
     )
     .fetch_all(pool)
@@ -275,7 +275,7 @@ pub struct ImageListRow {
     pub size: i64,
     pub width: i32,
     pub height: i32,
-    pub has_thumbnail: bool,
+    pub has_medium: bool,
     pub views: i64,
     pub uploader_username: String,
     /// RFC 3339, UTC.
@@ -293,7 +293,7 @@ pub enum ImagesSortBy {
     Height,
     OriginalHash,
     Views,
-    ThumbnailViews,
+    MediumViews,
 }
 
 impl ImagesSortBy {
@@ -305,7 +305,7 @@ impl ImagesSortBy {
             ImagesSortBy::Height => "height",
             ImagesSortBy::OriginalHash => "original_hash",
             ImagesSortBy::Views => "views",
-            ImagesSortBy::ThumbnailViews => "thumbnail_views",
+            ImagesSortBy::MediumViews => "medium_views",
         }
     }
 }
@@ -361,7 +361,7 @@ pub async fn list_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,
+        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -383,8 +383,8 @@ pub async fn list_page(
            case when $3 = 'original_hash' and not $4 then f.original_hash end desc,
            case when $3 = 'views' and $4 then f.views end asc,
            case when $3 = 'views' and not $4 then f.views end desc,
-           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
-           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
+           case when $3 = 'medium_views' and $4 then f.medium_views end asc,
+           case when $3 = 'medium_views' and not $4 then f.medium_views end desc,
            f.id desc
          offset $1 limit $2"#,
         offset,
@@ -410,7 +410,7 @@ pub async fn unreferenced_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,
+        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -431,8 +431,8 @@ pub async fn unreferenced_page(
            case when $3 = 'original_hash' and not $4 then f.original_hash end desc,
            case when $3 = 'views' and $4 then f.views end asc,
            case when $3 = 'views' and not $4 then f.views end desc,
-           case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
-           case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
+           case when $3 = 'medium_views' and $4 then f.medium_views end asc,
+           case when $3 = 'medium_views' and not $4 then f.medium_views end desc,
            f.id desc
          offset $1 limit $2"#,
         offset,
@@ -575,7 +575,7 @@ pub async fn similar_page(
            order by group_id offset $1 limit $2
          )
          select page.group_id, page.total as "total!",
-                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_thumbnail,
+                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!"
@@ -602,7 +602,7 @@ pub async fn similar_page(
                     size: row.size,
                     width: row.width,
                     height: row.height,
-                    has_thumbnail: row.has_thumbnail,
+                    has_medium: row.has_medium,
                     views: row.views,
                     uploader_username: row.uploader_username,
                     created_at: row.created_at,
@@ -653,7 +653,7 @@ pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<Fil
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
-                width, height, applied_quality, has_thumbnail
+                width, height, applied_quality, has_medium
          from files where hash = $1 and status = 'available'"#,
         hash,
     )

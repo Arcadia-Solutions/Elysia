@@ -58,7 +58,7 @@ pub struct PeriodTotal {
     pub period: String,
     /// Available (not trashed) files by the end of the step.
     pub files: i64,
-    /// Bytes of those files (main files, thumbnails excluded).
+    /// Bytes of those files (main files, medium images excluded).
     pub bytes: i64,
     /// Files uploaded during the step.
     pub uploads: i64,
@@ -201,7 +201,7 @@ pub async fn uploaders(pool: &PgPool, period: StatsPeriod) -> Result<Vec<Uploade
     .await?)
 }
 
-/// Image and thumbnail views from one `Referer` host, of the files uploaded
+/// Image and medium views from one `Referer` host, of the files uploaded
 /// within the period.
 #[derive(Serialize, ToSchema)]
 pub struct ReferrerTotal {
@@ -209,7 +209,7 @@ pub struct ReferrerTotal {
     /// for the hosts past the top ones, summed together.
     pub referrer: Option<String>,
     pub views: i64,
-    pub thumbnail_views: i64,
+    pub medium_views: i64,
 }
 
 /// Hosts listed on their own by `referrer_totals`; the rest are summed.
@@ -223,16 +223,16 @@ pub async fn referrer_totals(pool: &PgPool, period: StatsPeriod) -> Result<Vec<R
         ReferrerTotal,
         r#"select case when rank <= $1 then referrer end as referrer,
                 sum(views)::bigint as "views!",
-                sum(thumbnail_views)::bigint as "thumbnail_views!"
+                sum(medium_views)::bigint as "medium_views!"
          from (select r.referrer, sum(r.views) as views,
-                      sum(r.thumbnail_views) as thumbnail_views,
-                      row_number() over (order by sum(r.views) + sum(r.thumbnail_views) desc,
+                      sum(r.medium_views) as medium_views,
+                      row_number() over (order by sum(r.views) + sum(r.medium_views) desc,
                                                   r.referrer) as rank
                from file_referrer_views r join files f on f.id = r.file_id
                where $2::text is null or f.created_at >= now() - $2::text::interval
                group by r.referrer) as per_referrer
          group by 1
-         order by bool_or(rank > $1), sum(views) + sum(thumbnail_views) desc, 1"#,
+         order by bool_or(rank > $1), sum(views) + sum(medium_views) desc, 1"#,
         TOP_REFERRERS,
         period.as_sql(),
     )

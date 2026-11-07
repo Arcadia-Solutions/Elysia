@@ -7,7 +7,7 @@ plus a storage dashboard and access to every user's uploads from Browse.
 
 The Settings page holds everything that can change without a restart: upload
 limits, image processing (output format, resizing, compression, EXIF
-stripping, thumbnails), which of those an uploader may override, open
+stripping, medium images), which of those an uploader may override, open
 registration, allowed referrers, the default storage quota, a switch to
 pause all uploads, and the terms of service and privacy policy. A save applies immediately. Each field is explained in the
 page itself.
@@ -16,7 +16,7 @@ Contradictory combinations are refused on save. The ones worth knowing in
 advance:
 
 - A maximum file size is always required.
-- Re-encoding, per-upload format overrides and thumbnails all decode the image
+- Re-encoding, per-upload format overrides and medium images all decode the image
   in memory, so they require maximum width and height to be set. Without them a
   small file declaring huge dimensions could exhaust memory.
 - AVIF and JPEG have no lossless mode: if they can be produced, either a
@@ -24,7 +24,7 @@ advance:
 
 ### Allowed referrers
 
-When the list is empty, images and thumbnails are served to anyone. Otherwise
+When the list is empty, images and medium images are served to anyone. Otherwise
 only requests whose `Referer` host is in the list (or is Elysia itself) get
 them, which also blocks requests without a `Referer`. Entries are bare
 hostnames like `example.com`.

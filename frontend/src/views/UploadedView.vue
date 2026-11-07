@@ -19,7 +19,7 @@ import EmbedLinks from '@/components/EmbedLinks.vue'
 const route = useRoute()
 const router = useRouter()
 
-// Reached only via the upload flow, which passes the image and thumbnail URLs
+// Reached only via the upload flow, which passes the image and medium URLs
 // in the query. A direct visit with no url has nothing to show, so bounce to the form.
 onBeforeMount(() => {
   if (!route.query.url) router.replace({ name: 'Upload' })
@@ -28,8 +28,8 @@ onBeforeMount(() => {
 // A single upload yields scalar query params, several yield arrays.
 const images = computed(() => {
   const ids = [route.query.id ?? []].flat()
-  const thumbnails = [route.query.thumbnailUrl ?? []].flat()
-  return [route.query.url ?? []].flat().map((url, i) => ({ id: String(ids[i] ?? ''), url: String(url), thumbnailUrl: String(thumbnails[i] ?? '') }))
+  const mediums = [route.query.mediumUrl ?? []].flat()
+  return [route.query.url ?? []].flat().map((url, i) => ({ id: String(ids[i] ?? ''), url: String(url), mediumUrl: String(mediums[i] ?? '') }))
 })
 </script>
 

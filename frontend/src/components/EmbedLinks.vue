@@ -11,15 +11,15 @@ import { useI18n } from 'vue-i18n'
 import CopyLink from '@/components/CopyLink.vue'
 import { absoluteUrl } from '@/services/format'
 
-// Copyable direct links and embed snippets, one line per image. The thumbnail
+// Copyable direct links and embed snippets, one line per image. The medium
 // embeds link to the full image.
-const props = defineProps<{ images: { url: string; thumbnailUrl: string }[] }>()
+const props = defineProps<{ images: { url: string; mediumUrl: string }[] }>()
 
 const { t } = useI18n()
 
 const groups = computed(() => {
-  const images = props.images.map((image) => ({ full: absoluteUrl(image.url), thumb: absoluteUrl(image.thumbnailUrl) }))
-  const lines = (render: (full: string, thumb: string) => string) => images.map(({ full, thumb }) => render(full, thumb)).join('\n')
+  const images = props.images.map((image) => ({ full: absoluteUrl(image.url), medium: absoluteUrl(image.mediumUrl) }))
+  const lines = (render: (full: string, medium: string) => string) => images.map(({ full, medium }) => render(full, medium)).join('\n')
   return [
     {
       title: t('image.links.full'),
@@ -31,12 +31,12 @@ const groups = computed(() => {
       ],
     },
     {
-      title: t('image.links.thumbnail'),
+      title: t('image.links.medium'),
       rows: [
-        { label: t('image.links.link'), value: lines((_, thumb) => thumb) },
-        { label: t('image.links.markdown'), value: lines((full, thumb) => `[![](${thumb})](${full})`) },
-        { label: t('image.links.bbcode'), value: lines((full, thumb) => `[url=${full}][img]${thumb}[/img][/url]`) },
-        { label: t('image.links.html'), value: lines((full, thumb) => `<a href="${full}"><img src="${thumb}"></a>`) },
+        { label: t('image.links.link'), value: lines((_, medium) => medium) },
+        { label: t('image.links.markdown'), value: lines((full, medium) => `[![](${medium})](${full})`) },
+        { label: t('image.links.bbcode'), value: lines((full, medium) => `[url=${full}][img]${medium}[/img][/url]`) },
+        { label: t('image.links.html'), value: lines((full, medium) => `<a href="${full}"><img src="${medium}"></a>`) },
       ],
     },
   ]

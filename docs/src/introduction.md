@@ -2,7 +2,7 @@
 
 Elysia is a self-hosted image host. Users upload images (from a file, the clipboard
 or a URL), Elysia optionally re-encodes them (WebP, JPEG XL, AVIF, PNG or JPEG),
-strips their metadata, generates thumbnails and serves them under stable links.
+strips their metadata, generates medium images and serves them under stable links.
 
 It is built to sit next to another site, primarily Arcadia: users can sign in
 with that site's accounts, the site can upload on their behalf, and image

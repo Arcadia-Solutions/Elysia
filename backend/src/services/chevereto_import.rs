@@ -31,7 +31,7 @@ use crate::repository::chevereto_import::{
 use crate::repository::files as files_repo;
 use crate::repository::users;
 use crate::services::auth as auth_service;
-use crate::services::files::{self, image_url, thumbnail_url};
+use crate::services::files::{self, image_url, medium_url};
 use crate::services::{check_shutdown, paginate, track_job};
 use crate::settings::ElysiaSettings;
 use crate::storage::Storage;
@@ -157,14 +157,14 @@ pub fn link_pattern(
 }
 
 /// `(key, replacement)` pairs for every known Chevereto link to this image
-/// (original, thumbnail, medium and viewer page), `None` for unsupported
-/// storage modes. Medium links get the thumbnail.
+/// (original, medium, medium and viewer page), `None` for unsupported
+/// storage modes. Medium links get the medium.
 pub fn link_rewrites(
     image: &CheveretoImage,
     settings: &LinkSettings,
     elysia_id: &str,
     elysia_ext: &str,
-    has_thumbnail: bool,
+    has_medium: bool,
 ) -> Option<Vec<(String, String)>> {
     let folder = relative_folder(image)?;
     let bases = match &image.storage_url {
@@ -177,14 +177,14 @@ pub fn link_rewrites(
     };
     let elysia = settings.elysia_public_url.trim_end_matches('/');
     let image_link = image_url(elysia, elysia_id, elysia_ext);
-    let thumbnail_link = thumbnail_url(elysia, elysia_id, elysia_ext, has_thumbnail);
+    let medium_link = medium_url(elysia, elysia_id, elysia_ext, has_medium);
     let (name, extension) = (&image.name, &image.extension);
     let mut rewrites = Vec::new();
     for base in bases {
         let file = format!("{base}{folder}{name}");
         rewrites.push((format!("{file}.{extension}"), image_link.clone()));
-        rewrites.push((format!("{file}.md.{extension}"), thumbnail_link.clone()));
-        rewrites.push((format!("{file}.th.{extension}"), thumbnail_link.clone()));
+        rewrites.push((format!("{file}.md.{extension}"), medium_link.clone()));
+        rewrites.push((format!("{file}.th.{extension}"), medium_link.clone()));
     }
     let short_id = encode_id(image.id, &settings.salt, settings.id_padding);
     for host in &settings.link_hosts {
@@ -951,7 +951,7 @@ async fn import_image(
         &context.link_settings,
         &stored.id,
         &stored.ext,
-        stored.has_thumbnail,
+        stored.has_medium,
     )
     .unwrap_or_default())
 }

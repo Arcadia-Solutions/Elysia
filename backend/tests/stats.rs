@@ -103,7 +103,7 @@ async fn groups_referrers_past_the_top_ones(pool: PgPool) {
         .await
         .unwrap();
     let views = elysia::services::views::ViewCounter::default();
-    // Host n gets n + 1 views, split over both files and the thumbnail.
+    // Host n gets n + 1 views, split over both files and the medium.
     for host in 0..12 {
         for view in 0..=host {
             let id = if view % 2 == 0 {
@@ -139,7 +139,7 @@ async fn groups_referrers_past_the_top_ones(pool: PgPool) {
         (
             referrers[0].referrer.as_deref(),
             referrers[0].views,
-            referrers[0].thumbnail_views
+            referrers[0].medium_views
         ),
         (Some("h11.com"), 11, 1)
     );
@@ -149,7 +149,7 @@ async fn groups_referrers_past_the_top_ones(pool: PgPool) {
         (
             others.referrer.as_deref(),
             others.views,
-            others.thumbnail_views
+            others.medium_views
         ),
         (None, 3, 3)
     );

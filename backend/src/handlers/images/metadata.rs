@@ -11,7 +11,7 @@ use crate::error::Result;
 use crate::middlewares::AuthUser;
 use crate::repository::albums::{self, ImageAlbum};
 use crate::repository::files::{ReferrerViews, find_referrer_views};
-use crate::services::files::{self, image_url, thumbnail_url};
+use crate::services::files::{self, image_url, medium_url};
 
 /// Display metadata for the `/i/<id>` viewer page.
 #[derive(Serialize, ToSchema)]
@@ -33,8 +33,8 @@ pub struct MetadataResponse {
     pub applied_quality: Option<i32>,
     /// Times the image was served from `/i/`.
     pub views: i64,
-    /// Times the thumbnail was served from `/t/`.
-    pub thumbnail_views: i64,
+    /// Times the medium was served from `/m/`.
+    pub medium_views: i64,
     /// Views split by `Referer` host, most image views first.
     pub referrers: Vec<ReferrerViews>,
     pub uploader_username: String,
@@ -42,8 +42,8 @@ pub struct MetadataResponse {
     pub created_at: String,
     /// Public URL for the raw image. Trashed, it is only served to Elysia's own pages.
     pub url: String,
-    /// Public URL for the thumbnail. Trashed, it is only served to Elysia's own pages.
-    pub thumbnail_url: String,
+    /// Public URL for the medium. Trashed, it is only served to Elysia's own pages.
+    pub medium_url: String,
     /// Whether the caller may trash the image: an admin, or its uploader during
     /// the hour after upload. False once trashed.
     pub can_delete: bool,
@@ -84,7 +84,7 @@ pub async fn metadata(
     let public_url = &config.server.public_url;
     Ok(HttpResponse::Ok().json(MetadataResponse {
         url: image_url(public_url, &row.id, &row.ext),
-        thumbnail_url: thumbnail_url(public_url, &row.id, &row.ext, row.has_thumbnail),
+        medium_url: medium_url(public_url, &row.id, &row.ext, row.has_medium),
         can_delete: row.trashed_at.is_none()
             && files::may_trash(
                 user.user_id,
@@ -108,7 +108,7 @@ pub async fn metadata(
         original_height: row.original_height,
         applied_quality: row.applied_quality,
         views: row.views,
-        thumbnail_views: row.thumbnail_views,
+        medium_views: row.medium_views,
         referrers,
         albums,
         uploader_username: row.uploader_username,

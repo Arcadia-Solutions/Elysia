@@ -36,9 +36,9 @@ pub struct StoredFile {
     pub existed: bool,
     /// None when the stored file is identical to its source.
     pub actions: Option<Actions>,
-    /// True when a generated WebP thumbnail exists; when false `/t/` serves the
-    /// original file, so the thumbnail URL keeps the original extension.
-    pub has_thumbnail: bool,
+    /// True when a generated WebP medium exists; when false `/m/` serves the
+    /// original file, so the medium URL keeps the original extension.
+    pub has_medium: bool,
 }
 
 impl StoredFile {
@@ -47,10 +47,10 @@ impl StoredFile {
         image_url(public_url, &self.id, &self.ext)
     }
 
-    /// Public URL for the thumbnail. Generated thumbnails are always WebP;
-    /// without one, `/t/` falls back to the original, hence its extension.
-    pub fn thumbnail_url(&self, public_url: &str) -> String {
-        thumbnail_url(public_url, &self.id, &self.ext, self.has_thumbnail)
+    /// Public URL for the medium. Generated medium images are always WebP;
+    /// without one, `/m/` falls back to the original, hence its extension.
+    pub fn medium_url(&self, public_url: &str) -> String {
+        medium_url(public_url, &self.id, &self.ext, self.has_medium)
     }
 }
 
@@ -60,11 +60,11 @@ pub fn image_url(public_url: &str, id: &str, ext: &str) -> String {
     format!("{public_url}/i/{id}.{ext}")
 }
 
-/// Public thumbnail URL for a stored file. Generated thumbnails are always
-/// WebP; without one, `/t/` falls back to the original, hence its extension.
-pub fn thumbnail_url(public_url: &str, id: &str, ext: &str, has_thumbnail: bool) -> String {
-    let extension = if has_thumbnail { "webp" } else { ext };
-    format!("{public_url}/t/{id}.{extension}")
+/// Public medium URL for a stored file. Generated medium images are always
+/// WebP; without one, `/m/` falls back to the original, hence its extension.
+pub fn medium_url(public_url: &str, id: &str, ext: &str, has_medium: bool) -> String {
+    let extension = if has_medium { "webp" } else { ext };
+    format!("{public_url}/m/{id}.{extension}")
 }
 
 /// Fetch one page (1-based) of images matching the query, only `uploader`'s
@@ -437,27 +437,24 @@ pub async fn store_upload(
     let target_file_format = options
         .target_file_format
         .or(settings.default_target_file_format);
-    let thumbnails_enabled = settings.thumbnails_enabled();
-    let thumbnail_box = (
-        settings.thumbnail_width_pixels,
-        settings.thumbnail_height_pixels,
-    );
+    let medium_enabled = settings.medium_enabled();
+    let medium_box = (settings.medium_width_pixels, settings.medium_height_pixels);
     // Passthrough stores the source, so the output matches the source dimensions.
-    let passthrough_thumbnail = thumbnails_enabled
+    let passthrough_medium = medium_enabled
         && target_file_format.is_none()
-        && over_thumbnail_box(thumbnail_box, source_width as u32, source_height as u32);
+        && over_medium_box(medium_box, source_width as u32, source_height as u32);
     // Single read shared (refcounted, not copied) by the pipeline, EXIF strip and
-    // thumbnail below; a plain passthrough needs none of them and skips it.
+    // medium below; a plain passthrough needs none of them and skips it.
     let source_bytes: img_parts::Bytes =
-        if target_file_format.is_some() || options.strip_exif || passthrough_thumbnail {
+        if target_file_format.is_some() || options.strip_exif || passthrough_medium {
             tokio::fs::read(path).await?.into()
         } else {
             img_parts::Bytes::new()
         };
 
     // The processed main output (`None` = passthrough or animated GIF) and, when
-    // the target-format pipeline runs, its thumbnail and perceptual hash from the same pixels.
-    let (processed, mut thumbnail, phash) = match target_file_format {
+    // the target-format pipeline runs, its medium and perceptual hash from the same pixels.
+    let (processed, mut medium, phash) = match target_file_format {
         Some(format) => {
             let input = source_bytes.clone();
             let process_options = image::ProcessOptions {
@@ -467,9 +464,9 @@ pub async fn store_upload(
                 target_file_size: settings.target_file_size_bytes,
                 requested_quality: options.lossy_compression_value,
             };
-            let thumbnail_options = thumbnails_enabled.then(|| thumbnail_process_options(settings));
+            let medium_options = medium_enabled.then(|| medium_process_options(settings));
             // Encoding is CPU-heavy; keep it off the async worker threads. Decode
-            // once and reuse the pixels for the thumbnail when one is needed.
+            // once and reuse the pixels for the medium when one is needed.
             let permit = processing_permit().await;
             tokio::task::spawn_blocking(move || {
                 let _permit = permit;
@@ -477,12 +474,12 @@ pub async fn store_upload(
                     return Ok::<_, image::ProcessError>((None, None, None));
                 };
                 let phash = image::perceptual_hash(&image);
-                let source = thumbnail_options.is_some().then(|| image.clone());
+                let source = medium_options.is_some().then(|| image.clone());
                 let processed =
                     image::process_decoded(image, icc_profile.as_deref(), &process_options)?;
-                let thumbnail = match (thumbnail_options, source) {
+                let medium = match (medium_options, source) {
                     (Some(options), Some(source))
-                        if over_thumbnail_box(thumbnail_box, processed.width, processed.height) =>
+                        if over_medium_box(medium_box, processed.width, processed.height) =>
                     {
                         Some(
                             image::process_decoded(source, icc_profile.as_deref(), &options)?.bytes,
@@ -490,7 +487,7 @@ pub async fn store_upload(
                     }
                     _ => None,
                 };
-                Ok((Some(processed), thumbnail, Some(phash)))
+                Ok((Some(processed), medium, Some(phash)))
             })
             .await
             .map_err(|_| Error::Io(std::io::Error::other("image processing task failed")))?
@@ -546,10 +543,10 @@ pub async fn store_upload(
             temp,
         },
     };
-    // Passthrough: the source was not decoded above, so make the thumbnail from
+    // Passthrough: the source was not decoded above, so make the medium from
     // its own decode. The pipeline path already produced it from the shared decode.
-    if passthrough_thumbnail {
-        thumbnail = generate_thumbnail(source_bytes, settings).await?;
+    if passthrough_medium {
+        medium = generate_medium(source_bytes, settings).await?;
     }
 
     let hash = hash_file(output.temp.path()).await?;
@@ -567,11 +564,11 @@ pub async fn store_upload(
     }
 
     // Passthrough and animated GIFs skipped the pipeline decode: hash the
-    // thumbnail when there is one, a cheaper decode than the stored file.
+    // medium when there is one, a cheaper decode than the stored file.
     let phash = match phash {
         Some(phash) => phash,
         None => {
-            let bytes = match &thumbnail {
+            let bytes = match &medium {
                 Some(bytes) => bytes.clone(),
                 None => tokio::fs::read(output.temp.path()).await?,
             };
@@ -595,8 +592,8 @@ pub async fn store_upload(
         storage.prepare_shard(&candidate).await?;
         let dest = storage.path_for(&candidate, output.ext);
         temp.persist(&dest).map_err(|error| error.error)?;
-        if let Some(bytes) = &thumbnail
-            && let Err(error) = storage.write_thumbnail(&candidate, bytes).await
+        if let Some(bytes) = &medium
+            && let Err(error) = storage.write_medium(&candidate, bytes).await
         {
             let _ = tokio::fs::remove_file(&dest).await;
             return Err(error);
@@ -618,7 +615,7 @@ pub async fn store_upload(
                 original_height: source_height,
                 requested_quality,
                 applied_quality: output.applied_quality,
-                has_thumbnail: thumbnail.is_some(),
+                has_medium: medium.is_some(),
                 phash,
                 uploaded_by_user_id,
                 api_key_id,
@@ -634,7 +631,7 @@ pub async fn store_upload(
             Ok(false) => {
                 // Keep the bytes for the next candidate; deleted on drop if none succeeds.
                 temp = TempPath::try_from_path(dest)?;
-                let _ = tokio::fs::remove_file(storage.thumbnail_path_for(&candidate)).await;
+                let _ = tokio::fs::remove_file(storage.medium_path_for(&candidate)).await;
                 // A failed insert is an id collision or a concurrent upload of the same
                 // bytes winning the hash race; in the latter case, reuse its row.
                 if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
@@ -643,7 +640,7 @@ pub async fn store_upload(
             }
             Err(error) => {
                 let _ = tokio::fs::remove_file(&dest).await;
-                let _ = tokio::fs::remove_file(storage.thumbnail_path_for(&candidate)).await;
+                let _ = tokio::fs::remove_file(storage.medium_path_for(&candidate)).await;
                 return Err(error);
             }
         }
@@ -662,7 +659,7 @@ pub async fn store_upload(
             (output.width, output.height),
             output.applied_quality,
         ),
-        has_thumbnail: thumbnail.is_some(),
+        has_medium: medium.is_some(),
     })
 }
 
@@ -750,7 +747,7 @@ fn existing_stored(record: files::FileRecord) -> StoredFile {
             record.applied_quality,
         ),
         ext: record.ext,
-        has_thumbnail: record.has_thumbnail,
+        has_medium: record.has_medium,
     }
 }
 
@@ -818,20 +815,20 @@ pub fn check_dimensions(settings: &ElysiaSettings, width: u32, height: u32) -> R
     Ok(())
 }
 
-/// Whether an image exceeds the thumbnail box on a constrained axis (0 = off).
-/// When it does not, no separate thumbnail is made and /t/ serves the main file.
-fn over_thumbnail_box((box_width, box_height): (u32, u32), width: u32, height: u32) -> bool {
+/// Whether an image exceeds the medium box on a constrained axis (0 = off).
+/// When it does not, no separate medium is made and /m/ serves the main file.
+fn over_medium_box((box_width, box_height): (u32, u32), width: u32, height: u32) -> bool {
     (box_width > 0 && width > box_width) || (box_height > 0 && height > box_height)
 }
 
-/// Pipeline options for a thumbnail: fit the box, lossy WebP.
-fn thumbnail_process_options(settings: &ElysiaSettings) -> image::ProcessOptions {
+/// Pipeline options for a medium: fit the box, lossy WebP.
+fn medium_process_options(settings: &ElysiaSettings) -> image::ProcessOptions {
     image::ProcessOptions {
-        target_width: settings.thumbnail_width_pixels,
-        target_height: settings.thumbnail_height_pixels,
+        target_width: settings.medium_width_pixels,
+        target_height: settings.medium_height_pixels,
         format: TargetFormat::Webp,
         target_file_size: 0,
-        requested_quality: Some(settings.thumbnail_quality),
+        requested_quality: Some(settings.medium_quality),
     }
 }
 
@@ -868,13 +865,13 @@ async fn compute_perceptual_hash(bytes: Vec<u8>) -> Result<Option<i64>> {
     .map_err(|_| Error::Io(std::io::Error::other("perceptual hash task failed")))
 }
 
-/// Resize the source into the thumbnail box and encode it as lossy WebP.
+/// Resize the source into the medium box and encode it as lossy WebP.
 /// `Ok(None)` when the pipeline passes the source through (animated GIF).
-async fn generate_thumbnail(
+async fn generate_medium(
     source: img_parts::Bytes,
     settings: &ElysiaSettings,
 ) -> Result<Option<Vec<u8>>> {
-    let options = thumbnail_process_options(settings);
+    let options = medium_process_options(settings);
     // Encoding is CPU-heavy; keep it off the async worker threads.
     let permit = processing_permit().await;
     let processed = tokio::task::spawn_blocking(move || {
@@ -882,7 +879,7 @@ async fn generate_thumbnail(
         image::process(&source, &options)
     })
     .await
-    .map_err(|_| Error::Io(std::io::Error::other("thumbnail task failed")))?
+    .map_err(|_| Error::Io(std::io::Error::other("medium task failed")))?
     .map_err(process_error)?;
     Ok(processed.map(|processed| processed.bytes))
 }

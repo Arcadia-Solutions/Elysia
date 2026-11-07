@@ -72,7 +72,7 @@ const upload = async (page: Page, count: number): Promise<string[]> => {
   return (await links.evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href')!))).map((href) => href.slice(3))
 }
 
-// The value of a copyable link row, `group` 0 for the full image, 1 for the thumbnail.
+// The value of a copyable link row, `group` 0 for the full image, 1 for the medium.
 const linkRow = (page: Page, label: string, group = 0) => page.locator('.p-inputgroup').filter({ hasText: label }).nth(group).locator('input, textarea')
 
 // The local date `days` after any of `instants`, as the viewer shows it: an
@@ -119,8 +119,8 @@ test.describe('upload', () => {
     await expect(linkRow(page, 'Markdown')).toHaveValue(`![](${link})`)
     await expect(linkRow(page, 'BBCode')).toHaveValue(`[img]${link}[/img]`)
     await expect(linkRow(page, 'HTML')).toHaveValue(`<img src="${link}">`)
-    const thumbnail = await linkRow(page, 'Link', 1).inputValue()
-    await expect(linkRow(page, 'BBCode', 1)).toHaveValue(`[url=${link}][img]${thumbnail}[/img][/url]`)
+    const medium = await linkRow(page, 'Link', 1).inputValue()
+    await expect(linkRow(page, 'BBCode', 1)).toHaveValue(`[url=${link}][img]${medium}[/img][/url]`)
 
     await page.locator('.p-inputgroup').filter({ hasText: 'Markdown' }).first().getByRole('button', { name: 'Copy' }).click()
     await expect(toast(page, 'Copied')).toBeVisible()
@@ -128,7 +128,7 @@ test.describe('upload', () => {
 
     const served = await request.get(new URL(link).pathname)
     expect(served.headers()['content-type']).toBe('image/webp')
-    expect((await request.get(new URL(thumbnail).pathname)).ok()).toBe(true)
+    expect((await request.get(new URL(medium).pathname)).ok()).toBe(true)
 
     // The preview opens the viewer in a new tab.
     const [viewer] = await Promise.all([context.waitForEvent('page'), page.locator(`a[href="/i/${id}"]`).click()])

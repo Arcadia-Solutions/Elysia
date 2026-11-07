@@ -183,34 +183,26 @@
       </div>
     </Panel>
 
-    <Panel :header="$t('settings.sections.thumbnails')" toggleable collapsed>
-      <p class="intro">{{ $t('settings.thumbnails_intro') }}</p>
+    <Panel :header="$t('settings.sections.medium')" toggleable collapsed>
+      <p class="intro">{{ $t('settings.medium_intro') }}</p>
 
       <div class="field">
-        <label>{{ $t('settings.thumbnail_width.label') }}</label>
-        <small>{{ $t('settings.thumbnail_width.help') }}</small>
-        <InputNumber v-model="form.thumbnail_width_pixels" size="small" :min="0" suffix=" px" fluid />
+        <label>{{ $t('settings.medium_width.label') }}</label>
+        <small>{{ $t('settings.medium_width.help') }}</small>
+        <InputNumber v-model="form.medium_width_pixels" size="small" :min="0" suffix=" px" fluid />
       </div>
 
       <div class="field">
-        <label>{{ $t('settings.thumbnail_height.label') }}</label>
-        <small>{{ $t('settings.thumbnail_height.help') }}</small>
-        <InputNumber v-model="form.thumbnail_height_pixels" size="small" :min="0" suffix=" px" fluid />
+        <label>{{ $t('settings.medium_height.label') }}</label>
+        <small>{{ $t('settings.medium_height.help') }}</small>
+        <InputNumber v-model="form.medium_height_pixels" size="small" :min="0" suffix=" px" fluid />
       </div>
 
-      <div class="field" :class="{ disabled: !thumbnailsEnabled }">
-        <label>{{ $t('settings.thumbnail_quality.label') }}</label>
-        <small>{{ $t('settings.thumbnail_quality.help') }}</small>
-        <InputNumber
-          v-model="form.thumbnail_quality"
-          size="small"
-          :min="1"
-          :max="100"
-          fluid
-          :disabled="!thumbnailsEnabled"
-          :invalid="!!errors.thumbnail_quality"
-        />
-        <Message v-if="errors.thumbnail_quality" severity="error" size="small" variant="simple">{{ errors.thumbnail_quality }}</Message>
+      <div class="field" :class="{ disabled: !mediumEnabled }">
+        <label>{{ $t('settings.medium_quality.label') }}</label>
+        <small>{{ $t('settings.medium_quality.help') }}</small>
+        <InputNumber v-model="form.medium_quality" size="small" :min="1" :max="100" fluid :disabled="!mediumEnabled" :invalid="!!errors.medium_quality" />
+        <Message v-if="errors.medium_quality" severity="error" size="small" variant="simple">{{ errors.medium_quality }}</Message>
       </div>
     </Panel>
 
@@ -276,9 +268,9 @@ const form = reactive<Required<ElysiaSettings>>({
   allow_overriding_compression: true,
   strip_exif_by_default: false,
   allow_overriding_strip_exif: true,
-  thumbnail_width_pixels: 0,
-  thumbnail_height_pixels: 0,
-  thumbnail_quality: 80,
+  medium_width_pixels: 0,
+  medium_height_pixels: 0,
+  medium_quality: 80,
   allow_registration: true,
   allowed_referrers: [],
   uploads_enabled: true,
@@ -293,8 +285,8 @@ const form = reactive<Required<ElysiaSettings>>({
   uploads_disabled_message: '',
 })
 
-// Thumbnails are on when a box is set on either axis.
-const thumbnailsEnabled = computed(() => form.thumbnail_width_pixels > 0 || form.thumbnail_height_pixels > 0)
+// Medium images are on when a box is set on either axis.
+const mediumEnabled = computed(() => form.medium_width_pixels > 0 || form.medium_height_pixels > 0)
 
 // PrimeVue Select shows the placeholder (blank) for a null model, so "store
 // as-is" (null) would never appear selected. Map it to a sentinel for the Select.
@@ -320,14 +312,14 @@ const errors = computed(() => {
   if (form.max_file_size_bytes === 0) {
     result.max_file_size_bytes = t('settings.errors.max_file_size_required')
   }
-  // A set default format, an allowed override, or thumbnail generation can all
+  // A set default format, an allowed override, or medium generation can all
   // trigger a server-side decode, so the pixel caps are required in each case.
-  if (form.default_target_file_format || form.allow_overriding_file_format || thumbnailsEnabled.value) {
+  if (form.default_target_file_format || form.allow_overriding_file_format || mediumEnabled.value) {
     if (form.max_width_pixels === 0) result.max_width_pixels = t('settings.errors.max_dimension_required')
     if (form.max_height_pixels === 0) result.max_height_pixels = t('settings.errors.max_dimension_required')
   }
-  if (thumbnailsEnabled.value && (form.thumbnail_quality < 1 || form.thumbnail_quality > 100)) {
-    result.thumbnail_quality = t('settings.errors.thumbnail_quality_range')
+  if (mediumEnabled.value && (form.medium_quality < 1 || form.medium_quality > 100)) {
+    result.medium_quality = t('settings.errors.medium_quality_range')
   }
   return result
 })

@@ -108,10 +108,10 @@ create table files (
   original_height int not null,
   requested_quality int,
   applied_quality int,
-  has_thumbnail boolean not null default false,
+  has_medium boolean not null default false,
   phash bigint not null,
   views bigint not null default 0,
-  thumbnail_views bigint not null default 0,
+  medium_views bigint not null default 0,
   uploaded_by_user_id uuid not null references users(id),
   api_key_id uuid references api_keys(id),
   created_at timestamptz not null default now(),
@@ -142,10 +142,10 @@ comment on column files.original_width is 'Source image width in pixels before p
 comment on column files.original_height is 'Source image height in pixels before processing';
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
 comment on column files.applied_quality is 'Effective quality used; null means lossless';
-comment on column files.has_thumbnail is 'True when a separate <first 2 id chars>/<id>.t.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
+comment on column files.has_medium is 'True when a separate <first 2 id chars>/<id>.m.webp exists; when false /m/ serves the main file (image already within the medium box)';
 comment on column files.phash is '64-bit DCT perceptual hash, close for visually similar images (compare with the Hamming distance), computed on upload';
 comment on column files.views is 'Times the image was served from /i/';
-comment on column files.thumbnail_views is 'Times the thumbnail was served from /t/';
+comment on column files.medium_views is 'Times the medium was served from /m/';
 comment on column files.uploaded_by_user_id is 'Who uploaded the file';
 comment on column files.api_key_id is 'The API key the file was uploaded with; null for session and SSO delegated uploads';
 comment on column files.created_at is 'When the file was uploaded';
@@ -167,14 +167,14 @@ create table file_referrer_views (
   file_id text not null references files(id) on delete cascade,
   referrer text not null,
   views bigint not null default 0,
-  thumbnail_views bigint not null default 0,
+  medium_views bigint not null default 0,
   primary key (file_id, referrer)
 );
 
-comment on table file_referrer_views is 'Views of a file split by the Referer host they came from; files.views and files.thumbnail_views hold the totals';
+comment on table file_referrer_views is 'Views of a file split by the Referer host they came from; files.views and files.medium_views hold the totals';
 comment on column file_referrer_views.referrer is 'Lowercased Referer host; empty for requests without a Referer';
 comment on column file_referrer_views.views is 'Times the image was served from /i/ to this referrer';
-comment on column file_referrer_views.thumbnail_views is 'Times the thumbnail was served from /t/ to this referrer';
+comment on column file_referrer_views.medium_views is 'Times the medium was served from /m/ to this referrer';
 
 -- Named sets of images a user curates. Any available image may go in any of
 -- its owner's albums, whoever uploaded it.
@@ -291,9 +291,9 @@ create table elysia_settings (
   allow_overriding_compression boolean not null default true,
    strip_exif_by_default boolean not null default false,
    allow_overriding_strip_exif boolean not null default true,
-   thumbnail_width_pixels int not null default 0,
-   thumbnail_height_pixels int not null default 0,
-   thumbnail_quality int not null default 80,
+   medium_width_pixels int not null default 0,
+   medium_height_pixels int not null default 0,
+   medium_quality int not null default 80,
    allow_registration boolean not null default true,
    allowed_referrers text[] not null default '{}',
    uploads_enabled boolean not null default true,
@@ -321,11 +321,11 @@ comment on column elysia_settings.default_compression is 'Lossy quality (1-100) 
 comment on column elysia_settings.allow_overriding_compression is 'When false, uploads may not request their own compression; the default is always used';
 comment on column elysia_settings.strip_exif_by_default is 'When true, EXIF is stripped from an upload that does not request otherwise';
 comment on column elysia_settings.allow_overriding_strip_exif is 'When false, uploads may not request their own EXIF-stripping choice; the default is always used';
-comment on column elysia_settings.thumbnail_width_pixels is 'Thumbnail box width; 0 on both axes disables thumbnails';
-comment on column elysia_settings.thumbnail_height_pixels is 'Thumbnail box height; 0 on both axes disables thumbnails';
-comment on column elysia_settings.thumbnail_quality is 'Lossy WebP quality (1-100) for generated thumbnails';
+comment on column elysia_settings.medium_width_pixels is 'Medium box width; 0 on both axes disables medium images';
+comment on column elysia_settings.medium_height_pixels is 'Medium box height; 0 on both axes disables medium images';
+comment on column elysia_settings.medium_quality is 'Lossy WebP quality (1-100) for generated medium images';
 comment on column elysia_settings.allow_registration is 'When true, anyone may create a local account via the register endpoint';
-comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/ and /t/; empty allows any (including no Referer)';
+comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/ and /m/; empty allows any (including no Referer)';
 comment on column elysia_settings.uploads_enabled is 'When false, every upload is rejected, admins included';
 comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of available and trashed files each non-admin user may hold, unless overridden per user; 0 is unlimited';
 comment on column elysia_settings.record_referrer_views is 'When true, views are split per Referer host in file_referrer_views; when false, every view is counted under no referrer';
@@ -344,7 +344,7 @@ insert into elysia_settings
    allow_overriding_file_format, target_file_size_bytes,
    default_compression, allow_overriding_compression,
    strip_exif_by_default, allow_overriding_strip_exif,
-   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
+   medium_width_pixels, medium_height_pixels, medium_quality,
    allow_registration, allowed_referrers, uploads_enabled,
    default_storage_quota_bytes, record_referrer_views)
 values ('singleton', 26214400, 10000, 10000, 0, 0, 'webp', false, 0, 75, false,

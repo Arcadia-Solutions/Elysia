@@ -25,7 +25,7 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::images::upload::upload,
         crate::handlers::images::upload_url::upload_url,
         crate::handlers::images::serve::serve,
-        crate::handlers::images::serve_thumbnail::serve_thumbnail,
+        crate::handlers::images::serve_medium::serve_medium,
         crate::handlers::images::metadata::metadata,
         crate::handlers::images::list_images::images,
         crate::handlers::images::trash_images::trash_images,

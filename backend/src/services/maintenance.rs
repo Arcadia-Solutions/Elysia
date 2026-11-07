@@ -203,8 +203,8 @@ fn selects(entry: &str, table: &str, column: &str) -> bool {
     }
 }
 
-/// Adds the ids of every `{host}/i/<id>` and `{host}/t/<id>` link in `text`
-/// for each of the lowercase `hosts`: image, thumbnail and viewer links, also
+/// Adds the ids of every `{host}/i/<id>` and `{host}/m/<id>` link in `text`
+/// for each of the lowercase `hosts`: image, medium and viewer links, also
 /// JSON-escaped (`\/`) or URL-encoded (`%2F`). Hosts are matched ignoring case.
 pub fn extract_ids(text: &str, hosts: &[String], ids: &mut HashSet<String>) {
     let mut text = text.replace("%2F", "/").replace("%2f", "/");
@@ -222,7 +222,7 @@ pub fn extract_ids(text: &str, hosts: &[String], ids: &mut HashSet<String>) {
             let rest = &text[start + host.len()..];
             let Some(rest) = rest
                 .strip_prefix("/i/")
-                .or_else(|| rest.strip_prefix("/t/"))
+                .or_else(|| rest.strip_prefix("/m/"))
             else {
                 continue;
             };

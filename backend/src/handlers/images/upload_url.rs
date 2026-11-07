@@ -75,7 +75,7 @@ pub async fn upload_url(
 
     Ok(HttpResponse::Ok().json(UploadResponse {
         url: stored.image_url(&config.server.public_url),
-        thumbnail_url: stored.thumbnail_url(&config.server.public_url),
+        medium_url: stored.medium_url(&config.server.public_url),
         id: stored.id,
         ext: stored.ext,
         existed: stored.existed,

@@ -21,7 +21,7 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     /// Where Elysia is reached from the outside, e.g. `https://images.example.com`.
-    /// Prefixes every image and thumbnail URL the API returns. Empty (the
+    /// Prefixes every image and medium URL the API returns. Empty (the
     /// default) keeps them relative, which only works on Elysia's own site, so
     /// it is required with SSO. Stored without a trailing slash.
     #[serde(default)]
@@ -73,7 +73,7 @@ pub struct TelemetryConfig {
 /// Per-minute request budgets, refilled continuously. 0 disables a limit.
 #[derive(Debug, Deserialize)]
 pub struct RateLimitConfig {
-    /// Routes that need no login (images, thumbnails, login, registration,
+    /// Routes that need no login (images, medium images, login, registration,
     /// SSO, public settings) and failed authentications, keyed by client IP
     /// (IPv6 by /64).
     pub unauthenticated_requests_per_minute_per_ip: u32,

@@ -7,7 +7,7 @@ in the site that embeds them. Every field of the form is explained in the page.
 ## What gets imported
 
 Images are read from Chevereto's MySQL database and downloaded over HTTP, then
-go through the normal upload pipeline: thumbnails, EXIF stripping and
+go through the normal upload pipeline: medium images, EXIF stripping and
 deduplication apply, size and pixel limits do not. Each image keeps its upload
 date (unless it already existed in Elysia, then its date is left untouched) and
 its uploader:
@@ -20,9 +20,9 @@ its uploader:
 ## Link rewriting
 
 When the embedding site's PostgreSQL database is given, after each chunk of
-images every Chevereto link (image, medium, thumbnail and viewer page) found in
+images every Chevereto link (image, medium, medium and viewer page) found in
 its text-like columns is replaced with the Elysia link built from
-`server.public_url`. Medium links become Elysia thumbnail links. Each chunk is
+`server.public_url`. Medium links become Elysia medium links. Each chunk is
 rewritten in one transaction and only rows whose content changes are updated.
 
 A column too short to hold the new link aborts the chunk: widen it and resume.

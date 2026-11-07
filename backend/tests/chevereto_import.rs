@@ -78,14 +78,11 @@ fn link_rewrites_keys() {
     )
     .unwrap();
     let image_link = "https://elysia.example/i/eid.webp".to_string();
-    let thumbnail_link = "https://elysia.example/t/eid.webp".to_string();
+    let medium_link = "https://elysia.example/m/eid.webp".to_string();
     let file = "img.example.com/images/2024/05/03/my.photo";
     assert_eq!(rewrites[0], (format!("{file}.png"), image_link));
-    assert_eq!(
-        rewrites[1],
-        (format!("{file}.md.png"), thumbnail_link.clone())
-    );
-    assert_eq!(rewrites[2], (format!("{file}.th.png"), thumbnail_link));
+    assert_eq!(rewrites[1], (format!("{file}.md.png"), medium_link.clone()));
+    assert_eq!(rewrites[2], (format!("{file}.th.png"), medium_link));
     assert_eq!(
         rewrites[7],
         (
@@ -102,7 +99,7 @@ fn link_rewrites_keys() {
     )
     .unwrap();
     assert_eq!(stored[0].0, "cdn.example.com/bucket/abc.png");
-    assert_eq!(stored[2].1, "https://elysia.example/t/eid.webp");
+    assert_eq!(stored[2].1, "https://elysia.example/m/eid.webp");
     assert!(
         link_rewrites(
             &image("path", "abc", None),
@@ -146,11 +143,11 @@ async fn apply_link_rewrites_in_postgres(pool: sqlx::PgPool) {
         ),
         (
             "https://img.example.com/images/2024/05/03/abc.th.png",
-            "https://elysia.example/t/eid.webp",
+            "https://elysia.example/m/eid.webp",
         ),
         (
             "https://img.example.com/images/2024/05/03/abc.md.png",
-            "https://elysia.example/t/eid.webp",
+            "https://elysia.example/m/eid.webp",
         ),
         (
             "https://img.example.com/image/my-slug.jbz",

@@ -165,7 +165,7 @@ fn reader(input: &[u8]) -> image::ImageReader<std::io::Cursor<&[u8]>> {
 
 /// Resize and encode an already-decoded image, embedding `icc_profile` where the
 /// format allows. Lets callers decode once and reuse the pixels (e.g. a main
-/// output plus a thumbnail from one source).
+/// output plus a medium from one source).
 pub fn process_decoded(
     image: DynamicImage,
     icc_profile: Option<&[u8]>,
