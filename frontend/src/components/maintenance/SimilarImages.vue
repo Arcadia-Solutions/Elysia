@@ -41,7 +41,7 @@
           <div v-for="group in page.results" :key="group.images[0].id" class="group">
             <div v-for="image in group.images" :key="image.id" class="image" :class="{ selected: selected.has(image.id) }">
               <router-link :to="{ name: 'Image', params: { id: image.id } }" class="thumb">
-                <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
+                <ImageThumbnail :src="image.thumbnail_url" :alt="image.id" />
               </router-link>
               <label class="details">
                 <Checkbox :modelValue="selected.has(image.id)" binary size="small" @update:modelValue="toggleSelected(image.id)" />
@@ -68,6 +68,7 @@ import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
+import ImageThumbnail from '@/components/ImageThumbnail.vue'
 import RunProgress from '@/components/RunProgress.vue'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
@@ -190,7 +191,7 @@ onMounted(() => {
   overflow: hidden;
   background: var(--p-content-border-color);
 }
-.thumb img {
+.thumb .image-thumbnail {
   width: 100%;
   height: 100%;
   object-fit: contain;
