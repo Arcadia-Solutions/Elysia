@@ -15,7 +15,7 @@
       >
         <div v-for="reported in page.results" :key="reported.image.id" class="reported card">
           <router-link :to="{ name: 'Image', params: { id: reported.image.id } }" class="thumb">
-            <ImageThumbnail :src="reported.image.medium_url" :alt="reported.image.id" />
+            <ImageThumbnail :src="reported.image.thumbnail_url" :alt="reported.image.id" />
           </router-link>
           <div class="details">
             <small>

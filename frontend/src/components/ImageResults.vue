@@ -45,7 +45,7 @@
       <Column :header="$t('browse.columns.image')">
         <template #body="{ data }">
           <router-link :to="{ name: 'Image', params: { id: data.id } }">
-            <ImageThumbnail :src="data.thumbnail_url" :alt="data.id" class="medium" />
+            <ImageThumbnail :src="data.thumbnail_url" :alt="data.id" class="thumbnail" />
           </router-link>
         </template>
       </Column>
@@ -178,7 +178,7 @@ const setPageSelection = (rows: PaginatedResultsImageSummaryResultsInner[]) => {
   border-color: var(--p-primary-color);
   color: var(--p-primary-contrast-color, #fff);
 }
-.medium {
+.thumbnail {
   width: 48px;
   height: 48px;
   object-fit: cover;
