@@ -13,17 +13,23 @@
       <small>{{ $t('maintenance.chevereto_import.chevereto_public_url.help') }}</small>
       <InputText v-model="form.chevereto_public_url" size="small" fluid placeholder="https://img.example.com" :disabled />
     </div>
-    <div class="field">
-      <label>{{ $t('maintenance.chevereto_import.link_hosts.label') }}</label>
-      <small>{{ $t('maintenance.chevereto_import.link_hosts.help') }}</small>
-      <InputText v-model="linkHosts" size="small" fluid placeholder="img.example.com, old.example.com" :disabled />
-    </div>
 
     <h3>{{ $t('maintenance.chevereto_import.backend') }}</h3>
     <div class="field">
       <label>{{ $t('maintenance.chevereto_import.backend_database_url.label') }}</label>
       <small>{{ $t('maintenance.chevereto_import.backend_database_url.help') }}</small>
       <InputText v-model="form.backend_database_url" size="small" fluid placeholder="postgres://app:password@localhost:5432/app" :disabled />
+    </div>
+    <div class="field">
+      <label>{{ $t('maintenance.chevereto_import.link_hosts.label') }}</label>
+      <small>{{ $t('maintenance.chevereto_import.link_hosts.help') }}</small>
+      <InputText
+        v-model="linkHosts"
+        size="small"
+        fluid
+        placeholder="img.example.com, old.example.com"
+        :disabled="disabled || !form.backend_database_url?.trim()"
+      />
     </div>
     <div class="field">
       <label>{{ $t('maintenance.chevereto_import.match_users.label') }}</label>
