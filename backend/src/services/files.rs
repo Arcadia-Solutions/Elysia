@@ -426,6 +426,11 @@ pub async fn store_upload(
     {
         return keep_existing(pool, record, options).await;
     }
+    // The source is a file we already store (e.g. a re-upload of a processed output):
+    // re-encoding it would only produce a degraded duplicate.
+    if let Some(record) = files::find_record_by_hash(pool, &original_hash).await? {
+        return keep_existing(pool, record, options).await;
+    }
 
     // Run the pipeline when a target format is in effect; `None` passes through.
     // The per-upload override wins, else the configured default.

@@ -320,6 +320,37 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn uploading_a_stored_output_is_deduplicated(pool: PgPool) {
+    // Re-uploading the processed bytes must not re-encode them into a new file.
+    let (storage, _dir) = temp_storage();
+    let uploader = test_user(&pool, "reuploader").await.0.id;
+    let options = UploadOptions {
+        lossy_compression_value: Some(50),
+        ..Default::default()
+    };
+    let upload = async |image: Vec<u8>, mime: &'static str| {
+        store_from_url(
+            &pool,
+            &storage,
+            &webp_settings(),
+            &reqwest::Client::new(),
+            &serve_once("HTTP/1.1 200 OK", mime, image),
+            None,
+            &options,
+            uploader,
+            None,
+        )
+        .await
+        .unwrap()
+    };
+    let first = upload(noisy_png(32, 32), "image/png").await;
+    let stored = std::fs::read(storage.path_for(&first.id, &first.ext)).unwrap();
+    let second = upload(stored, "image/webp").await;
+    assert!(second.existed);
+    assert_eq!(first.id, second.id);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn different_quality_reprocesses(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let image = noisy_png(32, 32);

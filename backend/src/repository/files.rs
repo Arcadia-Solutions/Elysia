@@ -648,7 +648,7 @@ pub async fn count(
     .await?)
 }
 
-/// Output dedup: a different source that normalized to identical output bytes.
+/// Available file whose stored bytes hash to `hash`.
 pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<FileRecord>> {
     Ok(sqlx::query_as!(
         FileRecord,
