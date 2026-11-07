@@ -575,6 +575,7 @@ fn sample_file(id: &str, uploaded_by_user_id: uuid::Uuid) -> NewFile<'_> {
         requested_quality: None,
         applied_quality: None,
         has_medium: false,
+        has_thumbnail: false,
         phash: 0,
         uploaded_by_user_id,
         api_key_id: None,

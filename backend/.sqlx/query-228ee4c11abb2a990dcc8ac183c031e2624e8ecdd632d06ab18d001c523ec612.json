@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime, original_ext, original_width, original_height,\n                width, height, applied_quality, has_medium\n         from files where hash = $1 and status = 'available'",
+  "query": "select id, ext, mime, original_ext, original_width, original_height,\n                width, height, applied_quality, has_medium, has_thumbnail\n         from files where original_hash = $1 and status = 'available'\n           and requested_quality is not distinct from $2\n         order by created_at limit 1",
   "describe": {
     "columns": [
       {
@@ -112,11 +112,23 @@
             "name": "has_medium"
           }
         }
+      },
+      {
+        "ordinal": 10,
+        "name": "has_thumbnail",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "files",
+            "name": "has_thumbnail"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Int4"
       ]
     },
     "nullable": [
@@ -129,8 +141,9 @@
       false,
       false,
       true,
+      false,
       false
     ]
   },
-  "hash": "3ecd43a34c43f3d02203a2b33877b814b0aa0db326445952499e612ce0a38a6a"
+  "hash": "228ee4c11abb2a990dcc8ac183c031e2624e8ecdd632d06ab18d001c523ec612"
 }

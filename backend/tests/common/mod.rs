@@ -86,6 +86,9 @@ pub(crate) fn test_settings() -> ElysiaSettings {
         medium_width_pixels: 0,
         medium_height_pixels: 0,
         medium_quality: 80,
+        thumbnail_width_pixels: 0,
+        thumbnail_height_pixels: 0,
+        thumbnail_quality: 80,
         allow_registration: true,
         allowed_referrers: Vec::new(),
         uploads_enabled: true,
@@ -328,6 +331,7 @@ pub(crate) async fn seed_files(
                 requested_quality: None,
                 applied_quality: None,
                 has_medium: false,
+                has_thumbnail: false,
                 // Spread like real hashes, so seeded files never look alike.
                 phash: std::hash::BuildHasher::hash_one(
                     &std::hash::BuildHasherDefault::<std::hash::DefaultHasher>::default(),

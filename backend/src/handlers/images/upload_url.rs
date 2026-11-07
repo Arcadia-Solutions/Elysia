@@ -75,7 +75,7 @@ pub async fn upload_url(
 
     Ok(HttpResponse::Ok().json(UploadResponse {
         url: stored.image_url(&config.server.public_url),
-        medium_url: stored.medium_url(&config.server.public_url),
+        medium_url: stored.preview_url(&config.server.public_url, crate::storage::Preview::Medium),
         id: stored.id,
         ext: stored.ext,
         existed: stored.existed,

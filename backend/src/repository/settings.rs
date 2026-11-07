@@ -19,6 +19,7 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                   allow_overriding_compression,
                    strip_exif_by_default, allow_overriding_strip_exif,
                    medium_width_pixels, medium_height_pixels, medium_quality,
+                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
                    allow_registration, allowed_referrers, uploads_enabled,
                    default_storage_quota_bytes, record_referrer_views,
                    terms_of_service, privacy_policy,
@@ -46,6 +47,9 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         medium_width_pixels: row.medium_width_pixels as u32,
         medium_height_pixels: row.medium_height_pixels as u32,
         medium_quality: row.medium_quality as u8,
+        thumbnail_width_pixels: row.thumbnail_width_pixels as u32,
+        thumbnail_height_pixels: row.thumbnail_height_pixels as u32,
+        thumbnail_quality: row.thumbnail_quality as u8,
         allow_registration: row.allow_registration,
         allowed_referrers: row.allowed_referrers,
         uploads_enabled: row.uploads_enabled,
@@ -79,7 +83,9 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             terms_of_service = $21, privacy_policy = $22,
             default_expiry_days = $23, allow_overriding_expiry = $24,
             albums_enabled = $25, url_uploads_enabled = $26,
-            uploads_disabled_message = $27
+            uploads_disabled_message = $27,
+            thumbnail_width_pixels = $29, thumbnail_height_pixels = $30,
+            thumbnail_quality = $31
          where id = $28"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
@@ -109,6 +115,9 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         settings.url_uploads_enabled,
         &settings.uploads_disabled_message,
         SINGLETON_ID,
+        settings.thumbnail_width_pixels as i32,
+        settings.thumbnail_height_pixels as i32,
+        settings.thumbnail_quality as i32,
     )
     .execute(pool)
     .await?;

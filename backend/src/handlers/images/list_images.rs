@@ -12,6 +12,7 @@ use crate::middlewares::AuthUser;
 use crate::repository::files::{ImageListRow, ImagesQuery, ImagesStatus};
 use crate::repository::{PaginatedResults, users};
 use crate::services::files;
+use crate::storage::Preview;
 
 /// One image in a browse or unreferenced images page.
 #[derive(Serialize, ToSchema)]
@@ -19,6 +20,9 @@ pub struct ImageSummary {
     pub id: String,
     /// Medium URL from `/m/`. Trashed, it is only served to Elysia's own pages.
     pub medium_url: String,
+    /// Thumbnail URL from `/t/`, cropped to fill the thumbnail box. Trashed, it
+    /// is only served to Elysia's own pages.
+    pub thumbnail_url: String,
     pub original_name: Option<String>,
     /// Stored extension.
     pub ext: String,
@@ -33,10 +37,23 @@ pub struct ImageSummary {
 }
 
 impl ImageSummary {
-    /// Build from a listed row, with medium URLs under `public_url`.
+    /// Build from a listed row, with preview URLs under `public_url`.
     pub fn from_row(row: ImageListRow, public_url: &str) -> Self {
         Self {
-            medium_url: files::medium_url(public_url, &row.id, &row.ext, row.has_medium),
+            medium_url: files::preview_url(
+                public_url,
+                &row.id,
+                &row.ext,
+                Preview::Medium,
+                row.has_medium,
+            ),
+            thumbnail_url: files::preview_url(
+                public_url,
+                &row.id,
+                &row.ext,
+                Preview::Thumbnail,
+                row.has_thumbnail,
+            ),
             id: row.id,
             original_name: row.original_name,
             ext: row.ext,

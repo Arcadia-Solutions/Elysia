@@ -13,7 +13,7 @@ use crate::repository::users;
 use crate::services::image::{self, TargetFormat};
 use crate::services::paginate;
 use crate::settings::ElysiaSettings;
-use crate::storage::Storage;
+use crate::storage::{Preview, Storage};
 
 /// Public file id: 8 base62 characters. nanoid's default alphabet also has
 /// `_` and `-`, which look odd in links.
@@ -39,6 +39,8 @@ pub struct StoredFile {
     /// True when a generated WebP medium exists; when false `/m/` serves the
     /// original file, so the medium URL keeps the original extension.
     pub has_medium: bool,
+    /// Same as `has_medium`, for the thumbnail served from `/t/`.
+    pub has_thumbnail: bool,
 }
 
 impl StoredFile {
@@ -47,10 +49,13 @@ impl StoredFile {
         image_url(public_url, &self.id, &self.ext)
     }
 
-    /// Public URL for the medium. Generated medium images are always WebP;
-    /// without one, `/m/` falls back to the original, hence its extension.
-    pub fn medium_url(&self, public_url: &str) -> String {
-        medium_url(public_url, &self.id, &self.ext, self.has_medium)
+    /// Public URL for one of its previews.
+    pub fn preview_url(&self, public_url: &str, preview: Preview) -> String {
+        let generated = match preview {
+            Preview::Medium => self.has_medium,
+            Preview::Thumbnail => self.has_thumbnail,
+        };
+        preview_url(public_url, &self.id, &self.ext, preview, generated)
     }
 }
 
@@ -60,11 +65,17 @@ pub fn image_url(public_url: &str, id: &str, ext: &str) -> String {
     format!("{public_url}/i/{id}.{ext}")
 }
 
-/// Public medium URL for a stored file. Generated medium images are always
-/// WebP; without one, `/m/` falls back to the original, hence its extension.
-pub fn medium_url(public_url: &str, id: &str, ext: &str, has_medium: bool) -> String {
-    let extension = if has_medium { "webp" } else { ext };
-    format!("{public_url}/m/{id}.{extension}")
+/// Public URL for a preview of a stored file. Generated previews are always
+/// WebP; without one, the route falls back to the original, hence its extension.
+pub fn preview_url(
+    public_url: &str,
+    id: &str,
+    ext: &str,
+    preview: Preview,
+    generated: bool,
+) -> String {
+    let extension = if generated { "webp" } else { ext };
+    format!("{public_url}/{}/{id}.{extension}", preview.letter())
 }
 
 /// Fetch one page (1-based) of images matching the query, only `uploader`'s
@@ -437,24 +448,27 @@ pub async fn store_upload(
     let target_file_format = options
         .target_file_format
         .or(settings.default_target_file_format);
-    let medium_enabled = settings.medium_enabled();
-    let medium_box = (settings.medium_width_pixels, settings.medium_height_pixels);
-    // Passthrough stores the source, so the output matches the source dimensions.
-    let passthrough_medium = medium_enabled
-        && target_file_format.is_none()
-        && over_medium_box(medium_box, source_width as u32, source_height as u32);
+    // The pipeline makes the previews from its own decode, once the output size
+    // is known. Passthrough stores the source, so its size decides right away.
+    let (pipeline_previews, passthrough_previews) = match target_file_format {
+        Some(_) => (PreviewOptions::new(settings), PreviewOptions::default()),
+        None => (
+            PreviewOptions::default(),
+            PreviewOptions::new(settings).needed_for(source_width as u32, source_height as u32),
+        ),
+    };
     // Single read shared (refcounted, not copied) by the pipeline, EXIF strip and
-    // medium below; a plain passthrough needs none of them and skips it.
+    // previews below; a plain passthrough needs none of them and skips it.
     let source_bytes: img_parts::Bytes =
-        if target_file_format.is_some() || options.strip_exif || passthrough_medium {
+        if target_file_format.is_some() || options.strip_exif || passthrough_previews.any() {
             tokio::fs::read(path).await?.into()
         } else {
             img_parts::Bytes::new()
         };
 
     // The processed main output (`None` = passthrough or animated GIF) and, when
-    // the target-format pipeline runs, its medium and perceptual hash from the same pixels.
-    let (processed, mut medium, phash) = match target_file_format {
+    // the target-format pipeline runs, its previews and perceptual hash from the same pixels.
+    let (processed, mut previews, phash) = match target_file_format {
         Some(format) => {
             let input = source_bytes.clone();
             let process_options = image::ProcessOptions {
@@ -464,36 +478,31 @@ pub async fn store_upload(
                 target_file_size: settings.target_file_size_bytes,
                 requested_quality: options.lossy_compression_value,
             };
-            let medium_options = medium_enabled.then(|| medium_process_options(settings));
             // Encoding is CPU-heavy; keep it off the async worker threads. Decode
-            // once and reuse the pixels for the medium when one is needed.
+            // once and reuse the pixels for the previews when any is needed.
             let permit = processing_permit().await;
             tokio::task::spawn_blocking(move || {
                 let _permit = permit;
                 let Some((image, icc_profile)) = image::decode(&input)? else {
-                    return Ok::<_, image::ProcessError>((None, None, None));
+                    return Ok::<_, image::ProcessError>((None, Previews::default(), None));
                 };
                 let phash = image::perceptual_hash(&image);
-                let source = medium_options.is_some().then(|| image.clone());
+                let source = pipeline_previews.any().then(|| image.clone());
                 let processed =
                     image::process_decoded(image, icc_profile.as_deref(), &process_options)?;
-                let medium = match (medium_options, source) {
-                    (Some(options), Some(source))
-                        if over_medium_box(medium_box, processed.width, processed.height) =>
-                    {
-                        Some(
-                            image::process_decoded(source, icc_profile.as_deref(), &options)?.bytes,
-                        )
-                    }
-                    _ => None,
+                let previews = match source {
+                    Some(source) => pipeline_previews
+                        .needed_for(processed.width, processed.height)
+                        .encode(source, icc_profile.as_deref())?,
+                    None => Previews::default(),
                 };
-                Ok((Some(processed), medium, Some(phash)))
+                Ok((Some(processed), previews, Some(phash)))
             })
             .await
             .map_err(|_| Error::Io(std::io::Error::other("image processing task failed")))?
             .map_err(process_error)?
         }
-        None => (None, None, None),
+        None => (None, Previews::default(), None),
     };
     // A re-encode that is not smaller and did not resize only wastes space
     // (typically a lossy source re-encoded at a high quality): keep the source.
@@ -543,10 +552,10 @@ pub async fn store_upload(
             temp,
         },
     };
-    // Passthrough: the source was not decoded above, so make the medium from
-    // its own decode. The pipeline path already produced it from the shared decode.
-    if passthrough_medium {
-        medium = generate_medium(source_bytes, settings).await?;
+    // Passthrough: the source was not decoded above, so make the previews from
+    // its own decode. The pipeline path already produced them from the shared decode.
+    if passthrough_previews.any() {
+        previews = generate_previews(source_bytes, passthrough_previews).await?;
     }
 
     let hash = hash_file(output.temp.path()).await?;
@@ -564,11 +573,12 @@ pub async fn store_upload(
     }
 
     // Passthrough and animated GIFs skipped the pipeline decode: hash the
-    // medium when there is one, a cheaper decode than the stored file.
+    // medium when there is one (the thumbnail is cropped), a cheaper decode
+    // than the stored file.
     let phash = match phash {
         Some(phash) => phash,
         None => {
-            let bytes = match &medium {
+            let bytes = match &previews.medium {
                 Some(bytes) => bytes.clone(),
                 None => tokio::fs::read(output.temp.path()).await?,
             };
@@ -592,11 +602,11 @@ pub async fn store_upload(
         storage.prepare_shard(&candidate).await?;
         let dest = storage.path_for(&candidate, output.ext);
         temp.persist(&dest).map_err(|error| error.error)?;
-        if let Some(bytes) = &medium
-            && let Err(error) = storage.write_medium(&candidate, bytes).await
-        {
-            let _ = tokio::fs::remove_file(&dest).await;
-            return Err(error);
+        for (preview, bytes) in previews.generated() {
+            if let Err(error) = storage.write_preview(&candidate, preview, bytes).await {
+                let _ = storage.delete(&candidate, output.ext).await;
+                return Err(error);
+            }
         }
         let inserted = files::insert(
             pool,
@@ -615,7 +625,8 @@ pub async fn store_upload(
                 original_height: source_height,
                 requested_quality,
                 applied_quality: output.applied_quality,
-                has_medium: medium.is_some(),
+                has_medium: previews.medium.is_some(),
+                has_thumbnail: previews.thumbnail.is_some(),
                 phash,
                 uploaded_by_user_id,
                 api_key_id,
@@ -631,7 +642,10 @@ pub async fn store_upload(
             Ok(false) => {
                 // Keep the bytes for the next candidate; deleted on drop if none succeeds.
                 temp = TempPath::try_from_path(dest)?;
-                let _ = tokio::fs::remove_file(storage.medium_path_for(&candidate)).await;
+                for (preview, _) in previews.generated() {
+                    let _ =
+                        tokio::fs::remove_file(storage.preview_path_for(&candidate, preview)).await;
+                }
                 // A failed insert is an id collision or a concurrent upload of the same
                 // bytes winning the hash race; in the latter case, reuse its row.
                 if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
@@ -639,8 +653,7 @@ pub async fn store_upload(
                 }
             }
             Err(error) => {
-                let _ = tokio::fs::remove_file(&dest).await;
-                let _ = tokio::fs::remove_file(storage.medium_path_for(&candidate)).await;
+                let _ = storage.delete(&candidate, output.ext).await;
                 return Err(error);
             }
         }
@@ -659,7 +672,8 @@ pub async fn store_upload(
             (output.width, output.height),
             output.applied_quality,
         ),
-        has_medium: medium.is_some(),
+        has_medium: previews.medium.is_some(),
+        has_thumbnail: previews.thumbnail.is_some(),
     })
 }
 
@@ -748,6 +762,7 @@ fn existing_stored(record: files::FileRecord) -> StoredFile {
         ),
         ext: record.ext,
         has_medium: record.has_medium,
+        has_thumbnail: record.has_thumbnail,
     }
 }
 
@@ -815,20 +830,99 @@ pub fn check_dimensions(settings: &ElysiaSettings, width: u32, height: u32) -> R
     Ok(())
 }
 
-/// Whether an image exceeds the medium box on a constrained axis (0 = off).
-/// When it does not, no separate medium is made and /m/ serves the main file.
-fn over_medium_box((box_width, box_height): (u32, u32), width: u32, height: u32) -> bool {
-    (box_width > 0 && width > box_width) || (box_height > 0 && height > box_height)
+/// Pipeline options of the previews to generate, `None` when not wanted.
+#[derive(Default)]
+struct PreviewOptions {
+    medium: Option<image::ProcessOptions>,
+    thumbnail: Option<image::ProcessOptions>,
 }
 
-/// Pipeline options for a medium: fit the box, lossy WebP.
-fn medium_process_options(settings: &ElysiaSettings) -> image::ProcessOptions {
-    image::ProcessOptions {
-        target_width: settings.medium_width_pixels,
-        target_height: settings.medium_height_pixels,
-        format: TargetFormat::Webp,
-        target_file_size: 0,
-        requested_quality: Some(settings.medium_quality),
+impl PreviewOptions {
+    /// The enabled previews: fit their box, lossy WebP.
+    fn new(settings: &ElysiaSettings) -> Self {
+        let options = |enabled: bool, target_width, target_height, quality| {
+            enabled.then_some(image::ProcessOptions {
+                target_width,
+                target_height,
+                format: TargetFormat::Webp,
+                target_file_size: 0,
+                requested_quality: Some(quality),
+            })
+        };
+        Self {
+            medium: options(
+                settings.medium_enabled(),
+                settings.medium_width_pixels,
+                settings.medium_height_pixels,
+                settings.medium_quality,
+            ),
+            thumbnail: options(
+                settings.thumbnail_enabled(),
+                settings.thumbnail_width_pixels,
+                settings.thumbnail_height_pixels,
+                settings.thumbnail_quality,
+            ),
+        }
+    }
+
+    /// Keep only the previews an image of this size exceeds the box of (0 =
+    /// unconstrained axis). The others serve the main file instead.
+    fn needed_for(self, width: u32, height: u32) -> Self {
+        let over_box = |options: &image::ProcessOptions| {
+            (options.target_width > 0 && width > options.target_width)
+                || (options.target_height > 0 && height > options.target_height)
+        };
+        Self {
+            medium: self.medium.filter(over_box),
+            thumbnail: self.thumbnail.filter(over_box),
+        }
+    }
+
+    fn any(&self) -> bool {
+        self.medium.is_some() || self.thumbnail.is_some()
+    }
+
+    /// Encode the previews from the decoded source. The thumbnail is cropped to
+    /// its box aspect ratio first, so it fills the box.
+    fn encode(
+        self,
+        source: ::image::DynamicImage,
+        icc_profile: Option<&[u8]>,
+    ) -> std::result::Result<Previews, image::ProcessError> {
+        let thumbnail = self
+            .thumbnail
+            .map(|options| {
+                let cropped =
+                    image::crop_to_aspect(&source, options.target_width, options.target_height);
+                image::process_decoded(cropped, icc_profile, &options)
+            })
+            .transpose()?;
+        let medium = self
+            .medium
+            .map(|options| image::process_decoded(source, icc_profile, &options))
+            .transpose()?;
+        Ok(Previews {
+            medium: medium.map(|processed| processed.bytes),
+            thumbnail: thumbnail.map(|processed| processed.bytes),
+        })
+    }
+}
+
+/// Encoded previews of one image, `None` when not generated.
+#[derive(Default)]
+struct Previews {
+    medium: Option<Vec<u8>>,
+    thumbnail: Option<Vec<u8>>,
+}
+
+impl Previews {
+    fn generated(&self) -> impl Iterator<Item = (Preview, &[u8])> {
+        [
+            (Preview::Medium, &self.medium),
+            (Preview::Thumbnail, &self.thumbnail),
+        ]
+        .into_iter()
+        .filter_map(|(preview, bytes)| bytes.as_deref().map(|bytes| (preview, bytes)))
     }
 }
 
@@ -865,23 +959,21 @@ async fn compute_perceptual_hash(bytes: Vec<u8>) -> Result<Option<i64>> {
     .map_err(|_| Error::Io(std::io::Error::other("perceptual hash task failed")))
 }
 
-/// Resize the source into the medium box and encode it as lossy WebP.
-/// `Ok(None)` when the pipeline passes the source through (animated GIF).
-async fn generate_medium(
-    source: img_parts::Bytes,
-    settings: &ElysiaSettings,
-) -> Result<Option<Vec<u8>>> {
-    let options = medium_process_options(settings);
+/// Decode the source and encode its previews. None for an animated GIF,
+/// which the pipeline passes through.
+async fn generate_previews(source: img_parts::Bytes, options: PreviewOptions) -> Result<Previews> {
     // Encoding is CPU-heavy; keep it off the async worker threads.
     let permit = processing_permit().await;
-    let processed = tokio::task::spawn_blocking(move || {
+    tokio::task::spawn_blocking(move || {
         let _permit = permit;
-        image::process(&source, &options)
+        match image::decode(&source)? {
+            Some((image, icc_profile)) => options.encode(image, icc_profile.as_deref()),
+            None => Ok(Previews::default()),
+        }
     })
     .await
-    .map_err(|_| Error::Io(std::io::Error::other("medium task failed")))?
-    .map_err(process_error)?;
-    Ok(processed.map(|processed| processed.bytes))
+    .map_err(|_| Error::Io(std::io::Error::other("preview task failed")))?
+    .map_err(process_error)
 }
 
 /// Whether a user may trash a file: admins always, its uploader while the file

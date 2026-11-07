@@ -109,6 +109,7 @@ create table files (
   requested_quality int,
   applied_quality int,
   has_medium boolean not null default false,
+  has_thumbnail boolean not null default false,
   phash bigint not null,
   views bigint not null default 0,
   medium_views bigint not null default 0,
@@ -143,6 +144,7 @@ comment on column files.original_height is 'Source image height in pixels before
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
 comment on column files.applied_quality is 'Effective quality used; null means lossless';
 comment on column files.has_medium is 'True when a separate <first 2 id chars>/<id>.m.webp exists; when false /m/ serves the main file (image already within the medium box)';
+comment on column files.has_thumbnail is 'True when a separate <first 2 id chars>/<id>.t.webp exists; when false /t/ serves the main file (image already within the thumbnail box)';
 comment on column files.phash is '64-bit DCT perceptual hash, close for visually similar images (compare with the Hamming distance), computed on upload';
 comment on column files.views is 'Times the image was served from /i/';
 comment on column files.medium_views is 'Times the medium was served from /m/';
@@ -294,6 +296,9 @@ create table elysia_settings (
    medium_width_pixels int not null default 0,
    medium_height_pixels int not null default 0,
    medium_quality int not null default 80,
+   thumbnail_width_pixels int not null default 0,
+   thumbnail_height_pixels int not null default 0,
+   thumbnail_quality int not null default 80,
    allow_registration boolean not null default true,
    allowed_referrers text[] not null default '{}',
    uploads_enabled boolean not null default true,
@@ -324,8 +329,11 @@ comment on column elysia_settings.allow_overriding_strip_exif is 'When false, up
 comment on column elysia_settings.medium_width_pixels is 'Medium box width; 0 on both axes disables medium images';
 comment on column elysia_settings.medium_height_pixels is 'Medium box height; 0 on both axes disables medium images';
 comment on column elysia_settings.medium_quality is 'Lossy WebP quality (1-100) for generated medium images';
+comment on column elysia_settings.thumbnail_width_pixels is 'Thumbnail box width, the image is cropped to its aspect ratio; 0 on either axis disables thumbnails';
+comment on column elysia_settings.thumbnail_height_pixels is 'Thumbnail box height; 0 on either axis disables thumbnails';
+comment on column elysia_settings.thumbnail_quality is 'Lossy WebP quality (1-100) for generated thumbnails';
 comment on column elysia_settings.allow_registration is 'When true, anyone may create a local account via the register endpoint';
-comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/ and /m/; empty allows any (including no Referer)';
+comment on column elysia_settings.allowed_referrers is 'Hostnames whose Referer may load /i/, /m/ and /t/; empty allows any (including no Referer)';
 comment on column elysia_settings.uploads_enabled is 'When false, every upload is rejected, admins included';
 comment on column elysia_settings.default_storage_quota_bytes is 'Bytes of available and trashed files each non-admin user may hold, unless overridden per user; 0 is unlimited';
 comment on column elysia_settings.record_referrer_views is 'When true, views are split per Referer host in file_referrer_views; when false, every view is counted under no referrer';
@@ -345,7 +353,8 @@ insert into elysia_settings
    default_compression, allow_overriding_compression,
    strip_exif_by_default, allow_overriding_strip_exif,
    medium_width_pixels, medium_height_pixels, medium_quality,
+   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,
    allow_registration, allowed_referrers, uploads_enabled,
    default_storage_quota_bytes, record_referrer_views)
 values ('singleton', 26214400, 10000, 10000, 0, 0, 'webp', false, 0, 75, false,
-  true, true, 500, 500, 80, false, '{}', true, 0, false);
+  true, true, 500, 500, 80, 320, 320, 80, false, '{}', true, 0, false);

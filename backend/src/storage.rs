@@ -17,6 +17,27 @@ pub struct DiskSpace {
     pub min_free_bytes: u64,
 }
 
+/// A generated, smaller version of a stored image, served from `/<letter>/`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Preview {
+    /// Fits within the medium box, for embeds.
+    Medium,
+    /// Cropped to the thumbnail box, for browse pages.
+    Thumbnail,
+}
+
+impl Preview {
+    pub const ALL: [Preview; 2] = [Preview::Medium, Preview::Thumbnail];
+
+    /// Route prefix and on-disk suffix: `m` or `t`.
+    pub fn letter(self) -> &'static str {
+        match self {
+            Preview::Medium => "m",
+            Preview::Thumbnail => "t",
+        }
+    }
+}
+
 /// Owns the on-disk layout for uploaded files. Every path, persist, open and
 /// delete goes through here so handlers/services never hand-build a path.
 ///
@@ -86,22 +107,23 @@ impl Storage {
         NamedFile::open(self.path_for(id, ext))
     }
 
-    /// On-disk path for a file's medium: `<root>/<shard>/<id>.m.webp`.
-    /// Medium images are always lossy WebP, so the extension is fixed.
-    pub fn medium_path_for(&self, id: &str) -> PathBuf {
-        self.shard_dir(id).join(format!("{id}.m.webp"))
+    /// On-disk path for a file's preview: `<root>/<shard>/<id>.<letter>.webp`.
+    /// Previews are always lossy WebP, so the extension is fixed.
+    pub fn preview_path_for(&self, id: &str, preview: Preview) -> PathBuf {
+        self.shard_dir(id)
+            .join(format!("{id}.{}.webp", preview.letter()))
     }
 
-    /// Write a generated medium to disk. Small (a few KiB), so the bytes are
-    /// already in memory and a plain write is enough.
-    pub async fn write_medium(&self, id: &str, bytes: &[u8]) -> Result<()> {
-        tokio::fs::write(self.medium_path_for(id), bytes).await?;
+    /// Write a generated preview to disk. Small, so the bytes are already in
+    /// memory and a plain write is enough.
+    pub async fn write_preview(&self, id: &str, preview: Preview, bytes: &[u8]) -> Result<()> {
+        tokio::fs::write(self.preview_path_for(id, preview), bytes).await?;
         Ok(())
     }
 
-    /// Open a stored medium for streaming.
-    pub fn open_medium(&self, id: &str) -> std::io::Result<NamedFile> {
-        NamedFile::open(self.medium_path_for(id))
+    /// Open a stored preview for streaming.
+    pub fn open_preview(&self, id: &str, preview: Preview) -> std::io::Result<NamedFile> {
+        NamedFile::open(self.preview_path_for(id, preview))
     }
 
     /// Trash dir: `<root>/trash`. Shard dirs are 2 chars, so it never clashes.
@@ -116,31 +138,46 @@ impl Storage {
         self.trash_dir().join(format!("{id}.{ext}"))
     }
 
-    /// Trashed path for a file's medium: `<root>/trash/<id>.m.webp`.
-    fn trash_medium_path_for(&self, id: &str) -> PathBuf {
-        self.trash_dir().join(format!("{id}.m.webp"))
+    /// Trashed path for a file's preview: `<root>/trash/<id>.<letter>.webp`.
+    fn trash_preview_path_for(&self, id: &str, preview: Preview) -> PathBuf {
+        self.trash_dir()
+            .join(format!("{id}.{}.webp", preview.letter()))
     }
 
-    /// Move a file and its medium out of the served tree into the trash, so
-    /// `/i/` and `/m/` stop serving them. Missing files are skipped, so a retry
-    /// after a partial failure goes through.
+    /// Move a file and its previews out of the served tree into the trash, so
+    /// `/i/`, `/m/` and `/t/` stop serving them. Missing files are skipped, so a
+    /// retry after a partial failure goes through.
     pub async fn trash(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(
             tokio::fs::rename(self.path_for(id, ext), self.trash_path_for(id, ext)).await,
         )?;
-        ignore_missing(
-            tokio::fs::rename(self.medium_path_for(id), self.trash_medium_path_for(id)).await,
-        )
+        for preview in Preview::ALL {
+            ignore_missing(
+                tokio::fs::rename(
+                    self.preview_path_for(id, preview),
+                    self.trash_preview_path_for(id, preview),
+                )
+                .await,
+            )?;
+        }
+        Ok(())
     }
 
-    /// Move a trashed file and its medium back into the served tree. A
-    /// missing file is an error (wiped meanwhile), a missing medium is not.
+    /// Move a trashed file and its previews back into the served tree. A
+    /// missing file is an error (wiped meanwhile), a missing preview is not.
     pub async fn restore(&self, id: &str, ext: &str) -> Result<()> {
         self.prepare_shard(id).await?;
         tokio::fs::rename(self.trash_path_for(id, ext), self.path_for(id, ext)).await?;
-        ignore_missing(
-            tokio::fs::rename(self.trash_medium_path_for(id), self.medium_path_for(id)).await,
-        )
+        for preview in Preview::ALL {
+            ignore_missing(
+                tokio::fs::rename(
+                    self.trash_preview_path_for(id, preview),
+                    self.preview_path_for(id, preview),
+                )
+                .await,
+            )?;
+        }
+        Ok(())
     }
 
     /// Open a trashed file for streaming.
@@ -148,25 +185,36 @@ impl Storage {
         NamedFile::open(self.trash_path_for(id, ext))
     }
 
-    /// Open a trashed file's medium, or the trashed file itself when it has
-    /// none (same fallback as `/m/`).
-    pub fn open_trashed_medium(&self, id: &str, ext: &str) -> std::io::Result<NamedFile> {
-        match NamedFile::open(self.trash_medium_path_for(id)) {
+    /// Open a trashed file's preview, or the trashed file itself when it has
+    /// none (same fallback as the served preview).
+    pub fn open_trashed_preview(
+        &self,
+        id: &str,
+        ext: &str,
+        preview: Preview,
+    ) -> std::io::Result<NamedFile> {
+        match NamedFile::open(self.trash_preview_path_for(id, preview)) {
             Ok(file) => Ok(file),
             Err(_) => NamedFile::open(self.trash_path_for(id, ext)),
         }
     }
 
-    /// Delete a served file and its medium. Missing files are skipped.
+    /// Delete a served file and its previews. Missing files are skipped.
     pub async fn delete(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(tokio::fs::remove_file(self.path_for(id, ext)).await)?;
-        ignore_missing(tokio::fs::remove_file(self.medium_path_for(id)).await)
+        for preview in Preview::ALL {
+            ignore_missing(tokio::fs::remove_file(self.preview_path_for(id, preview)).await)?;
+        }
+        Ok(())
     }
 
-    /// Delete a trashed file and its medium. Missing files are skipped.
+    /// Delete a trashed file and its previews. Missing files are skipped.
     pub async fn wipe_trashed(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(tokio::fs::remove_file(self.trash_path_for(id, ext)).await)?;
-        ignore_missing(tokio::fs::remove_file(self.trash_medium_path_for(id)).await)
+        for preview in Preview::ALL {
+            ignore_missing(tokio::fs::remove_file(self.trash_preview_path_for(id, preview)).await)?;
+        }
+        Ok(())
     }
 }
 

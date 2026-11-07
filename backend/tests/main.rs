@@ -8,7 +8,7 @@ mod chevereto_import;
 mod compression;
 mod images;
 mod maintenance;
-mod medium;
+mod previews;
 mod rate_limit;
 mod reports;
 mod settings;

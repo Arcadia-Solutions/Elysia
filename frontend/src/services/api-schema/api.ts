@@ -418,6 +418,18 @@ export interface ElysiaSettings {
      */
     'terms_of_service'?: string;
     /**
+     * Thumbnail box height; 0 on either axis disables thumbnails.
+     */
+    'thumbnail_height_pixels'?: number;
+    /**
+     * Lossy WebP quality (1-100) for generated thumbnails.
+     */
+    'thumbnail_quality'?: number;
+    /**
+     * Thumbnail box width; the image is cropped to the box aspect ratio, then shrunk into it. 0 on either axis disables thumbnails.
+     */
+    'thumbnail_width_pixels'?: number;
+    /**
      * Shown on the upload page while uploads are disabled; empty shows a generic notice.
      */
     'uploads_disabled_message'?: string;
@@ -518,6 +530,10 @@ export interface ImageSummary {
      * Bytes on disk.
      */
     'size': number;
+    /**
+     * Thumbnail URL from `/t/`, cropped to fill the thumbnail box. Trashed, it is only served to Elysia\'s own pages.
+     */
+    'thumbnail_url': string;
     'uploader_username': string;
     'views': number;
     'width': number;
@@ -738,6 +754,10 @@ export interface PaginatedResultsImageSummaryResultsInner {
      * Bytes on disk.
      */
     'size': number;
+    /**
+     * Thumbnail URL from `/t/`, cropped to fill the thumbnail box. Trashed, it is only served to Elysia\'s own pages.
+     */
+    'thumbnail_url': string;
     'uploader_username': string;
     'views': number;
     'width': number;
@@ -3254,6 +3274,39 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnail: async (filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveThumbnail', 'filename', filename)
+            const localVarPath = `/t/{filename}`
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
          * @param {TrashImagesRequest} trashImagesRequest 
          * @param {*} [options] Override http request option.
@@ -3503,6 +3556,18 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveThumbnail(filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
          * @param {TrashImagesRequest} trashImagesRequest 
          * @param {*} [options] Override http request option.
@@ -3625,6 +3690,15 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serveMedium(filename, options).then((request) => request(axios, basePath));
         },
         /**
+         * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+         * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
          * @param {TrashImagesRequest} trashImagesRequest 
          * @param {*} [options] Override http request option.
@@ -3740,6 +3814,16 @@ export class ImagesApi extends BaseAPI {
      */
     public serveMedium(filename: string, options?: RawAxiosRequestConfig) {
         return ImagesApiFp(this.configuration).serveMedium(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated. Views are not counted.
+     * @param {string} filename &lt;id&gt;.&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -4054,7 +4138,7 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             };
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4277,7 +4361,7 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4397,7 +4481,7 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
             return localVarFp.scanSimilarImages(similarScanParams, options).then((request) => request(axios, basePath));
         },
         /**
-         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+         * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
          * @param {ScanParams} scanParams 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4510,7 +4594,7 @@ export class MaintenanceApi extends BaseAPI {
     }
 
     /**
-     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
+     * Start scanning the text-like columns of a Postgres or MySQL database in the background for image, medium, thumbnail or viewer links under the given hosts (any scheme), one select per table. When it finishes, the available images uploaded before the scan and linked from nowhere replace the unreferenced images list. Each select may run 10 minutes at most. Follow it with `GET /api/maintenance/unreferenced-images/progress`.
      * @param {ScanParams} scanParams 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

@@ -12,10 +12,10 @@
       <div v-for="image in images" :key="image.id" class="cell" :class="{ selected: selected.has(image.id) }">
         <!-- While a selection is in progress, a click on the image selects it too. -->
         <button v-if="selected.size > 0" type="button" class="thumb" tabindex="-1" @click="toggleSelected(image.id)">
-          <ImageThumbnail :src="image.medium_url" :alt="image.id" />
+          <ImageThumbnail :src="image.thumbnail_url" :alt="image.id" />
         </button>
         <router-link v-else :to="{ name: 'Image', params: { id: image.id } }" class="thumb">
-          <ImageThumbnail :src="image.medium_url" :alt="image.id" />
+          <ImageThumbnail :src="image.thumbnail_url" :alt="image.id" />
         </router-link>
         <button
           v-if="!readonly"
@@ -45,7 +45,7 @@
       <Column :header="$t('browse.columns.image')">
         <template #body="{ data }">
           <router-link :to="{ name: 'Image', params: { id: data.id } }">
-            <ImageThumbnail :src="data.medium_url" :alt="data.id" class="medium" />
+            <ImageThumbnail :src="data.thumbnail_url" :alt="data.id" class="medium" />
           </router-link>
         </template>
       </Column>

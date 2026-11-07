@@ -5,6 +5,7 @@ use sqlx::PgPool;
 
 use elysia::error::Error;
 use elysia::services::chevereto_import::*;
+use elysia::services::files::StoredFile;
 
 fn image(storage_mode: &str, name: &str, storage_url: Option<&str>) -> CheveretoImage {
     CheveretoImage {
@@ -17,6 +18,18 @@ fn image(storage_mode: &str, name: &str, storage_url: Option<&str>) -> Chevereto
         original_filename: None,
         storage_url: storage_url.map(str::to_string),
         uploader_username: None,
+    }
+}
+
+/// A stored Elysia image `<id>.webp`, with or without generated previews.
+fn stored_file(id: &str, has_previews: bool) -> StoredFile {
+    StoredFile {
+        id: id.to_string(),
+        ext: "webp".to_string(),
+        existed: false,
+        actions: None,
+        has_medium: has_previews,
+        has_thumbnail: has_previews,
     }
 }
 
@@ -72,17 +85,16 @@ fn link_rewrites_keys() {
     let rewrites = link_rewrites(
         &image("datefolder", "my.photo", None),
         &settings(),
-        "eid",
-        "webp",
-        true,
+        &stored_file("eid", true),
     )
     .unwrap();
     let image_link = "https://elysia.example/i/eid.webp".to_string();
     let medium_link = "https://elysia.example/m/eid.webp".to_string();
+    let thumbnail_link = "https://elysia.example/t/eid.webp".to_string();
     let file = "img.example.com/images/2024/05/03/my.photo";
     assert_eq!(rewrites[0], (format!("{file}.png"), image_link));
-    assert_eq!(rewrites[1], (format!("{file}.md.png"), medium_link.clone()));
-    assert_eq!(rewrites[2], (format!("{file}.th.png"), medium_link));
+    assert_eq!(rewrites[1], (format!("{file}.md.png"), medium_link));
+    assert_eq!(rewrites[2], (format!("{file}.th.png"), thumbnail_link));
     assert_eq!(
         rewrites[7],
         (
@@ -93,20 +105,16 @@ fn link_rewrites_keys() {
     let stored = link_rewrites(
         &image("direct", "abc", Some("https://cdn.example.com/bucket")),
         &settings(),
-        "eid",
-        "webp",
-        false,
+        &stored_file("eid", false),
     )
     .unwrap();
     assert_eq!(stored[0].0, "cdn.example.com/bucket/abc.png");
-    assert_eq!(stored[2].1, "https://elysia.example/m/eid.webp");
+    assert_eq!(stored[2].1, "https://elysia.example/t/eid.webp");
     assert!(
         link_rewrites(
             &image("path", "abc", None),
             &settings(),
-            "eid",
-            "webp",
-            true
+            &stored_file("eid", true)
         )
         .is_none()
     );
@@ -123,7 +131,7 @@ fn test_pattern() -> String {
 fn rewrite_test_rewrites() -> Vec<(String, String)> {
     let mut target = image("datefolder", "abc", None);
     target.id = 123456;
-    link_rewrites(&target, &settings(), "eid", "webp", true).unwrap()
+    link_rewrites(&target, &settings(), &stored_file("eid", true)).unwrap()
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -143,7 +151,7 @@ async fn apply_link_rewrites_in_postgres(pool: sqlx::PgPool) {
         ),
         (
             "https://img.example.com/images/2024/05/03/abc.th.png",
-            "https://elysia.example/m/eid.webp",
+            "https://elysia.example/t/eid.webp",
         ),
         (
             "https://img.example.com/images/2024/05/03/abc.md.png",
@@ -228,7 +236,7 @@ async fn rewrite_links_errors_instead_of_truncating(pool: sqlx::PgPool) {
     let mut target = image("datefolder", "abc", None);
     target.id = 123456;
     let long_id = "e".repeat(40);
-    let rewrites = link_rewrites(&target, &settings(), &long_id, "webp", true).unwrap();
+    let rewrites = link_rewrites(&target, &settings(), &stored_file(&long_id, true)).unwrap();
     assert!(
         rewrite_links(&mut connection, &test_pattern(), &rewrites)
             .await

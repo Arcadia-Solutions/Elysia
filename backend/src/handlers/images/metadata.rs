@@ -11,7 +11,8 @@ use crate::error::Result;
 use crate::middlewares::AuthUser;
 use crate::repository::albums::{self, ImageAlbum};
 use crate::repository::files::{ReferrerViews, find_referrer_views};
-use crate::services::files::{self, image_url, medium_url};
+use crate::services::files::{self, image_url, preview_url};
+use crate::storage::Preview;
 
 /// Display metadata for the `/i/<id>` viewer page.
 #[derive(Serialize, ToSchema)]
@@ -84,7 +85,13 @@ pub async fn metadata(
     let public_url = &config.server.public_url;
     Ok(HttpResponse::Ok().json(MetadataResponse {
         url: image_url(public_url, &row.id, &row.ext),
-        medium_url: medium_url(public_url, &row.id, &row.ext, row.has_medium),
+        medium_url: preview_url(
+            public_url,
+            &row.id,
+            &row.ext,
+            Preview::Medium,
+            row.has_medium,
+        ),
         can_delete: row.trashed_at.is_none()
             && files::may_trash(
                 user.user_id,

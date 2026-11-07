@@ -254,13 +254,14 @@
       "accounts": "Accounts",
       "referrers": "Referrers",
       "medium": "Medium images",
+      "thumbnail": "Thumbnails",
       "legal": "Legal"
     },
     "disabled_reason": "Select a default target format to enable this.",
     "errors": {
       "max_file_size_required": "Required: uploads need a byte ceiling.",
       "max_dimension_required": "Required when a target format is set, or when medium images are enabled.",
-      "medium_quality_range": "Must be between 1 and 100."
+      "quality_range": "Must be between 1 and 100."
     },
     "max_file_size": {
       "label": "Maximum file size (bytes)",
@@ -333,6 +334,19 @@
       "label": "Medium quality (1-100)",
       "help": "Lossy WebP quality for generated medium images."
     },
+    "thumbnail_intro": "A small preview served from /t/, cropped to fill the box, used by the browse pages. Enabled when both a width and a height are set. Images already within the box are served unchanged.",
+    "thumbnail_width": {
+      "label": "Thumbnail width (pixels)",
+      "help": "Width of the thumbnail box."
+    },
+    "thumbnail_height": {
+      "label": "Thumbnail height (pixels)",
+      "help": "Height of the thumbnail box."
+    },
+    "thumbnail_quality": {
+      "label": "Thumbnail quality (1-100)",
+      "help": "Lossy WebP quality for generated thumbnails."
+    },
     "uploads_enabled": {
       "label": "Enable uploads",
       "help": "When off, nobody can upload or rehost images, admins included. Existing images stay online."
@@ -360,7 +374,7 @@
     },
     "allowed_referrers": {
       "label": "Allowed referrers",
-      "help": "Hostnames allowed to embed images (/i/ and /m/), checked against the Referer header. Press Enter after each one. Empty allows any site and direct links. Elysia's own host is always allowed."
+      "help": "Hostnames allowed to embed images (/i/, /m/ and /t/), checked against the Referer header. Press Enter after each one. Empty allows any site and direct links. Elysia's own host is always allowed."
     },
     "record_referrer_views": {
       "label": "Record views per referrer",
@@ -432,7 +446,7 @@
     "title": "Maintenance tools",
     "unreferenced_images": {
       "title": "Unreferenced images",
-      "help": "Scans the text columns of a Postgres or MySQL database in the background for links to this instance's images, medium images or viewer pages under the given hosts (add every domain, alias or CDN the links may use), one query per table, and lists the available images linked from nowhere. Links are found ignoring case, JSON-escaped or URL-encoded, but not as relative paths or bare ids. Nothing is changed until you delete them, which moves them to the trash. Deleting them all is refused once the scan is more than 24 hours old.",
+      "help": "Scans the text columns of a Postgres or MySQL database in the background for links to this instance's images, medium images, thumbnails or viewer pages under the given hosts (add every domain, alias or CDN the links may use), one query per table, and lists the available images linked from nowhere. Links are found ignoring case, JSON-escaped or URL-encoded, but not as relative paths or bare ids. Nothing is changed until you delete them, which moves them to the trash. Deleting them all is refused once the scan is more than 24 hours old.",
       "hosts": "Hosts the links use, e.g. img.example.com, old.example.com",
       "exclude": "Exclude these tables or columns, e.g. logs, posts.raw (optional)",
       "scan": "Scan",
@@ -456,7 +470,7 @@
     },
     "chevereto_import": {
       "title": "Chevereto import",
-      "help": "Copies every image of a Chevereto v4 instance into Elysia in the background. Images are read from Chevereto's MySQL database and downloaded over HTTP, then go through the normal upload pipeline (medium images, EXIF stripping, dedup) with the size and pixel limits lifted. Each image keeps its upload date and, when uploaders are matched, its uploader. Chevereto must use its default paths (upload_image_path 'images', route_image 'image') or the import refuses to run. Database urls are not stored: fill them in again to resume.",
+      "help": "Copies every image of a Chevereto v4 instance into Elysia in the background. Images are read from Chevereto's MySQL database and downloaded over HTTP, then go through the normal upload pipeline (previews, EXIF stripping, dedup) with the size and pixel limits lifted. Each image keeps its upload date and, when uploaders are matched, its uploader. Chevereto must use its default paths (upload_image_path 'images', route_image 'image') or the import refuses to run. Database urls are not stored: fill them in again to resume.",
       "chevereto": "Chevereto",
       "chevereto_database_url": {
         "label": "Chevereto database url",
@@ -473,7 +487,7 @@
       "backend": "Backend (optional)",
       "backend_database_url": {
         "label": "Backend database url",
-        "help": "Postgres connection to the application storing Chevereto links (e.g. arcadia). After each chunk, the Chevereto image, medium, medium and viewer links in every text-like column of every table are rewritten to Elysia links built from server.public_url in config.yml, in one transaction, and only changed rows are updated. A column too short for the new link stops the import without committing that chunk: widen it and resume. Each chunk scans every text column, so time a run against a copy of a production-size database first. Empty imports the images without rewriting any link."
+        "help": "Postgres connection to the application storing Chevereto links (e.g. arcadia). After each chunk, the Chevereto image, medium, thumbnail and viewer links in every text-like column of every table are rewritten to Elysia links built from server.public_url in config.yml, in one transaction, and only changed rows are updated. A column too short for the new link stops the import without committing that chunk: widen it and resume. Each chunk scans every text column, so time a run against a copy of a production-size database first. Empty imports the images without rewriting any link."
       },
       "match_users": {
         "label": "Match uploaders to backend users",

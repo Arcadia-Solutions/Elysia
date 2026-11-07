@@ -444,3 +444,28 @@ fn search_quality(
     }
     Ok((best, best_quality))
 }
+
+/// Crop the centered largest region with the `box_width`:`box_height` aspect
+/// ratio, so a later fit into that box fills it.
+pub fn crop_to_aspect(image: &DynamicImage, box_width: u32, box_height: u32) -> DynamicImage {
+    let (width, height) = image.dimensions();
+    // Compare width / height to box_width / box_height without float rounding.
+    let (crop_width, crop_height) =
+        if u64::from(width) * u64::from(box_height) > u64::from(height) * u64::from(box_width) {
+            (
+                (u64::from(height) * u64::from(box_width) / u64::from(box_height)) as u32,
+                height,
+            )
+        } else {
+            (
+                width,
+                (u64::from(width) * u64::from(box_height) / u64::from(box_width)) as u32,
+            )
+        };
+    image.crop_imm(
+        (width - crop_width) / 2,
+        (height - crop_height) / 2,
+        crop_width.max(1),
+        crop_height.max(1),
+    )
+}

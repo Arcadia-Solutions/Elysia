@@ -24,6 +24,7 @@ pub struct NewFile<'a> {
     pub requested_quality: Option<i32>,
     pub applied_quality: Option<i32>,
     pub has_medium: bool,
+    pub has_thumbnail: bool,
     /// Perceptual hash, see `image::perceptual_hash`.
     pub phash: i64,
     pub uploaded_by_user_id: Uuid,
@@ -49,10 +50,10 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         r#"insert into files
          (id, ext, mime, original_name, size, width, height, hash,
           original_hash, original_ext, original_width, original_height,
-          requested_quality, applied_quality, has_medium, phash, uploaded_by_user_id, api_key_id,
-          expires_at)
+          requested_quality, applied_quality, has_medium, has_thumbnail, phash, uploaded_by_user_id,
+          api_key_id, expires_at)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                 now() + make_interval(days => $19))"#,
+                 $19, now() + make_interval(days => $20))"#,
         f.id,
         f.ext,
         f.mime,
@@ -68,6 +69,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.requested_quality,
         f.applied_quality,
         f.has_medium,
+        f.has_thumbnail,
         f.phash,
         f.uploaded_by_user_id,
         f.api_key_id,
@@ -145,6 +147,7 @@ pub struct FileRecord {
     pub height: i32,
     pub applied_quality: Option<i32>,
     pub has_medium: bool,
+    pub has_thumbnail: bool,
 }
 
 /// Skip-reprocess lookup: same source bytes under the same requested quality.
@@ -157,7 +160,7 @@ pub async fn find_record_by_source(
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
-                width, height, applied_quality, has_medium
+                width, height, applied_quality, has_medium, has_thumbnail
          from files where original_hash = $1 and status = 'available'
            and requested_quality is not distinct from $2
          order by created_at limit 1"#,
@@ -276,6 +279,7 @@ pub struct ImageListRow {
     pub width: i32,
     pub height: i32,
     pub has_medium: bool,
+    pub has_thumbnail: bool,
     pub views: i64,
     pub uploader_username: String,
     /// RFC 3339, UTC.
@@ -361,7 +365,7 @@ pub async fn list_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium,
+        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -410,7 +414,7 @@ pub async fn unreferenced_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium,
+        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -575,7 +579,7 @@ pub async fn similar_page(
            order by group_id offset $1 limit $2
          )
          select page.group_id, page.total as "total!",
-                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium,
+                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!"
@@ -603,6 +607,7 @@ pub async fn similar_page(
                     width: row.width,
                     height: row.height,
                     has_medium: row.has_medium,
+                    has_thumbnail: row.has_thumbnail,
                     views: row.views,
                     uploader_username: row.uploader_username,
                     created_at: row.created_at,
@@ -653,7 +658,7 @@ pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<Fil
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
-                width, height, applied_quality, has_medium
+                width, height, applied_quality, has_medium, has_thumbnail
          from files where hash = $1 and status = 'available'"#,
         hash,
     )

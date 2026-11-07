@@ -64,6 +64,16 @@ pub struct ElysiaSettings {
     /// Lossy WebP quality (1-100) for generated medium images.
     #[serde(default)]
     pub medium_quality: u8,
+    /// Thumbnail box width; the image is cropped to the box aspect ratio, then
+    /// shrunk into it. 0 on either axis disables thumbnails.
+    #[serde(default)]
+    pub thumbnail_width_pixels: u32,
+    /// Thumbnail box height; 0 on either axis disables thumbnails.
+    #[serde(default)]
+    pub thumbnail_height_pixels: u32,
+    /// Lossy WebP quality (1-100) for generated thumbnails.
+    #[serde(default)]
+    pub thumbnail_quality: u8,
     /// When true, anyone may create a local account via the register endpoint.
     /// When false, only an external sign-on backend can provision users.
     #[serde(default = "default_allow_registration")]
@@ -277,6 +287,11 @@ impl ElysiaSettings {
         self.medium_width_pixels > 0 || self.medium_height_pixels > 0
     }
 
+    /// Whether thumbnail generation is on (a box is set on both axes).
+    pub fn thumbnail_enabled(&self) -> bool {
+        self.thumbnail_width_pixels > 0 && self.thumbnail_height_pixels > 0
+    }
+
     /// Reject contradictory settings. Enforced on every save so the running
     /// state and the stored row are always consistent.
     pub fn validate(&self) -> Result<(), String> {
@@ -340,19 +355,22 @@ impl ElysiaSettings {
                     .into(),
             );
         }
-        // Medium generation decodes the source too, so it needs the same pixel
+        // Preview generation decodes the source too, so it needs the same pixel
         // caps, and a valid lossy WebP quality.
-        if self.medium_enabled() {
-            if self.max_width_pixels == 0 || self.max_height_pixels == 0 {
-                return Err(
-                    "max_width_pixels and max_height_pixels must be > 0 when medium images are \
-                     enabled (they bound the server-side decode)"
-                        .into(),
-                );
-            }
-            if self.medium_quality < 1 || self.medium_quality > 100 {
-                return Err("medium_quality must be between 1 and 100".into());
-            }
+        if (self.medium_enabled() || self.thumbnail_enabled())
+            && (self.max_width_pixels == 0 || self.max_height_pixels == 0)
+        {
+            return Err(
+                "max_width_pixels and max_height_pixels must be > 0 when medium images or \
+                 thumbnails are enabled (they bound the server-side decode)"
+                    .into(),
+            );
+        }
+        if self.medium_enabled() && !(1..=100).contains(&self.medium_quality) {
+            return Err("medium_quality must be between 1 and 100".into());
+        }
+        if self.thumbnail_enabled() && !(1..=100).contains(&self.thumbnail_quality) {
+            return Err("thumbnail_quality must be between 1 and 100".into());
         }
         // Stored as a signed bigint, so a larger count would wrap negative.
         if self.default_storage_quota_bytes > i64::MAX as u64 {

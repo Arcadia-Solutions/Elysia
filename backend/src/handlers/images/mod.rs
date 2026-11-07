@@ -13,7 +13,7 @@ pub mod metadata;
 pub mod report_image;
 pub mod restore_images;
 pub mod serve;
-pub mod serve_medium;
+pub mod serve_preview;
 pub mod trash_images;
 pub mod upload;
 pub mod upload_url;
@@ -42,14 +42,20 @@ pub fn config_public(cfg: &mut ServiceConfig) {
     .route(
         "/m/{filename}",
         get()
-            .to(serve_medium::serve_medium)
+            .to(serve_preview::serve_medium)
+            .wrap(from_fn(limit_unauthenticated)),
+    )
+    .route(
+        "/t/{filename}",
+        get()
+            .to(serve_preview::serve_thumbnail)
             .wrap(from_fn(limit_unauthenticated)),
     );
 }
 
-/// Split a `/i/` or `/m/` path segment `<id>.<ext>` into its id and extension.
+/// Split a `/i/`, `/m/` or `/t/` path segment `<id>.<ext>` into its id and extension.
 /// Both must be plain ASCII alphanumerics, so the pair can only name a stored
-/// file: no path traversal, no temp or medium file names.
+/// file: no path traversal, no temp or preview file names.
 pub fn parse_filename(filename: &str) -> Result<(&str, &str)> {
     let alphanumeric =
         |part: &str| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_alphanumeric());

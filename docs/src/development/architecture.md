@@ -41,7 +41,7 @@ URL uploads refuse private and reserved addresses.
 
 ### Serving
 
-`/i/<id>.<ext>` (image) and `/m/<id>.<ext>` (medium) are served straight
+`/i/<id>.<ext>` (image), `/m/<id>.<ext>` (medium) and `/t/<id>.<ext>` (thumbnail) are served straight
 from disk without touching the database. `storage.rs` owns the on-disk layout:
 files are sharded by the first two characters of their id, and trashed files
 move to a separate directory. View counts are kept in memory per file and

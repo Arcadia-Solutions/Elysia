@@ -18,6 +18,7 @@ use elysia::services::files::{
     TRASH_RETENTION_DAYS, delete_expired, get_metadata, list_images, restore, trash, wipe_trash,
 };
 use elysia::services::views::ViewCounter;
+use elysia::storage::Preview;
 
 #[sqlx::test(migrations = "./migrations")]
 async fn trashes_own_files(pool: PgPool) {
@@ -30,7 +31,7 @@ async fn trashes_own_files(pool: PgPool) {
         storage.prepare_shard(file_id).await.unwrap();
         std::fs::write(storage.path_for(file_id, "png"), b"png").unwrap();
     }
-    std::fs::write(storage.medium_path_for(&id), b"webp").unwrap();
+    std::fs::write(storage.preview_path_for(&id, Preview::Medium), b"webp").unwrap();
     let ids = std::slice::from_ref(&id);
 
     // Someone else's file is refused, and nothing moves.
@@ -45,7 +46,7 @@ async fn trashes_own_files(pool: PgPool) {
         .unwrap();
     assert!(files::find_available(&pool, ids).await.unwrap().is_empty());
     assert!(!storage.path_for(&id, "png").exists());
-    assert!(!storage.medium_path_for(&id).exists());
+    assert!(!storage.preview_path_for(&id, Preview::Medium).exists());
     assert!(dir.path().join("trash/mine000000.png").exists());
     assert!(dir.path().join("trash/mine000000.m.webp").exists());
     assert!(storage.path_for(kept, "png").exists());
@@ -136,7 +137,11 @@ async fn wipes_trash(pool: PgPool) {
     // Same upload date, so the id breaks the tie, descending.
     assert_eq!(trashed_ids().await, ["recent00", "expired0"]);
     // The trash view serves medium images from the trash, falling back to the file.
-    assert!(storage.open_trashed_medium("recent00", "png").is_ok());
+    assert!(
+        storage
+            .open_trashed_preview("recent00", "png", Preview::Medium)
+            .is_ok()
+    );
 
     // The scheduled wipe only takes files past their 30 days.
     wipe_trash(&pool, &storage, TRASH_RETENTION_DAYS, None)
@@ -185,6 +190,7 @@ async fn insert_expiring_png(
             requested_quality: None,
             applied_quality: None,
             has_medium: false,
+            has_thumbnail: false,
             phash: 0,
             uploaded_by_user_id: uploader,
             api_key_id: None,
@@ -273,7 +279,11 @@ async fn restores_trashed_files(pool: PgPool) {
     restore(&pool, &storage, &ids).await.unwrap();
     assert_eq!(available_ids(&["expired0", "recent00"]).await, ["recent00"]);
     assert!(storage.path_for("recent00", "png").exists());
-    assert!(storage.medium_path_for("recent00").exists());
+    assert!(
+        storage
+            .preview_path_for("recent00", Preview::Medium)
+            .exists()
+    );
     assert!(dir.path().join("trash/expired0.png").exists());
 
     // Files whose bytes were uploaded again since stay trashed.
