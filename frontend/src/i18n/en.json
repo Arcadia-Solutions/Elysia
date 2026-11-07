@@ -297,7 +297,7 @@
     },
     "default_compression": {
       "label": "Default compression quality (1-100)",
-      "help": "Lossy quality applied when an upload does not request one. 0 means lossless by default."
+      "help": "Lossy quality applied when an upload does not request one. 0 means lossless."
     },
     "allow_overriding_compression": {
       "label": "Allow overriding compression",
@@ -351,8 +351,8 @@
     },
     "accounts_intro": "Who may create an account on this instance.",
     "allow_registration": {
-      "label": "Allow open registration",
-      "help": "When on, anyone may create a local account. When off, only a future single sign-on provider can provision users."
+      "label": "Allow registration",
+      "help": "When on, anyone may create a local account. When off, only an SSO provider can provision users."
     },
     "default_storage_quota": {
       "label": "Default storage quota per user",
@@ -460,7 +460,7 @@
       "chevereto": "Chevereto",
       "chevereto_database_url": {
         "label": "Chevereto database url",
-        "help": "MySQL or MariaDB connection to the Chevereto database, with the default chv_ table prefix, e.g. mysql://chevereto:password@localhost:3306/chevereto."
+        "help": "MySQL or MariaDB connection to the Chevereto database, with the default chv_ table prefix, e.g. mysql://chevereto:password{'@'}localhost:3306/chevereto."
       },
       "chevereto_public_url": {
         "label": "Chevereto public url",
