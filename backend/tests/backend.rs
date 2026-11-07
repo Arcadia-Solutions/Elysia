@@ -570,6 +570,7 @@ fn sample_file(id: &str, uploaded_by_user_id: uuid::Uuid) -> NewFile<'_> {
         hash: id,
         original_hash: id,
         original_ext: "png",
+        original_size: 33,
         original_width: 2,
         original_height: 2,
         requested_quality: None,

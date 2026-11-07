@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into files\n         (id, ext, mime, original_name, size, width, height, hash,\n          original_hash, original_ext, original_size, original_width, original_height,\n          requested_quality, applied_quality, has_medium, has_thumbnail, phash, uploaded_by_user_id,\n          api_key_id, expires_at)\n         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,\n                 $19, $20, now() + make_interval(days => $21))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Bool",
+        "Bool",
+        "Int8",
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ac2a197868ebdbff6446aaccb8f006b02c8ebea8e4cd2273b0e92106a545d4db"
+}

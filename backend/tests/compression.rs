@@ -259,7 +259,9 @@ fn expiry_override_respects_allow_flag() {
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
     let (storage, _dir) = temp_storage();
-    let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
+    let source = real_png(8, 8);
+    let source_size = source.len() as i64;
+    let url = serve_once("HTTP/1.1 200 OK", "image/png", source);
     let uploader = test_user(&pool, "converter").await.0.id;
     let stored = store_from_url(
         &pool,
@@ -281,6 +283,11 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
         ("png", "webp")
     );
     assert!(storage.path_for(&stored.id, "webp").exists());
+    let row = elysia::repository::files::find_metadata(&pool, &stored.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.original_size, source_size);
 }
 
 #[sqlx::test(migrations = "./migrations")]

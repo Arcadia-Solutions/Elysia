@@ -326,6 +326,7 @@ pub(crate) async fn seed_files(
                 hash: &id,
                 original_hash: &id,
                 original_ext: "png",
+                original_size: size,
                 original_width: 1,
                 original_height: 1,
                 requested_quality: None,

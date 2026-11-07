@@ -185,6 +185,7 @@ async fn insert_expiring_png(
             hash,
             original_hash: hash,
             original_ext: "png",
+            original_size: 1,
             original_width: 1,
             original_height: 1,
             requested_quality: None,

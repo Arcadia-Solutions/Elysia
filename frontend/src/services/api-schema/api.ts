@@ -651,6 +651,10 @@ export interface MetadataResponse {
      */
     'original_name'?: string | null;
     /**
+     * Source file size in bytes as uploaded; differs from `size` when processed.
+     */
+    'original_size': number;
+    /**
      * Source dimensions before processing; differ from the stored ones when resized.
      */
     'original_width': number;

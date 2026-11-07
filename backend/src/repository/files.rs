@@ -19,6 +19,7 @@ pub struct NewFile<'a> {
     pub hash: &'a str,
     pub original_hash: &'a str,
     pub original_ext: &'a str,
+    pub original_size: i64,
     pub original_width: i32,
     pub original_height: i32,
     pub requested_quality: Option<i32>,
@@ -49,11 +50,11 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
     let res = sqlx::query!(
         r#"insert into files
          (id, ext, mime, original_name, size, width, height, hash,
-          original_hash, original_ext, original_width, original_height,
+          original_hash, original_ext, original_size, original_width, original_height,
           requested_quality, applied_quality, has_medium, has_thumbnail, phash, uploaded_by_user_id,
           api_key_id, expires_at)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                 $19, now() + make_interval(days => $20))"#,
+                 $19, $20, now() + make_interval(days => $21))"#,
         f.id,
         f.ext,
         f.mime,
@@ -64,6 +65,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.hash,
         f.original_hash,
         f.original_ext,
+        f.original_size,
         f.original_width,
         f.original_height,
         f.requested_quality,
@@ -186,6 +188,7 @@ pub struct FileMetadata {
     pub width: i32,
     pub height: i32,
     pub original_ext: String,
+    pub original_size: i64,
     pub original_width: i32,
     pub original_height: i32,
     pub applied_quality: Option<i32>,
@@ -218,7 +221,7 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
     Ok(sqlx::query_as!(
         FileMetadata,
         r#"select files.id, ext, mime, original_name, size, width, height,
-                original_ext, original_width, original_height, applied_quality,
+                original_ext, original_size, original_width, original_height, applied_quality,
                 has_medium, views, medium_views, thumbnail_views, uploaded_by_user_id,
                 users.username as uploader_username,
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')

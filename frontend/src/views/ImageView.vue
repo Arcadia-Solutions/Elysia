@@ -38,7 +38,10 @@
         <dt>{{ $t('image.dimensions') }}</dt>
         <dd>{{ meta.width }} × {{ meta.height }}</dd>
         <dt>{{ $t('image.size') }}</dt>
-        <dd>{{ formatBytes(meta.size) }}</dd>
+        <dd>
+          {{ formatBytes(meta.size) }}
+          <template v-if="meta.size !== meta.original_size">({{ $t('image.original_size', { size: formatBytes(meta.original_size) }) }})</template>
+        </dd>
         <dt>{{ $t('image.format') }}</dt>
         <dd>{{ meta.mime }}</dd>
         <dt>{{ $t('image.views') }}</dt>

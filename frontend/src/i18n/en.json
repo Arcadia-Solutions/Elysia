@@ -116,6 +116,7 @@
     "uploaded_at": "Uploaded at",
     "dimensions": "Dimensions",
     "size": "Size",
+    "original_size": "originally {size}",
     "format": "Format",
     "uploaded_by": "Uploaded by",
     "views": "Views",

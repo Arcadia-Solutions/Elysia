@@ -27,6 +27,8 @@ pub struct MetadataResponse {
     pub height: i32,
     /// Source extension before processing; differs from `ext` when converted.
     pub original_ext: String,
+    /// Source file size in bytes as uploaded; differs from `size` when processed.
+    pub original_size: i64,
     /// Source dimensions before processing; differ from the stored ones when resized.
     pub original_width: i32,
     pub original_height: i32,
@@ -113,6 +115,7 @@ pub async fn metadata(
         width: row.width,
         height: row.height,
         original_ext: row.original_ext,
+        original_size: row.original_size,
         original_width: row.original_width,
         original_height: row.original_height,
         applied_quality: row.applied_quality,

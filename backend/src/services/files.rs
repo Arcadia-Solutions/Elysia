@@ -621,6 +621,7 @@ pub async fn store_upload(
                 hash: &hash,
                 original_hash: &original_hash,
                 original_ext: source_ext,
+                original_size: size as i64,
                 original_width: source_width,
                 original_height: source_height,
                 requested_quality,

@@ -104,6 +104,7 @@ create table files (
   hash text not null,
   original_hash text not null,
   original_ext text not null,
+  original_size bigint not null,
   original_width int not null,
   original_height int not null,
   requested_quality int,
@@ -140,6 +141,7 @@ comment on column files.height is 'Image height in pixels';
 comment on column files.hash is 'SHA-256 of the stored (output) bytes; unique among available files, so identical outputs are deduplicated to one row';
 comment on column files.original_hash is 'SHA-256 of the source bytes as uploaded';
 comment on column files.original_ext is 'Source file extension before processing';
+comment on column files.original_size is 'Source file size in bytes as uploaded';
 comment on column files.original_width is 'Source image width in pixels before processing';
 comment on column files.original_height is 'Source image height in pixels before processing';
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';
