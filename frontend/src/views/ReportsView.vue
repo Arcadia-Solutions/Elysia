@@ -15,7 +15,7 @@
       >
         <div v-for="reported in page.results" :key="reported.image.id" class="reported card">
           <router-link :to="{ name: 'Image', params: { id: reported.image.id } }" class="thumb">
-            <img :src="reported.image.thumbnail_url" :alt="reported.image.id" loading="lazy" />
+            <ImageThumbnail :src="reported.image.thumbnail_url" :alt="reported.image.id" />
           </router-link>
           <div class="details">
             <small>
@@ -51,6 +51,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import ImageThumbnail from '@/components/ImageThumbnail.vue'
 import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import PageSizeSelect from '@/components/PageSizeSelect.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
@@ -119,7 +120,7 @@ watch(
   overflow: hidden;
   background: var(--p-content-border-color);
 }
-.thumb img {
+.thumb .image-thumbnail {
   width: 100%;
   height: 100%;
   object-fit: contain;

@@ -12,10 +12,10 @@
       <div v-for="image in images" :key="image.id" class="cell" :class="{ selected: selected.has(image.id) }">
         <!-- While a selection is in progress, a click on the image selects it too. -->
         <button v-if="selected.size > 0" type="button" class="thumb" tabindex="-1" @click="toggleSelected(image.id)">
-          <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
+          <ImageThumbnail :src="image.thumbnail_url" :alt="image.id" />
         </button>
         <router-link v-else :to="{ name: 'Image', params: { id: image.id } }" class="thumb">
-          <img :src="image.thumbnail_url" :alt="image.id" loading="lazy" />
+          <ImageThumbnail :src="image.thumbnail_url" :alt="image.id" />
         </router-link>
         <button
           v-if="!readonly"
@@ -45,7 +45,7 @@
       <Column :header="$t('browse.columns.image')">
         <template #body="{ data }">
           <router-link :to="{ name: 'Image', params: { id: data.id } }">
-            <img :src="data.thumbnail_url" :alt="data.id" class="thumbnail" loading="lazy" />
+            <ImageThumbnail :src="data.thumbnail_url" :alt="data.id" class="thumbnail" />
           </router-link>
         </template>
       </Column>
@@ -74,6 +74,7 @@ import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import ResultsControls, { display } from '@/components/ResultsControls.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
+import ImageThumbnail from '@/components/ImageThumbnail.vue'
 import { formatBytes, formatDate, timeAgo } from '@/services/format'
 import { ImagesSortBy, SortOrder, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
 
@@ -127,17 +128,16 @@ const setPageSelection = (rows: PaginatedResultsImageSummaryResultsInner[]) => {
   border: none;
   cursor: pointer;
 }
-.cell img {
+.cell .image-thumbnail {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 .cell.selected {
   outline: 3px solid var(--p-primary-color);
   outline-offset: -3px;
 }
-.cell.selected img {
+.cell.selected .image-thumbnail {
   opacity: 0.7;
 }
 .select-indicator {
@@ -179,7 +179,6 @@ const setPageSelection = (rows: PaginatedResultsImageSummaryResultsInner[]) => {
   color: var(--p-primary-contrast-color, #fff);
 }
 .thumbnail {
-  display: block;
   width: 48px;
   height: 48px;
   object-fit: cover;
