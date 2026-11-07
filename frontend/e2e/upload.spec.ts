@@ -348,8 +348,9 @@ test.describe('upload settings', () => {
     await page.locator('.p-select', { hasText: 'Use default' }).click()
     await page.getByRole('option', { name: 'PNG' }).click()
     await expect(quality).toBeHidden()
-    // Noise would be heavier as PNG than as JPG, and the source would be kept.
-    await choose(page, [await image(page, 'to-png.jpg', 200, 100, true)])
+    // Must be lighter as PNG than as JPG, or the source is kept: a tiny flat
+    // image, where the JPEG headers dominate.
+    await choose(page, [await image(page, 'to-png.jpg', 20, 10, true)])
     const [png] = await upload(page, 1)
     await view(page, png)
     await expect(metaValue(page, 'Format')).toHaveText('image/png')
