@@ -120,8 +120,24 @@
     "format": "Format",
     "uploaded_by": "Uploaded by",
     "views": "Views",
-    "views_value": "{views} image, {medium_views} medium, {thumbnail_views} thumbnail",
+    "view_kinds": {
+      "image": "image",
+      "medium": "medium",
+      "thumbnail": "thumbnail",
+      "all": "all"
+    },
+    "view_counts": {
+      "image": "{count} image",
+      "medium": "{count} medium",
+      "thumbnail": "{count} thumbnail"
+    },
     "no_referrer": "No referrer",
+    "reset_views": {
+      "tooltip": "Reset {kind} view counters for {referrer}",
+      "all_referrers": "all referrers",
+      "confirm": "{action}? This cannot be undone.",
+      "done": "Views reset"
+    },
     "trashed_at": "Deleted at",
     "trashed_by": "Deleted by",
     "expires_at": "Expires at",
@@ -450,6 +466,17 @@
   },
   "maintenance": {
     "title": "Maintenance tools",
+    "data_tools": {
+      "title": "Data tools",
+      "reset_views": {
+        "title": "Reset views",
+        "help": "Sets one or all view counters of every image back to zero for the given referrers, the totals losing what they counted. This cannot be undone.",
+        "referrers": "Referrers, e.g. forum.example, blog.example",
+        "referrers_help": "Leave empty to reset every referrer.",
+        "submit": "Reset",
+        "confirm": "Reset these view counters on every image? This cannot be undone."
+      }
+    },
     "unreferenced_images": {
       "title": "Unreferenced images",
       "help": "Scans the text columns of a Postgres or MySQL database in the background for links to this instance's images, medium images, thumbnails or viewer pages under the given hosts (add every domain, alias or CDN the links may use), one query per table, and lists the available images linked from nowhere. Links are found ignoring case, JSON-escaped or URL-encoded, but not as relative paths or bare ids. Nothing is changed until you delete them, which moves them to the trash. Deleting them all is refused once the scan is more than 24 hours old.",

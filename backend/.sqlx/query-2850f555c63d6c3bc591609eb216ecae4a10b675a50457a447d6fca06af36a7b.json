@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from file_referrer_views\n         where ($1::text is null or file_id = $1)\n           and views = 0 and medium_views = 0 and thumbnail_views = 0",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2850f555c63d6c3bc591609eb216ecae4a10b675a50457a447d6fca06af36a7b"
+}

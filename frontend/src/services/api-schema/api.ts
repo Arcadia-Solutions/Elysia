@@ -1050,6 +1050,22 @@ export interface ReportedImage {
     'image': ImageSummary;
     'reports': Array<Report>;
 }
+export interface ResetViewsRequest {
+    /**
+     * Image whose views are reset; omitted resets every image.
+     */
+    'id'?: string | null;
+    /**
+     * Counter to zero, or `all` of them.
+     */
+    'kind': ViewKind;
+    /**
+     * `Referer` hosts whose views are reset; empty resets every referrer, `\"\"` matches views without a `Referer`.
+     */
+    'referrers'?: Array<string>;
+}
+
+
 /**
  * Dimensions before and after, as `[width, height]`.
  */
@@ -1461,6 +1477,20 @@ export const UsersSortBy = {
 } as const;
 
 export type UsersSortBy = typeof UsersSortBy[keyof typeof UsersSortBy];
+
+
+/**
+ * Which view counter to act on.
+ */
+
+export const ViewKind = {
+    Image: 'image',
+    Medium: 'medium',
+    Thumbnail: 'thumbnail',
+    All: 'all'
+} as const;
+
+export type ViewKind = typeof ViewKind[keyof typeof ViewKind];
 
 
 /**
@@ -4135,6 +4165,41 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             };
         },
         /**
+         * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
+         * @param {ResetViewsRequest} resetViewsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        resetViews: async (resetViewsRequest: ResetViewsRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'resetViewsRequest' is not null or undefined
+            assertParamExists('resetViews', 'resetViewsRequest', resetViewsRequest)
+            const localVarPath = `/api/maintenance/views/reset`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(resetViewsRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
          * @param {SimilarScanParams} similarScanParams 
          * @param {*} [options] Override http request option.
@@ -4381,6 +4446,18 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
+         * @param {ResetViewsRequest} resetViewsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async resetViews(resetViewsRequest: ResetViewsRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.resetViews(resetViewsRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.resetViews']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
          * @param {SimilarScanParams} similarScanParams 
          * @param {*} [options] Override http request option.
@@ -4504,6 +4581,15 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
             return localVarFp.listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(axios, basePath));
         },
         /**
+         * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
+         * @param {ResetViewsRequest} resetViewsRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        resetViews(resetViewsRequest: ResetViewsRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.resetViews(resetViewsRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Start grouping the available images that look alike in the background: images whose perceptual hashes (computed on upload) differ in at most `max_distance` bits are grouped, transitively. The groups replace the similar images list. Follow it with `GET /api/maintenance/similar-images/progress`.
          * @param {SimilarScanParams} similarScanParams 
          * @param {*} [options] Override http request option.
@@ -4613,6 +4699,16 @@ export class MaintenanceApi extends BaseAPI {
      */
     public listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
         return MaintenanceApiFp(this.configuration).listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
+     * @param {ResetViewsRequest} resetViewsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public resetViews(resetViewsRequest: ResetViewsRequest, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).resetViews(resetViewsRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

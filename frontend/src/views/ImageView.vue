@@ -48,11 +48,11 @@
         <dd>{{ meta.mime }}</dd>
         <dt>{{ $t('image.views') }}</dt>
         <dd>
-          {{ $t('image.views_value', { views: meta.views, medium_views: meta.medium_views, thumbnail_views: meta.thumbnail_views }) }}
+          <ViewCounts :id="meta.id" :counts="meta" @reset="load" />
           <ul v-if="meta.referrers.length" class="list">
             <li v-for="row in meta.referrers" :key="row.referrer">
               {{ row.referrer || $t('image.no_referrer') }}:
-              {{ $t('image.views_value', { views: row.views, medium_views: row.medium_views, thumbnail_views: row.thumbnail_views }) }}
+              <ViewCounts :id="meta.id" :counts="row" :referrer="row.referrer" @reset="load" />
             </li>
           </ul>
         </dd>
@@ -125,6 +125,7 @@ import Textarea from 'primevue/textarea'
 import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import AlbumSelect from '@/components/AlbumSelect.vue'
 import EmbedLinks from '@/components/EmbedLinks.vue'
+import ViewCounts from '@/components/ViewCounts.vue'
 import { api } from '@/services/api/http'
 import { formatBytes, formatDate, formatRatio, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'

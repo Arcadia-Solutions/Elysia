@@ -6,7 +6,7 @@ use sqlx::PgPool;
 
 use common::page;
 use elysia::handlers::images::parse_filename;
-use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder};
+use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder, ViewKind};
 use elysia::services::files::list_images;
 use elysia::services::views::ViewCounter;
 use elysia::storage::Preview;
@@ -183,4 +183,63 @@ async fn filters_by_uploader(pool: PgPool) {
     assert_eq!(total, 2);
     assert!(rows.iter().all(|row| row.id.starts_with("mine")));
     assert_eq!(list_images(&pool, &page(1), None).await.unwrap().1, 5);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn resets_one_view_counter(pool: PgPool) {
+    let uploader = common::test_user(&pool, "viewer").await.0.id;
+    common::seed_files(&pool, uploader, "seen", 2, 1).await;
+    let views = ViewCounter::default();
+    for id in ["seen000000", "seen000001"] {
+        views.count(id, "a.com", None);
+        views.count(id, "b.com", None);
+        views.count(id, "b.com", Some(Preview::Thumbnail));
+    }
+    views.flush(&pool).await;
+    let counters = |id: &'static str| {
+        let pool = pool.clone();
+        async move {
+            let metadata = files::find_metadata(&pool, id).await.unwrap().unwrap();
+            let referrers: Vec<_> = files::find_referrer_views(&pool, id)
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|row| (row.referrer, row.views))
+                .collect();
+            (metadata.views, metadata.thumbnail_views, referrers)
+        }
+    };
+
+    // One image and referrer: the total loses a.com's view, its emptied row is dropped.
+    files::reset_views(
+        &pool,
+        Some("seen000000"),
+        ViewKind::Image,
+        &["a.com".into()],
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        counters("seen000000").await,
+        (1, 1, vec![("b.com".into(), 1)])
+    );
+    assert_eq!(counters("seen000001").await.0, 2);
+
+    // Every image and referrer.
+    files::reset_views(&pool, None, ViewKind::Thumbnail, &[])
+        .await
+        .unwrap();
+    assert_eq!(
+        counters("seen000001").await,
+        (2, 0, vec![("a.com".into(), 1), ("b.com".into(), 1)])
+    );
+
+    // Every counter of one referrer.
+    files::reset_views(&pool, None, ViewKind::All, &["b.com".into()])
+        .await
+        .unwrap();
+    assert_eq!(
+        counters("seen000001").await,
+        (1, 0, vec![("a.com".into(), 1)])
+    );
 }

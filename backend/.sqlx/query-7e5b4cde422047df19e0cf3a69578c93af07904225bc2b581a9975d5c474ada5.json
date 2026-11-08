@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "lock table files, file_referrer_views in share row exclusive mode",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7e5b4cde422047df19e0cf3a69578c93af07904225bc2b581a9975d5c474ada5"
+}

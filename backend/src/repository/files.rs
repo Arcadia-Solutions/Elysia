@@ -269,6 +269,89 @@ pub async fn find_referrer_views(pool: &PgPool, id: &str) -> Result<Vec<Referrer
     .await?)
 }
 
+/// Which view counter to act on.
+#[derive(Deserialize, ToSchema, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ViewKind {
+    /// Full image views, from `/i/`.
+    Image,
+    /// Medium views, from `/m/`.
+    Medium,
+    /// Thumbnail views, from `/t/`.
+    Thumbnail,
+    /// All three at once.
+    All,
+}
+
+/// Zero one view counter, or all of them, of a file (`Some(id)`) or of every file (`None`),
+/// for the given referrers (empty is every referrer, `""` is no referrer).
+/// The file totals lose what those referrers counted, and the file's (or every file's)
+/// referrer rows left with no views are dropped.
+pub async fn reset_views(
+    pool: &PgPool,
+    id: Option<&str>,
+    kind: ViewKind,
+    referrers: &[String],
+) -> Result<()> {
+    let all = kind == ViewKind::All;
+    let (image, medium, thumbnail) = (
+        all || kind == ViewKind::Image,
+        all || kind == ViewKind::Medium,
+        all || kind == ViewKind::Thumbnail,
+    );
+    let mut transaction = pool.begin().await?;
+    // Makes a concurrent `add_views` wait instead of deadlocking on the opposite row lock order.
+    sqlx::query!("lock table files, file_referrer_views in share row exclusive mode")
+        .execute(&mut *transaction)
+        .await?;
+    sqlx::query!(
+        r#"with matched as (
+           select file_id, referrer, views, medium_views, thumbnail_views
+           from file_referrer_views
+           where ($1::text is null or file_id = $1)
+             and (cardinality($5::text[]) = 0 or referrer = any($5))
+           for update
+         ), zeroed as (
+           update file_referrer_views set
+             views = case when $2 then 0 else file_referrer_views.views end,
+             medium_views = case when $3 then 0 else file_referrer_views.medium_views end,
+             thumbnail_views = case when $4 then 0 else file_referrer_views.thumbnail_views end
+           from matched
+           where file_referrer_views.file_id = matched.file_id
+             and file_referrer_views.referrer = matched.referrer
+         )
+         update files set
+           views = case when $2 then greatest(files.views - per_file.views, 0) else files.views end,
+           medium_views = case when $3 then greatest(files.medium_views - per_file.medium_views, 0)
+             else files.medium_views end,
+           thumbnail_views = case when $4
+             then greatest(files.thumbnail_views - per_file.thumbnail_views, 0)
+             else files.thumbnail_views end
+         from (select file_id, sum(views)::bigint as views,
+                      sum(medium_views)::bigint as medium_views,
+                      sum(thumbnail_views)::bigint as thumbnail_views
+               from matched group by file_id) as per_file
+         where files.id = per_file.file_id"#,
+        id,
+        image,
+        medium,
+        thumbnail,
+        referrers
+    )
+    .execute(&mut *transaction)
+    .await?;
+    sqlx::query!(
+        r#"delete from file_referrer_views
+         where ($1::text is null or file_id = $1)
+           and views = 0 and medium_views = 0 and thumbnail_views = 0"#,
+        id
+    )
+    .execute(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+    Ok(())
+}
+
 /// Set a file's upload date to `uploaded_at` (unix seconds).
 pub async fn set_created_at(pool: &PgPool, id: &str, uploaded_at: i64) -> Result<()> {
     sqlx::query!(

@@ -6,6 +6,7 @@
         <Tab value="unreferenced_images">{{ $t('maintenance.unreferenced_images.title') }}</Tab>
         <Tab value="similar_images">{{ $t('maintenance.similar_images.title') }}</Tab>
         <Tab value="chevereto_import">{{ $t('maintenance.chevereto_import.title') }}</Tab>
+        <Tab value="data_tools">{{ $t('maintenance.data_tools.title') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel value="unreferenced_images">
@@ -16,6 +17,9 @@
         </TabPanel>
         <TabPanel value="chevereto_import">
           <CheveretoImport />
+        </TabPanel>
+        <TabPanel value="data_tools">
+          <ResetViews />
         </TabPanel>
       </TabPanels>
     </Tabs>
@@ -33,8 +37,9 @@ import TabPanel from 'primevue/tabpanel'
 import CheveretoImport from '@/components/maintenance/CheveretoImport.vue'
 import SimilarImages from '@/components/maintenance/SimilarImages.vue'
 import UnreferencedImages from '@/components/maintenance/UnreferencedImages.vue'
+import ResetViews from '@/components/maintenance/ResetViews.vue'
 
-const TABS = ['unreferenced_images', 'similar_images', 'chevereto_import']
+const TABS = ['unreferenced_images', 'similar_images', 'chevereto_import', 'data_tools']
 
 const route = useRoute()
 const router = useRouter()

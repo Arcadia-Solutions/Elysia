@@ -56,6 +56,7 @@ use crate::repository::users::UsersSortBy;
         crate::handlers::maintenance::stop_chevereto_import::stop_chevereto_import,
         crate::handlers::maintenance::get_chevereto_import_progress::get_chevereto_import_progress,
         crate::handlers::maintenance::list_chevereto_import_failures::list_chevereto_import_failures,
+        crate::handlers::maintenance::reset_views::reset_views,
         crate::handlers::settings::get_elysia_settings::get_elysia_settings,
         crate::handlers::settings::get_public_elysia_settings::get_public_elysia_settings,
         crate::handlers::settings::get_elysia_unauth_settings::get_elysia_unauth_settings,

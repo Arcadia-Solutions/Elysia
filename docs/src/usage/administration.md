@@ -103,3 +103,11 @@ hours old.
 ### Chevereto import
 
 See [Importing from Chevereto](chevereto-import.md).
+
+### Data tools
+
+Reset views: sets one view counter (image, medium or thumbnail), or all of
+them, of every image back to zero for a comma separated list of referrers, or
+for all of them when the list is empty. The totals lose what those referrers
+counted. On an image's viewer page, each counter, total or per referrer, has
+its own reset button.
