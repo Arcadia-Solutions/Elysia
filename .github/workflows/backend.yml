@@ -23,6 +23,11 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
 
+    # contents: push the coverage badge to the `badges` branch, pull-requests: comment coverage on PRs
+    permissions:
+      contents: write
+      pull-requests: write
+
     # DATABASE_URL is only used at test runtime: `#[sqlx::test]` connects here
     # and creates a throwaway database per test. Query macros still compile
     # offline from the checked-in .sqlx cache.
@@ -57,17 +62,55 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy
+          components: clippy, llvm-tools-preview
           cache-workspaces: ./backend
 
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: Run tests
-        run: cargo test
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run tests with coverage
+        run: cargo llvm-cov --json --summary-only --output-path "$RUNNER_TEMP/coverage.json"
 
       - name: Chevereto import end to end test
         run: tests/chevereto/test.sh
+
+      # main's coverage lives in coverage.json on the `badges` branch, which the README badge reads through shields.io.
+      - name: Coverage report
+        run: |
+          pct=$(jq '.data[0].totals.lines.percent * 100 | round / 100' "$RUNNER_TEMP/coverage.json")
+          main=$(curl -sf "https://raw.githubusercontent.com/${{ github.repository }}/badges/coverage.json" | jq -r '.message' | tr -d '%' || true)
+          {
+            echo "### Backend coverage"
+            if [ -n "$main" ]; then
+              delta=$(jq -rn "($pct - $main) * 100 | round / 100 | if . >= 0 then \"+\(.)\" else tostring end")
+              echo "$pct% (main: $main%, $delta%)"
+            else
+              echo "$pct%"
+            fi
+          } > "$RUNNER_TEMP/coverage.md"
+          cat "$RUNNER_TEMP/coverage.md" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --argjson p "$pct" '{schemaVersion: 1, label: "coverage", message: "\($p)%", color: (if $p >= 80 then "brightgreen" elif $p >= 60 then "yellow" else "red" end)}' > "$RUNNER_TEMP/badge.json"
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage
+          path: ${{ runner.temp }}/coverage.md
+
+      - name: Publish coverage badge
+        if: github.ref == 'refs/heads/main'
+        working-directory: ${{ runner.temp }}
+        run: |
+          git init -q -b badges badges
+          cp badge.json badges/coverage.json
+          cd badges
+          git add coverage.json
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "coverage badge"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" badges
 
   formatting:
     name: cargo fmt
