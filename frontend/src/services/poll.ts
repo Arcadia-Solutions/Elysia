@@ -7,11 +7,11 @@ export function pollProgress<T extends { running: boolean }>(
   fetch: () => Promise<{ data: T }>,
   progress: Ref<T | undefined>,
   onEnd: (progress: T) => void,
-): () => void {
+): () => Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const refresh = () => {
     clearTimeout(timer)
-    fetch().then(({ data }) => {
+    return fetch().then(({ data }) => {
       const wasRunning = progress.value?.running
       progress.value = data
       if (data.running) timer = setTimeout(refresh, 1000)

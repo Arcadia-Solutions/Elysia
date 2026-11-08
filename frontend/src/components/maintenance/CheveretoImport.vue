@@ -86,7 +86,7 @@
         :label="$t(progress?.last_image_id ? 'maintenance.chevereto_import.resume' : 'maintenance.chevereto_import.start')"
         icon="pi pi-play"
         size="small"
-        :loading="progress?.running"
+        :loading="starting || progress?.running"
         :disabled="disabled || !form.chevereto_database_url.trim() || !form.chevereto_public_url.trim()"
         @click="start(CheveretoImportStart.Resume)"
       />
@@ -213,7 +213,8 @@ const router = useRouter()
 const currentPage = computed(() => Number(route.query.page) || 1)
 const pageSize = computed(() => Number(route.query.page_size) || 50)
 const stopping = ref(false)
-const disabled = computed(() => !!progress.value?.running)
+const starting = ref(false)
+const disabled = computed(() => starting.value || !!progress.value?.running)
 
 const loadFailures = (page: number) =>
   api.listCheveretoImportFailures(page, pageSize.value).then((response) => {
@@ -222,7 +223,10 @@ const loadFailures = (page: number) =>
 
 // Reloads the failures on every poll, so they show up while the run goes.
 const refresh = pollProgress(
-  () => api.getCheveretoImportProgress().finally(() => loadFailures(currentPage.value)),
+  () => {
+    loadFailures(currentPage.value)
+    return api.getCheveretoImportProgress()
+  },
   progress,
   () => (stopping.value = false),
 )
@@ -230,6 +234,7 @@ const refresh = pollProgress(
 const start = (from: CheveretoImportStart) => {
   if (from === CheveretoImportStart.Restart && !confirm(t('maintenance.chevereto_import.restart_confirm'))) return
   const backendDatabaseUrl = form.value.backend_database_url?.trim()
+  starting.value = true
   api
     .startCheveretoImport({
       ...form.value,
@@ -241,6 +246,7 @@ const start = (from: CheveretoImportStart) => {
       start: from,
     })
     .then(refresh)
+    .finally(() => (starting.value = false))
 }
 
 const stop = () =>
