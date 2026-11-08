@@ -34,7 +34,12 @@ pub struct ImageSummary {
     pub compression_ratio: f64,
     pub width: i32,
     pub height: i32,
+    /// Full image views, from `/i/`.
     pub views: i64,
+    /// Medium views, from `/m/`.
+    pub medium_views: i64,
+    /// Thumbnail views, from `/t/`.
+    pub thumbnail_views: i64,
     pub uploader_username: String,
     /// RFC 3339, UTC.
     pub created_at: String,
@@ -67,6 +72,8 @@ impl ImageSummary {
             width: row.width,
             height: row.height,
             views: row.views,
+            medium_views: row.medium_views,
+            thumbnail_views: row.thumbnail_views,
             uploader_username: row.uploader_username,
             created_at: row.created_at,
         }

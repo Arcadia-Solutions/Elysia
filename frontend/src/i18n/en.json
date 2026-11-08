@@ -183,7 +183,8 @@
       "original_hash": "Original hash",
       "views": "Image views",
       "medium_views": "Medium views",
-      "thumbnail_views": "Thumbnail views"
+      "thumbnail_views": "Thumbnail views",
+      "total_views": "Total views"
     },
     "order": {
       "asc": "Ascending",
@@ -205,7 +206,10 @@
       "width": "Width",
       "height": "Height",
       "format": "Format",
-      "views": "Views"
+      "total_views": "Total views",
+      "views": "Image views",
+      "medium_views": "Medium views",
+      "thumbnail_views": "Thumbnail views"
     },
     "status": {
       "available": "Available",

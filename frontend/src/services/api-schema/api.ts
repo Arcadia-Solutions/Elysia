@@ -529,6 +529,10 @@ export interface ImageSummary {
      * Medium URL from `/m/`. Trashed, it is only served to Elysia\'s own pages.
      */
     'medium_url': string;
+    /**
+     * Medium views, from `/m/`.
+     */
+    'medium_views': number;
     'original_name'?: string | null;
     /**
      * Source bytes as uploaded.
@@ -542,7 +546,14 @@ export interface ImageSummary {
      * Thumbnail URL from `/t/`, cropped to fill the thumbnail box. Trashed, it is only served to Elysia\'s own pages.
      */
     'thumbnail_url': string;
+    /**
+     * Thumbnail views, from `/t/`.
+     */
+    'thumbnail_views': number;
     'uploader_username': string;
+    /**
+     * Full image views, from `/i/`.
+     */
     'views': number;
     'width': number;
 }
@@ -559,7 +570,8 @@ export const ImagesSortBy = {
     OriginalHash: 'original_hash',
     Views: 'views',
     MediumViews: 'medium_views',
-    ThumbnailViews: 'thumbnail_views'
+    ThumbnailViews: 'thumbnail_views',
+    TotalViews: 'total_views'
 } as const;
 
 export type ImagesSortBy = typeof ImagesSortBy[keyof typeof ImagesSortBy];
@@ -771,6 +783,10 @@ export interface PaginatedResultsImageSummaryResultsInner {
      * Medium URL from `/m/`. Trashed, it is only served to Elysia\'s own pages.
      */
     'medium_url': string;
+    /**
+     * Medium views, from `/m/`.
+     */
+    'medium_views': number;
     'original_name'?: string | null;
     /**
      * Source bytes as uploaded.
@@ -784,7 +800,14 @@ export interface PaginatedResultsImageSummaryResultsInner {
      * Thumbnail URL from `/t/`, cropped to fill the thumbnail box. Trashed, it is only served to Elysia\'s own pages.
      */
     'thumbnail_url': string;
+    /**
+     * Thumbnail views, from `/t/`.
+     */
+    'thumbnail_views': number;
     'uploader_username': string;
+    /**
+     * Full image views, from `/i/`.
+     */
     'views': number;
     'width': number;
 }

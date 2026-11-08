@@ -57,7 +57,7 @@ pub async fn queue_page(
          )
          select page.total as "total!",
                 f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
-                f.views, uploader.username as uploader_username,
+                f.views, f.medium_views, f.thumbnail_views, uploader.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
                 reporter.username as reporter_username, r.reason,
@@ -90,6 +90,8 @@ pub async fn queue_page(
                     has_medium: row.has_medium,
                     has_thumbnail: row.has_thumbnail,
                     views: row.views,
+                    medium_views: row.medium_views,
+                    thumbnail_views: row.thumbnail_views,
                     uploader_username: row.uploader_username,
                     created_at: row.created_at,
                     total: row.total,

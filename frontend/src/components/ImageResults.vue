@@ -70,7 +70,12 @@
       <Column :field="ImagesSortBy.Width" :header="$t('browse.columns.width')" sortable />
       <Column :field="ImagesSortBy.Height" :header="$t('browse.columns.height')" sortable />
       <Column field="ext" :header="$t('browse.columns.format')" />
+      <Column :field="ImagesSortBy.TotalViews" :header="$t('browse.columns.total_views')" sortable>
+        <template #body="{ data }">{{ data.views + data.medium_views + data.thumbnail_views }}</template>
+      </Column>
       <Column :field="ImagesSortBy.Views" :header="$t('browse.columns.views')" sortable />
+      <Column :field="ImagesSortBy.MediumViews" :header="$t('browse.columns.medium_views')" sortable />
+      <Column :field="ImagesSortBy.ThumbnailViews" :header="$t('browse.columns.thumbnail_views')" sortable />
     </DataTable>
   </PaginatedResults>
 </template>

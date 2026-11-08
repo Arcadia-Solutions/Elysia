@@ -378,6 +378,8 @@ pub struct ImageListRow {
     pub has_medium: bool,
     pub has_thumbnail: bool,
     pub views: i64,
+    pub medium_views: i64,
+    pub thumbnail_views: i64,
     pub uploader_username: String,
     /// RFC 3339, UTC.
     pub created_at: String,
@@ -397,6 +399,7 @@ pub enum ImagesSortBy {
     Views,
     MediumViews,
     ThumbnailViews,
+    TotalViews,
 }
 
 impl ImagesSortBy {
@@ -411,6 +414,7 @@ impl ImagesSortBy {
             ImagesSortBy::Views => "views",
             ImagesSortBy::MediumViews => "medium_views",
             ImagesSortBy::ThumbnailViews => "thumbnail_views",
+            ImagesSortBy::TotalViews => "total_views",
         }
     }
 }
@@ -467,7 +471,7 @@ pub async fn list_page(
     Ok(sqlx::query_as!(
         ImageListRow,
         r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
-                f.views, u.username as uploader_username,
+                f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
                 count(*) over() as "total!"
@@ -494,6 +498,8 @@ pub async fn list_page(
            case when $3 = 'medium_views' and not $4 then f.medium_views end desc,
            case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
            case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
+           case when $3 = 'total_views' and $4 then f.views + f.medium_views + f.thumbnail_views end asc,
+           case when $3 = 'total_views' and not $4 then f.views + f.medium_views + f.thumbnail_views end desc,
            f.id desc
          offset $1 limit $2"#,
         offset,
@@ -520,7 +526,7 @@ pub async fn unreferenced_page(
     Ok(sqlx::query_as!(
         ImageListRow,
         r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
-                f.views, u.username as uploader_username,
+                f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
                 count(*) over() as "total!"
@@ -546,6 +552,8 @@ pub async fn unreferenced_page(
            case when $3 = 'medium_views' and not $4 then f.medium_views end desc,
            case when $3 = 'thumbnail_views' and $4 then f.thumbnail_views end asc,
            case when $3 = 'thumbnail_views' and not $4 then f.thumbnail_views end desc,
+           case when $3 = 'total_views' and $4 then f.views + f.medium_views + f.thumbnail_views end asc,
+           case when $3 = 'total_views' and not $4 then f.views + f.medium_views + f.thumbnail_views end desc,
            f.id desc
          offset $1 limit $2"#,
         offset,
@@ -689,7 +697,7 @@ pub async fn similar_page(
          )
          select page.group_id, page.total as "total!",
                 f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
-                f.views, u.username as uploader_username,
+                f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!"
          from page
@@ -720,6 +728,8 @@ pub async fn similar_page(
                     has_medium: row.has_medium,
                     has_thumbnail: row.has_thumbnail,
                     views: row.views,
+                    medium_views: row.medium_views,
+                    thumbnail_views: row.thumbnail_views,
                     uploader_username: row.uploader_username,
                     created_at: row.created_at,
                     total: row.total,
