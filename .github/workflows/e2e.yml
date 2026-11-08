@@ -46,9 +46,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # rav1e (via ravif) assembles x86 SIMD with nasm at build time.
-      - name: Install nasm
-        run: sudo apt-get update && sudo apt-get install -y nasm
+      # rav1e (via ravif) assembles x86 SIMD with nasm at build time, dav1d-sys links libdav1d to decode AVIF.
+      - name: Install nasm and libdav1d
+        run: sudo apt-get update && sudo apt-get install -y nasm libdav1d-dev
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

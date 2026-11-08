@@ -7,6 +7,8 @@
 - Docker, for PostgreSQL
 - cmake, nasm and a C++ compiler: the JPEG XL encoder is built from vendored
   source and the AVIF encoder needs nasm on x86_64. The first build is slow.
+- libdav1d >= 1.3 and pkg-config, to decode AVIF uploads (`libdav1d-dev` on
+  Debian, `libdav1d-devel` on Fedora).
 
 ## Compose override
 

@@ -291,6 +291,37 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn upload_accepts_and_decodes_avif(pool: PgPool) {
+    let (storage, _dir) = temp_storage();
+    let mut avif_options = pipeline_options(TargetFormat::Avif);
+    avif_options.requested_quality = Some(80);
+    let source = process(&real_png(64, 64), &avif_options)
+        .unwrap()
+        .unwrap()
+        .bytes;
+    let url = serve_once("HTTP/1.1 200 OK", "image/avif", source);
+    let uploader = test_user(&pool, "avif").await.0.id;
+    let stored = store_from_url(
+        &pool,
+        &storage,
+        &webp_settings(),
+        &reqwest::Client::new(),
+        &url,
+        None,
+        &Default::default(),
+        uploader,
+        None,
+    )
+    .await
+    .unwrap();
+    let convert = stored.actions.unwrap().convert.unwrap();
+    assert_eq!(
+        (convert.from.as_str(), convert.to.as_str()),
+        ("avif", "webp")
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let image = real_png(8, 8);

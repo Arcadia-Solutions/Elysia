@@ -373,7 +373,7 @@ pub async fn fetch_to_temp(
     Ok((temp, size))
 }
 
-/// Size limit, type sniff (png, jpg, gif, webp) and dimension limits of a
+/// Size limit, type sniff (png, jpg, gif, webp, avif) and dimension limits of a
 /// file, from its header only. Returns its extension, mime type and dimensions.
 pub async fn check_image(
     settings: &ElysiaSettings,
@@ -392,6 +392,7 @@ pub async fn check_image(
         "image/jpeg" => "jpg",
         "image/gif" => "gif",
         "image/webp" => "webp",
+        "image/avif" => "avif",
         _ => return Err(Error::UnsupportedMediaType),
     };
     let dimensions = imagesize::size(path).map_err(|_| Error::UnsupportedMediaType)?;
