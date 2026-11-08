@@ -346,7 +346,7 @@ export interface ElysiaSettings {
      */
     'allow_registration'?: boolean;
     /**
-     * Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/m/`. Empty allows any request, including ones without a `Referer`. Elysia\'s own host is always allowed so the web UI keeps showing images.
+     * Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/m/`. Empty allows any request, including ones without a `Referer`. Elysia\'s own pages (its host, under the path of `server.public_url`) are always allowed so the web UI keeps showing images.
      */
     'allowed_referrers'?: Array<string>;
     /**
@@ -394,7 +394,7 @@ export interface ElysiaSettings {
      */
     'privacy_policy'?: string;
     /**
-     * When true, views are counted per `Referer` host; when false, every view is counted under no referrer. Without `allowed_referrers`, any site (or anyone forging a `Referer`) adds a row per file and host, so the referrer views table can grow indefinitely: keep this off unless the allowlist bounds the hosts.
+     * When true, views are counted per `Referer` host (Elysia\'s own pages under their host and base path, see [`referer_host`]); when false, every view is counted under no referrer. Without `allowed_referrers`, any site (or anyone forging a `Referer`) adds a row per file and host, so the referrer views table can grow indefinitely: keep this off unless the allowlist bounds the hosts.
      */
     'record_referrer_views'?: boolean;
     /**

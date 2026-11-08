@@ -81,9 +81,6 @@ pub async fn list_unreferenced_images(
             total,
         ),
         scanned_at,
-        public_host: public_url
-            .split_once("://")
-            .map_or(public_url.as_str(), |(_, rest)| rest)
-            .to_owned(),
+        public_host: config.server.public_host().to_owned(),
     }))
 }

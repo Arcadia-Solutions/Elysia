@@ -28,6 +28,32 @@ pub struct ServerConfig {
     pub public_url: String,
 }
 
+impl ServerConfig {
+    /// Parse `public_url` so its path is percent-encoded like the `Referer`
+    /// paths it is compared against, and drop its trailing slash.
+    pub fn normalize(&mut self) {
+        if self.public_url.is_empty() {
+            return;
+        }
+        let url = url::Url::parse(&self.public_url).expect("server.public_url must be a valid url");
+        self.public_url = url.as_str().trim_end_matches('/').to_owned();
+    }
+
+    /// `public_url` without its scheme: `domain.com/elysia`.
+    pub fn public_host(&self) -> &str {
+        self.public_url
+            .split_once("://")
+            .map_or(&self.public_url, |(_, rest)| rest)
+    }
+
+    /// Path of `public_url`: `/elysia` for `https://domain.com/elysia`, empty
+    /// when Elysia is at the root of its host.
+    pub fn base_path(&self) -> &str {
+        let host = self.public_host();
+        host.find('/').map_or("", |slash| &host[slash..])
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct DatabaseConfig {
     pub host: String,
@@ -179,7 +205,7 @@ impl Config {
         // running from a subdirectory reads and writes a different folder.
         // An absolute upload_dir is kept as is by `join`.
         let config_dir = path.parent().expect("config path has a parent");
-        config.server.public_url = config.server.public_url.trim_end_matches('/').to_string();
+        config.server.normalize();
         config.storage.upload_dir = config_dir
             .join(&config.storage.upload_dir)
             .to_string_lossy()

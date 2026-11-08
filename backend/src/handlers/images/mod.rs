@@ -71,11 +71,11 @@ pub(crate) struct ServeDecision {
     /// `private` while an allowlist is set, so shared caches (CDN, proxy) can't
     /// hand the image to other referrers.
     pub cache_control: &'static str,
-    /// True when the `Referer` is one of Elysia's own pages (browse, viewer):
-    /// browsing the app does not inflate the view counters, and still shows
-    /// trashed images.
+    /// True when the `Referer` is one of Elysia's own pages (browse, viewer),
+    /// which still get trashed images.
     pub from_own_page: bool,
-    /// `Referer` host the view is counted under; empty without a `Referer` or
+    /// `Referer` host the view is counted under, followed by the base path for
+    /// Elysia's own pages (`domain.com/elysia`); empty without a `Referer` or
     /// when referrer views are not recorded.
     pub referrer: String,
 }
@@ -83,6 +83,7 @@ pub(crate) struct ServeDecision {
 /// Refuse an image request whose `Referer` is not in the allowed referrers.
 pub(crate) fn check_referrer(
     req: &HttpRequest,
+    base_path: &str,
     settings: &SharedElysiaSettings,
 ) -> Result<ServeDecision> {
     let referer = req
@@ -91,7 +92,7 @@ pub(crate) fn check_referrer(
         .and_then(|value| value.to_str().ok());
     let own_host = req.connection_info().host().to_owned();
     let settings = settings.read().expect("settings lock poisoned");
-    if !settings.referrer_allowed(referer, &own_host) {
+    if !settings.referrer_allowed(referer, &own_host, base_path) {
         return Err(Error::Forbidden);
     }
     let cache_control = if settings.allowed_referrers.is_empty() {
@@ -99,11 +100,15 @@ pub(crate) fn check_referrer(
     } else {
         "private, max-age=31536000, immutable"
     };
-    let (from_own_page, referrer) = match referer_host(referer, &own_host) {
-        Some(RefererHost::Own) => (true, String::new()),
-        Some(RefererHost::Other(host)) if settings.record_referrer_views => (false, host),
-        Some(RefererHost::Other(_)) => (false, String::new()),
+    let (from_own_page, referrer) = match referer_host(referer, &own_host, base_path) {
+        Some(RefererHost::Own(host)) => (true, host),
+        Some(RefererHost::Other(host)) => (false, host),
         None => (false, String::new()),
+    };
+    let referrer = if settings.record_referrer_views {
+        referrer
+    } else {
+        String::new()
     };
     Ok(ServeDecision {
         cache_control,
@@ -160,7 +165,7 @@ mod tests {
                 "https://Forum.Example/m/1",
             ))
             .to_http_request();
-        check_referrer(&req, &settings).unwrap().referrer
+        check_referrer(&req, "", &settings).unwrap().referrer
     }
 
     #[test]

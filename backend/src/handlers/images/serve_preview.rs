@@ -4,6 +4,7 @@ use actix_web::{
 };
 
 use super::{check_referrer, file_response, parse_filename, trashed_response};
+use crate::config::Config;
 use crate::error::Result;
 use crate::services::views::ViewCounter;
 use crate::settings::SharedElysiaSettings;
@@ -29,6 +30,7 @@ pub async fn serve_medium(
     req: HttpRequest,
     storage: Data<Storage>,
     views: Data<ViewCounter>,
+    config: Data<Config>,
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
@@ -36,6 +38,7 @@ pub async fn serve_medium(
         &req,
         &storage,
         &views,
+        config.server.base_path(),
         &settings,
         &filename,
         Preview::Medium,
@@ -59,6 +62,7 @@ pub async fn serve_thumbnail(
     req: HttpRequest,
     storage: Data<Storage>,
     views: Data<ViewCounter>,
+    config: Data<Config>,
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
@@ -66,6 +70,7 @@ pub async fn serve_thumbnail(
         &req,
         &storage,
         &views,
+        config.server.base_path(),
         &settings,
         &filename,
         Preview::Thumbnail,
@@ -78,11 +83,12 @@ fn serve_preview(
     req: &HttpRequest,
     storage: &Storage,
     views: &ViewCounter,
+    base_path: &str,
     settings: &SharedElysiaSettings,
     filename: &str,
     preview: Preview,
 ) -> Result<HttpResponse> {
-    let decision = check_referrer(req, settings)?;
+    let decision = check_referrer(req, base_path, settings)?;
     let (id, ext) = parse_filename(filename)?;
     let file = match storage.open_preview(id, preview) {
         Ok(file) => file,
@@ -94,8 +100,6 @@ fn serve_preview(
             }
         },
     };
-    if !decision.from_own_page {
-        views.count(id, &decision.referrer, Some(preview));
-    }
+    views.count(id, &decision.referrer, Some(preview));
     Ok(file_response(req, file, decision.cache_control))
 }

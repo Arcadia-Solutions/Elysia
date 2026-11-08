@@ -4,6 +4,7 @@ use actix_web::{
 };
 
 use super::{check_referrer, file_response, parse_filename, trashed_response};
+use crate::config::Config;
 use crate::error::Result;
 use crate::services::views::ViewCounter;
 use crate::settings::SharedElysiaSettings;
@@ -27,10 +28,11 @@ pub async fn serve(
     req: HttpRequest,
     storage: Data<Storage>,
     views: Data<ViewCounter>,
+    config: Data<Config>,
     settings: SharedElysiaSettings,
     filename: Path<String>,
 ) -> Result<HttpResponse> {
-    let decision = check_referrer(&req, &settings)?;
+    let decision = check_referrer(&req, config.server.base_path(), &settings)?;
     let (id, ext) = parse_filename(&filename)?;
     let file = match storage.open(id, ext) {
         Ok(file) => file,
@@ -39,8 +41,6 @@ pub async fn serve(
             return trashed_response(&req, &decision, trashed_file);
         }
     };
-    if !decision.from_own_page {
-        views.count(id, &decision.referrer, None);
-    }
+    views.count(id, &decision.referrer, None);
     Ok(file_response(&req, file, decision.cache_control))
 }

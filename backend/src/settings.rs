@@ -80,7 +80,8 @@ pub struct ElysiaSettings {
     pub allow_registration: bool,
     /// Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/m/`.
     /// Empty allows any request, including ones without a `Referer`. Elysia's
-    /// own host is always allowed so the web UI keeps showing images.
+    /// own pages (its host, under the path of `server.public_url`) are always
+    /// allowed so the web UI keeps showing images.
     #[serde(default)]
     pub allowed_referrers: Vec<String>,
     /// When false, every upload (file or URL) is rejected, admins included.
@@ -90,7 +91,8 @@ pub struct ElysiaSettings {
     /// overridden per user; 0 is unlimited. Admins are exempt without an override.
     #[serde(default)]
     pub default_storage_quota_bytes: u64,
-    /// When true, views are counted per `Referer` host; when false, every view
+    /// When true, views are counted per `Referer` host (Elysia's own pages
+    /// under their host and base path, see [`referer_host`]); when false, every view
     /// is counted under no referrer. Without `allowed_referrers`, any site (or
     /// anyone forging a `Referer`) adds a row per file and host, so the
     /// referrer views table can grow indefinitely: keep this off unless the
@@ -229,24 +231,33 @@ pub struct UnauthElysiaSettings {
 
 /// Lowercased host of a `Referer`, sorted into Elysia's own pages and the rest.
 pub enum RefererHost {
-    Own,
+    /// The host followed by `base_path` (`domain.com/elysia`), so views from
+    /// Elysia stay apart from those of another site on the same host.
+    Own(String),
     Other(String),
 }
 
-/// Classify the `Referer` host against `own_host` (the `Host` the request was
-/// sent to, port ignored). None when there is no parseable `Referer`.
-pub fn referer_host(referer: Option<&str>, own_host: &str) -> Option<RefererHost> {
-    let host = referer
-        .and_then(|referer| url::Url::parse(referer).ok())
-        .and_then(|url| url.host_str().map(str::to_ascii_lowercase))?;
+/// Classify the `Referer` against `own_host` (the `Host` the request was sent
+/// to, port ignored) and `base_path` (see `ServerConfig::base_path`): a page of
+/// another site on the same host, outside `base_path`, is not one of Elysia's
+/// own. None when there is no parseable `Referer`.
+pub fn referer_host(referer: Option<&str>, own_host: &str, base_path: &str) -> Option<RefererHost> {
+    let url = referer.and_then(|referer| url::Url::parse(referer).ok())?;
+    let host = url.host_str().map(str::to_ascii_lowercase)?;
     let own_host = url::Url::parse(&format!("http://{own_host}"))
         .ok()
         .and_then(|url| url.host_str().map(str::to_ascii_lowercase));
-    Some(if own_host.as_deref() == Some(host.as_str()) {
-        RefererHost::Own
-    } else {
-        RefererHost::Other(host)
-    })
+    let under_base_path = url
+        .path()
+        .strip_prefix(base_path)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'));
+    Some(
+        if own_host.as_deref() == Some(host.as_str()) && under_base_path {
+            RefererHost::Own(format!("{host}{base_path}"))
+        } else {
+            RefererHost::Other(host)
+        },
+    )
 }
 
 impl ElysiaSettings {
@@ -264,13 +275,13 @@ impl ElysiaSettings {
     }
 
     /// Whether an image request may be served: the list is empty, or the
-    /// `Referer` host is listed or is `own_host` (see [`referer_host`]).
-    pub fn referrer_allowed(&self, referer: Option<&str>, own_host: &str) -> bool {
+    /// `Referer` host is listed or is one of Elysia's own pages (see [`referer_host`]).
+    pub fn referrer_allowed(&self, referer: Option<&str>, own_host: &str, base_path: &str) -> bool {
         if self.allowed_referrers.is_empty() {
             return true;
         }
-        match referer_host(referer, own_host) {
-            Some(RefererHost::Own) => true,
+        match referer_host(referer, own_host, base_path) {
+            Some(RefererHost::Own(_)) => true,
             Some(RefererHost::Other(host)) => self.allowed_referrers.contains(&host),
             None => false,
         }

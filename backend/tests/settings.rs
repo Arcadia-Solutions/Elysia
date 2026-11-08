@@ -176,13 +176,13 @@ async fn put_rejects_contradictory_settings(pool: PgPool) {
 fn referrer_allowlist() {
     let mut settings = common::test_settings();
     // Empty list: anything goes, even no Referer.
-    assert!(settings.referrer_allowed(None, "elysia.test"));
+    assert!(settings.referrer_allowed(None, "elysia.test", ""));
 
     settings.allowed_referrers = vec![" Forum.Example ".into(), "".into(), "forum.example".into()];
     settings.normalize();
     assert_eq!(settings.allowed_referrers, vec!["forum.example"]);
 
-    let allowed = |referer| settings.referrer_allowed(referer, "elysia.test:8090");
+    let allowed = |referer| settings.referrer_allowed(referer, "elysia.test:8090", "");
     assert!(allowed(Some("https://forum.example/thread/1")));
     assert!(allowed(Some("http://FORUM.example:8080/")));
     assert!(
@@ -199,8 +199,8 @@ fn referrer_allowlist() {
 fn own_pages_are_told_apart_from_other_referrers() {
     let is_own = |referer| {
         matches!(
-            referer_host(referer, "Elysia.test:8090"),
-            Some(RefererHost::Own)
+            referer_host(referer, "Elysia.test:8090", ""),
+            Some(RefererHost::Own(_))
         )
     };
     assert!(
@@ -210,6 +210,51 @@ fn own_pages_are_told_apart_from_other_referrers() {
     assert!(!is_own(Some("https://forum.example/thread/1")));
     assert!(!is_own(Some("https://elysia.test.evil.example/")));
     assert!(!is_own(None));
+}
+
+#[test]
+fn other_sites_on_the_same_host_are_not_own_pages() {
+    let is_own = |referer| {
+        matches!(
+            referer_host(Some(referer), "domain.com", "/elysia"),
+            Some(RefererHost::Own(_))
+        )
+    };
+    assert!(is_own("https://domain.com/elysia"));
+    assert!(is_own("https://domain.com/elysia/browse"));
+    assert!(!is_own("https://domain.com/"), "origin only referrer");
+    assert!(!is_own("https://domain.com/torrents/1"));
+    assert!(!is_own("https://domain.com/elysia-other/"));
+    assert!(matches!(
+        referer_host(Some("https://Domain.com/elysia/browse"), "domain.com", "/elysia"),
+        Some(RefererHost::Own(host)) if host == "domain.com/elysia"
+    ));
+}
+
+#[test]
+fn base_path_is_the_path_of_the_public_url() {
+    let base_path = |public_url: &str| {
+        let mut server = elysia::config::ServerConfig {
+            host: String::new(),
+            port: 0,
+            public_url: public_url.into(),
+        };
+        server.normalize();
+        server.base_path().to_owned()
+    };
+    assert_eq!(base_path("https://domain.com/elysia"), "/elysia");
+    assert_eq!(base_path("https://domain.com/elysia/"), "/elysia");
+    assert_eq!(base_path("https://domain.com/my images"), "/my%20images");
+    assert_eq!(base_path("https://images.example.com/"), "");
+    assert_eq!(base_path(""), "");
+    assert!(matches!(
+        referer_host(
+            Some("https://domain.com/my%20images/browse"),
+            "domain.com",
+            &base_path("https://domain.com/my images")
+        ),
+        Some(RefererHost::Own(_))
+    ));
 }
 
 #[test]
