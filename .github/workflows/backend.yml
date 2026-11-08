@@ -71,11 +71,14 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Run tests with coverage
-        run: cargo llvm-cov --json --summary-only --output-path "$RUNNER_TEMP/coverage.json"
-
-      - name: Chevereto import end to end test
-        run: tests/chevereto/test.sh
+      # show-env instruments every build, so the server the Chevereto end to end test runs counts toward coverage too.
+      - name: Run tests and the Chevereto import end to end test with coverage
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          cargo llvm-cov clean --workspace
+          cargo test
+          tests/chevereto/test.sh
+          cargo llvm-cov report --json --summary-only --output-path "$RUNNER_TEMP/coverage.json"
 
       # main's coverage lives in coverage.json on the `badges` branch, which the README badge reads through shields.io.
       - name: Coverage report

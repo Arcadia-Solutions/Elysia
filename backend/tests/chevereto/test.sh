@@ -89,7 +89,7 @@ EOF
 cargo build -q
 ELYSIA_CONFIG="$TEMP_DIR/elysia.yml" ../../target/debug/elysia > "$TEMP_DIR/elysia.log" 2>&1 &
 SERVER_PID=$!
-trap 'kill $SERVER_PID 2>/dev/null; dc down -v; rm -rf "$TEMP_DIR"' EXIT
+trap 'kill $SERVER_PID 2>/dev/null; wait $SERVER_PID || true; dc down -v; rm -rf "$TEMP_DIR"' EXIT
 API=http://127.0.0.1:28090/api
 for _ in $(seq 60); do curl -sf -o /dev/null "$API/elysia-unauth-settings" && break; sleep 1; done
 TOKEN=$(curl -sf "$API/auth/login" -H 'content-type: application/json' \
