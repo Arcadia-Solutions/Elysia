@@ -156,6 +156,20 @@ async fn albums_are_public_and_hold_any_image(pool: PgPool) {
     let response = actix_test::call_service(&app, list("&username=uploader", &owner_token)).await;
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
 
+    // Only its owner may rename it.
+    let rename = |token: &str| {
+        call(
+            actix_test::TestRequest::put()
+                .uri(&format!("/api/albums/{album_id}"))
+                .set_json(json!({ "name": "Holidays" })),
+            token,
+        )
+    };
+    let response = actix_test::call_service(&app, rename(&other_token)).await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let response = actix_test::call_service(&app, rename(&owner_token)).await;
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
     // Deleting the album keeps its images.
     let response = actix_test::call_service(
         &app,

@@ -1,5 +1,6 @@
 mod common;
 
+mod admin_routes;
 mod albums;
 mod api_keys;
 mod auth;
