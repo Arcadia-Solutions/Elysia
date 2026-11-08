@@ -45,3 +45,6 @@ export const splitList = (text: string): string[] =>
     .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean)
+
+// Compression ratio (original size / current size), e.g. 3.21 -> "÷3.2".
+export const formatRatio = (ratio: number): string => `÷${ratio.toFixed(1)}`

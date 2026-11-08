@@ -61,6 +61,12 @@
       <Column :field="ImagesSortBy.Size" :header="$t('browse.columns.size')" sortable>
         <template #body="{ data }">{{ formatBytes(data.size) }}</template>
       </Column>
+      <Column field="original_size" :header="$t('browse.columns.original_size')">
+        <template #body="{ data }">{{ formatBytes(data.original_size) }}</template>
+      </Column>
+      <Column :field="ImagesSortBy.CompressionRatio" :header="$t('browse.columns.compression_ratio')" sortable>
+        <template #body="{ data }">{{ formatRatio(data.compression_ratio) }}</template>
+      </Column>
       <Column :field="ImagesSortBy.Width" :header="$t('browse.columns.width')" sortable />
       <Column :field="ImagesSortBy.Height" :header="$t('browse.columns.height')" sortable />
       <Column field="ext" :header="$t('browse.columns.format')" />
@@ -75,7 +81,7 @@ import Column from 'primevue/column'
 import ResultsControls, { display } from '@/components/ResultsControls.vue'
 import PaginatedResults from '@/components/PaginatedResults.vue'
 import ImageThumbnail from '@/components/ImageThumbnail.vue'
-import { formatBytes, formatDate, timeAgo } from '@/services/format'
+import { formatBytes, formatDate, formatRatio, timeAgo } from '@/services/format'
 import { ImagesSortBy, SortOrder, type PaginatedResultsImageSummaryResultsInner } from '@/services/api-schema'
 
 const props = defineProps<{

@@ -116,7 +116,7 @@
     "uploaded_at": "Uploaded at",
     "dimensions": "Dimensions",
     "size": "Size",
-    "original_size": "originally {size}",
+    "original_size": "originally {size}, {ratio}",
     "format": "Format",
     "uploaded_by": "Uploaded by",
     "views": "Views",
@@ -161,12 +161,12 @@
     "sort": {
       "created_at": "Date added",
       "size": "Size",
+      "compression_ratio": "Compression ratio",
       "width": "Width",
       "height": "Height",
       "original_hash": "Original hash",
       "views": "Image views",
       "medium_views": "Medium views",
-      "thumbnail_views": "Thumbnail views",
       "thumbnail_views": "Thumbnail views"
     },
     "order": {
@@ -184,6 +184,8 @@
       "uploader": "Uploader",
       "uploaded_at": "Uploaded",
       "size": "Size",
+      "original_size": "Original size",
+      "compression_ratio": "Ratio",
       "width": "Width",
       "height": "Height",
       "format": "Format",

@@ -28,6 +28,10 @@ pub struct ImageSummary {
     pub ext: String,
     /// Bytes on disk.
     pub size: i64,
+    /// Source bytes as uploaded.
+    pub original_size: i64,
+    /// `original_size / size`: how many times smaller processing made the file.
+    pub compression_ratio: f64,
     pub width: i32,
     pub height: i32,
     pub views: i64,
@@ -58,6 +62,8 @@ impl ImageSummary {
             original_name: row.original_name,
             ext: row.ext,
             size: row.size,
+            original_size: row.original_size,
+            compression_ratio: row.compression_ratio,
             width: row.width,
             height: row.height,
             views: row.views,

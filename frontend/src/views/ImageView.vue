@@ -40,7 +40,9 @@
         <dt>{{ $t('image.size') }}</dt>
         <dd>
           {{ formatBytes(meta.size) }}
-          <template v-if="meta.size !== meta.original_size">({{ $t('image.original_size', { size: formatBytes(meta.original_size) }) }})</template>
+          <template v-if="meta.size !== meta.original_size">
+            ({{ $t('image.original_size', { size: formatBytes(meta.original_size), ratio: formatRatio(meta.original_size / meta.size) }) }})
+          </template>
         </dd>
         <dt>{{ $t('image.format') }}</dt>
         <dd>{{ meta.mime }}</dd>
@@ -124,7 +126,7 @@ import DeleteImagesDialog from '@/components/DeleteImagesDialog.vue'
 import AlbumSelect from '@/components/AlbumSelect.vue'
 import EmbedLinks from '@/components/EmbedLinks.vue'
 import { api } from '@/services/api/http'
-import { formatBytes, formatDate, timeAgo } from '@/services/format'
+import { formatBytes, formatDate, formatRatio, timeAgo } from '@/services/format'
 import { isAdmin } from '@/services/session'
 import { showToast } from '@/services/toast'
 import type { ImageAlbum, MetadataResponse, PublicElysiaSettings } from '@/services/api-schema'

@@ -56,7 +56,7 @@ pub async fn queue_page(
            offset $1 limit $2
          )
          select page.total as "total!",
-                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
+                f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, uploader.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -83,6 +83,8 @@ pub async fn queue_page(
                     ext: row.ext,
                     original_name: row.original_name,
                     size: row.size,
+                    original_size: row.original_size,
+                    compression_ratio: row.compression_ratio,
                     width: row.width,
                     height: row.height,
                     has_medium: row.has_medium,

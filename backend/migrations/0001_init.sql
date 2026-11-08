@@ -105,6 +105,8 @@ create table files (
   original_hash text not null,
   original_ext text not null,
   original_size bigint not null,
+  compression_ratio double precision not null
+    generated always as (original_size::double precision / size) stored,
   original_width int not null,
   original_height int not null,
   requested_quality int,
@@ -142,6 +144,7 @@ comment on column files.hash is 'SHA-256 of the stored (output) bytes; unique am
 comment on column files.original_hash is 'SHA-256 of the source bytes as uploaded';
 comment on column files.original_ext is 'Source file extension before processing';
 comment on column files.original_size is 'Source file size in bytes as uploaded';
+comment on column files.compression_ratio is 'original_size / size: how many times smaller processing made the file';
 comment on column files.original_width is 'Source image width in pixels before processing';
 comment on column files.original_height is 'Source image height in pixels before processing';
 comment on column files.requested_quality is 'The lossy_compression_value as requested; part of the skip-reprocess key';

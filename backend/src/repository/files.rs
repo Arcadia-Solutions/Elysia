@@ -288,6 +288,8 @@ pub struct ImageListRow {
     pub ext: String,
     pub original_name: Option<String>,
     pub size: i64,
+    pub original_size: i64,
+    pub compression_ratio: f64,
     pub width: i32,
     pub height: i32,
     pub has_medium: bool,
@@ -305,6 +307,7 @@ pub struct ImageListRow {
 pub enum ImagesSortBy {
     CreatedAt,
     Size,
+    CompressionRatio,
     Width,
     Height,
     OriginalHash,
@@ -318,6 +321,7 @@ impl ImagesSortBy {
         match self {
             ImagesSortBy::CreatedAt => "created_at",
             ImagesSortBy::Size => "size",
+            ImagesSortBy::CompressionRatio => "compression_ratio",
             ImagesSortBy::Width => "width",
             ImagesSortBy::Height => "height",
             ImagesSortBy::OriginalHash => "original_hash",
@@ -379,7 +383,7 @@ pub async fn list_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
+        r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -393,6 +397,8 @@ pub async fn list_page(
            case when $3 = 'created_at' and not $4 then f.created_at end desc,
            case when $3 = 'size' and $4 then f.size end asc,
            case when $3 = 'size' and not $4 then f.size end desc,
+           case when $3 = 'compression_ratio' and $4 then f.compression_ratio end asc,
+           case when $3 = 'compression_ratio' and not $4 then f.compression_ratio end desc,
            case when $3 = 'width' and $4 then f.width end asc,
            case when $3 = 'width' and not $4 then f.width end desc,
            case when $3 = 'height' and $4 then f.height end asc,
@@ -430,7 +436,7 @@ pub async fn unreferenced_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
+        r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -443,6 +449,8 @@ pub async fn unreferenced_page(
            case when $3 = 'created_at' and not $4 then f.created_at end desc,
            case when $3 = 'size' and $4 then f.size end asc,
            case when $3 = 'size' and not $4 then f.size end desc,
+           case when $3 = 'compression_ratio' and $4 then f.compression_ratio end asc,
+           case when $3 = 'compression_ratio' and not $4 then f.compression_ratio end desc,
            case when $3 = 'width' and $4 then f.width end asc,
            case when $3 = 'width' and not $4 then f.width end desc,
            case when $3 = 'height' and $4 then f.height end asc,
@@ -597,7 +605,7 @@ pub async fn similar_page(
            order by group_id offset $1 limit $2
          )
          select page.group_id, page.total as "total!",
-                f.id, f.ext, f.original_name, f.size, f.width, f.height, f.has_medium, f.has_thumbnail,
+                f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
                 f.views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!"
@@ -622,6 +630,8 @@ pub async fn similar_page(
                     ext: row.ext,
                     original_name: row.original_name,
                     size: row.size,
+                    original_size: row.original_size,
+                    compression_ratio: row.compression_ratio,
                     width: row.width,
                     height: row.height,
                     has_medium: row.has_medium,
