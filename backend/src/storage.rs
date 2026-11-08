@@ -208,6 +208,28 @@ impl Storage {
         Ok(())
     }
 
+    /// Sizes of a file and its previews; `None` when the file itself is
+    /// missing. Each one is looked up in the served tree, then in the trash, so
+    /// a concurrent trash or restore (atomic renames) never hides it.
+    pub async fn sizes(&self, id: &str, ext: &str) -> Result<Option<FileSizes>> {
+        let Some(size) =
+            first_file_size(self.path_for(id, ext), self.trash_path_for(id, ext)).await?
+        else {
+            return Ok(None);
+        };
+        let preview_size = |preview| {
+            first_file_size(
+                self.preview_path_for(id, preview),
+                self.trash_preview_path_for(id, preview),
+            )
+        };
+        Ok(Some(FileSizes {
+            size,
+            medium_size: preview_size(Preview::Medium).await?.unwrap_or(0),
+            thumbnail_size: preview_size(Preview::Thumbnail).await?.unwrap_or(0),
+        }))
+    }
+
     /// Delete a trashed file and its previews. Missing files are skipped.
     pub async fn wipe_trashed(&self, id: &str, ext: &str) -> Result<()> {
         ignore_missing(tokio::fs::remove_file(self.trash_path_for(id, ext)).await)?;
@@ -216,6 +238,26 @@ impl Storage {
         }
         Ok(())
     }
+}
+
+/// Bytes on disk of a stored file and of its medium and thumbnail previews.
+pub struct FileSizes {
+    pub size: i64,
+    /// 0 when the preview is missing.
+    pub medium_size: i64,
+    pub thumbnail_size: i64,
+}
+
+/// Bytes of the file at `served`, else at `trashed`, `None` when at neither.
+async fn first_file_size(served: PathBuf, trashed: PathBuf) -> Result<Option<i64>> {
+    for path in [served, trashed] {
+        match tokio::fs::metadata(path).await {
+            Ok(metadata) => return Ok(Some(metadata.len() as i64)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(None)
 }
 
 fn ignore_missing(result: std::io::Result<()>) -> Result<()> {

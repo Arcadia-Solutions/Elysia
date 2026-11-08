@@ -157,6 +157,10 @@ pub struct WindowTotals {
     /// Bytes still on disk of the files uploaded in the window: available and
     /// trashed files not yet wiped (main files, previews excluded).
     pub stored_bytes: i64,
+    /// Same as `stored_bytes`, for the medium previews.
+    pub stored_medium_bytes: i64,
+    /// Same as `stored_bytes`, for the thumbnails.
+    pub stored_thumbnail_bytes: i64,
 }
 
 pub async fn window_totals(pool: &PgPool, period: StatsPeriod) -> Result<WindowTotals> {
@@ -169,7 +173,11 @@ pub async fn window_totals(pool: &PgPool, period: StatsPeriod) -> Result<WindowT
                 count(*) as "uploads!",
                 coalesce(sum(size), 0)::bigint as "uploaded_bytes!",
                 coalesce(sum(size) filter (where status <> 'deleted'), 0)::bigint
-                  as "stored_bytes!"
+                  as "stored_bytes!",
+                coalesce(sum(medium_size) filter (where status <> 'deleted'), 0)::bigint
+                  as "stored_medium_bytes!",
+                coalesce(sum(thumbnail_size) filter (where status <> 'deleted'), 0)::bigint
+                  as "stored_thumbnail_bytes!"
          from files where $1::text is null or created_at >= now() - $1::text::interval"#,
         period.as_sql(),
     )

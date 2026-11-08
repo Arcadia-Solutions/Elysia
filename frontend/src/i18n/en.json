@@ -261,9 +261,14 @@
     "deletions_per": "Deletions per {interval}",
     "deletions": "Deletions",
     "referrers": "Views per referrer",
+    "referrers_help": "All-time views of the images uploaded within the selected period",
     "views": "Views",
-    "medium_views": "Medium views",
-    "thumbnail_views": "Thumbnail views",
+    "versions": {
+      "placeholder": "Image versions",
+      "views": "Full",
+      "medium_views": "Medium",
+      "thumbnail_views": "Thumbnails"
+    },
     "other_referrers": "Others"
   },
   "settings": {
@@ -479,6 +484,12 @@
         "referrers_help": "Leave empty to reset every referrer.",
         "submit": "Reset",
         "confirm": "Reset these view counters on every image? This cannot be undone."
+      },
+      "recalculate_sizes": {
+        "title": "Recalculate sizes",
+        "help": "Reads the size on disk of every available and trashed image and of its medium image and thumbnail, and records it for the stats and storage quotas. Images missing from disk are left unchanged.",
+        "done": "Sizes recalculated: {updated} images updated, {missing} missing from disk",
+        "confirm": "Read the size on disk of every image? This can take a while on large instances."
       }
     },
     "unreferenced_images": {

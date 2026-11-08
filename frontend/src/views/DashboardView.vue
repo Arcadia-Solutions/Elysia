@@ -33,28 +33,57 @@
     </div>
 
     <div class="tiles">
+      <div class="tile card storage">
+        <small>{{ $t('dashboard.stored_size') }}</small>
+        <strong>{{ formatBytes(storage.total) }}</strong>
+        <div class="storage-bar">
+          <span v-for="part in storage.parts" :key="part.label" :style="{ flexGrow: part.bytes, background: part.color }" />
+        </div>
+        <ul class="storage-legend">
+          <li v-for="part in storage.parts" :key="part.label">
+            <i :style="{ background: part.color }" />
+            {{ part.label }}
+            <b>{{ formatBytes(part.bytes) }}</b>
+          </li>
+        </ul>
+        <small v-if="storage.disk" :class="{ alert: storage.disk.available_bytes < storage.disk.min_free_bytes }">
+          {{ $t('dashboard.disk_free', { available: formatBytes(storage.disk.available_bytes), total: formatBytes(storage.disk.total_bytes) }) }}
+        </small>
+      </div>
       <div v-for="tile in tiles" :key="tile.label" class="tile card">
         <small>{{ tile.label }}</small>
         <strong>{{ tile.value }}</strong>
-        <small v-if="tile.detail" :class="{ alert: tile.alert }">{{ tile.detail }}</small>
       </div>
     </div>
 
     <p v-if="stats && stats.periods.length === 0" class="empty">{{ $t('browse.empty.available') }}</p>
     <div v-else-if="stats" class="charts">
-      <section v-for="(chart, index) in charts" :key="index">
+      <section v-for="(chart, index) in charts" :key="index" class="card">
         <h3>{{ chart.title }}</h3>
         <!-- Remounted per interval: the point count changes, which an in-place update draws without animation. -->
         <Chart :key="statsInterval" class="chart" :options="chart.options" />
       </section>
-      <section v-if="stats.referrers.length">
-        <h3>{{ $t('dashboard.referrers') }}</h3>
+      <section v-if="stats.referrers.length" class="card">
+        <div class="section-header">
+          <h3>
+            {{ $t('dashboard.referrers') }}
+            <i v-tooltip.top="$t('dashboard.referrers_help')" class="pi pi-info-circle info" />
+          </h3>
+          <MultiSelect
+            v-model="referrerVersions"
+            :options="[...REFERRER_VERSIONS]"
+            :optionLabel="(version: ReferrerVersion) => $t(`dashboard.versions.${version}`)"
+            :placeholder="$t('dashboard.versions.placeholder')"
+            :showToggleAll="false"
+            size="small"
+          />
+        </div>
         <Chart class="chart" :options="referrersChart" />
       </section>
     </div>
 
     <div class="tables">
-      <section v-if="stats">
+      <section v-if="stats" class="card">
         <h3>{{ $t('dashboard.uploaders') }}</h3>
         <DataTable :value="stats.uploaders" scrollable scrollHeight="400px" size="small">
           <Column field="username" :header="$t('dashboard.username')" />
@@ -70,7 +99,7 @@
         </DataTable>
       </section>
 
-      <section v-if="stats">
+      <section v-if="stats" class="card">
         <h3>{{ $t('dashboard.formats') }}</h3>
         <Chart class="chart" :options="formatsChart" />
       </section>
@@ -85,14 +114,17 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import FloatLabel from 'primevue/floatlabel'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
+import Tooltip from 'primevue/tooltip'
 import { Chart } from 'highcharts-vue'
 import type Highcharts from 'highcharts'
 import { api } from '@/services/api/http'
 import { formatBytes, formatDate } from '@/services/format'
 import { darkMode } from '@/services/theme'
-import { StatsInterval, StatsPeriod, type PeriodTotal, type StatsResponse } from '@/services/api-schema'
+import { StatsInterval, StatsPeriod, type PeriodTotal, type ReferrerTotal, type StatsResponse } from '@/services/api-schema'
 
 const { t } = useI18n()
+const vTooltip = Tooltip
 
 const formatCount = (value: number) => value.toLocaleString()
 
@@ -100,19 +132,24 @@ const formatCount = (value: number) => value.toLocaleString()
 // them on every hovered point, so skip the deep reactive proxies.
 const stats = shallowRef<StatsResponse>()
 
-// Everything uploaded within the selected window, plus the space used and left on disk.
+// Bytes on disk of the files uploaded within the selected window, split per
+// version, plus the space left on disk.
+const storage = computed(() => {
+  const totals = stats.value?.window
+  const parts = [
+    { label: t('dashboard.versions.views'), bytes: totals?.stored_bytes ?? 0, color: 'var(--p-primary-color)' },
+    { label: t('dashboard.versions.medium_views'), bytes: totals?.stored_medium_bytes ?? 0, color: 'var(--p-orange-500)' },
+    { label: t('dashboard.versions.thumbnail_views'), bytes: totals?.stored_thumbnail_bytes ?? 0, color: 'var(--p-violet-500)' },
+  ]
+  return { parts, total: parts.reduce((sum, part) => sum + part.bytes, 0), disk: stats.value?.disk }
+})
+
+// Everything uploaded within the selected window.
 const tiles = computed(() => {
   const totals = stats.value?.window
   const uploads = totals?.uploads ?? 0
   const bytes = totals?.uploaded_bytes ?? 0
-  const disk = stats.value?.disk
   return [
-    {
-      label: t('dashboard.stored_size'),
-      value: formatBytes(totals?.stored_bytes ?? 0),
-      detail: disk && t('dashboard.disk_free', { available: formatBytes(disk.available_bytes), total: formatBytes(disk.total_bytes) }),
-      alert: disk && disk.available_bytes < disk.min_free_bytes,
-    },
     { label: t('dashboard.uploads'), value: formatCount(uploads) },
     { label: t('dashboard.average_size'), value: formatBytes(uploads ? Math.round(bytes / uploads) : 0) },
     { label: t('dashboard.new_users'), value: formatCount(totals?.new_users ?? 0) },
@@ -265,7 +302,11 @@ const formatsChart = computed(
   }),
 )
 
-// Share of the views (image, medium and thumbnail) per referrer, the split in the tooltip.
+// Versions whose views the referrers chart counts, the split in the tooltip.
+const REFERRER_VERSIONS = ['views', 'medium_views', 'thumbnail_views'] as const
+type ReferrerVersion = (typeof REFERRER_VERSIONS)[number]
+const referrerVersions = ref<ReferrerVersion[]>(['views', 'medium_views'])
+const referrerViews = (row: ReferrerTotal) => referrerVersions.value.reduce((sum, version) => sum + row[version], 0)
 const referrerName = (referrer: string | null | undefined) => (referrer == null ? t('dashboard.other_referrers') : referrer || t('image.no_referrer'))
 const referrersChart = computed(
   (): Highcharts.Options => ({
@@ -276,7 +317,7 @@ const referrersChart = computed(
       {
         type: 'pie',
         name: t('dashboard.views'),
-        data: (stats.value?.referrers ?? []).map((row) => ({ name: referrerName(row.referrer), y: row.views + row.medium_views + row.thumbnail_views })),
+        data: (stats.value?.referrers ?? []).map((row) => ({ name: referrerName(row.referrer), y: referrerViews(row) })),
         dataLabels: { style: { color: themeColors.value.muted, textOutline: 'none' } },
       },
     ],
@@ -284,7 +325,8 @@ const referrersChart = computed(
       formatter() {
         const row = stats.value?.referrers[this.index]
         if (!row) return false
-        return `<b>${referrerName(row.referrer)}</b> (${(this.percentage ?? 0).toFixed(1)}%)<br/>${t('dashboard.views')}: ${formatCount(row.views)}<br/>${t('dashboard.medium_views')}: ${formatCount(row.medium_views)}<br/>${t('dashboard.thumbnail_views')}: ${formatCount(row.thumbnail_views)}`
+        const lines = referrerVersions.value.map((version) => `${t(`dashboard.versions.${version}`)}: ${formatCount(row[version])}`)
+        return [`<b>${referrerName(row.referrer)}</b> (${(this.percentage ?? 0).toFixed(1)}%)`, ...lines].join('<br/>')
       },
     },
   }),
@@ -339,6 +381,56 @@ h3 {
 }
 .tile small.alert {
   color: var(--p-red-500, #d33);
+}
+/* Stored size on the left, the four other tiles in a 2x2 grid beside it. */
+@media (min-width: 720px) {
+  .tiles {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+  .storage {
+    grid-row: span 2;
+  }
+}
+.storage-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin: 4px 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--p-content-border-color);
+}
+.storage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+.storage-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 50%;
+}
+.section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.section-header h3 {
+  margin: 0;
+}
+.info {
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color);
+  cursor: help;
 }
 .charts,
 .tables {

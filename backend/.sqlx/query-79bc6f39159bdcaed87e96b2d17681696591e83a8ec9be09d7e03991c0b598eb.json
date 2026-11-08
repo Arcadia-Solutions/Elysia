@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select (select count(*) from users\n                 where $1::text is null or created_at >= now() - $1::text::interval)\n                  as \"new_users!\",\n                count(distinct uploaded_by_user_id) as \"active_uploaders!\",\n                count(*) as \"uploads!\",\n                coalesce(sum(size), 0)::bigint as \"uploaded_bytes!\",\n                coalesce(sum(size) filter (where status <> 'deleted'), 0)::bigint\n                  as \"stored_bytes!\",\n                coalesce(sum(medium_size) filter (where status <> 'deleted'), 0)::bigint\n                  as \"stored_medium_bytes!\",\n                coalesce(sum(thumbnail_size) filter (where status <> 'deleted'), 0)::bigint\n                  as \"stored_thumbnail_bytes!\"\n         from files where $1::text is null or created_at >= now() - $1::text::interval",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "new_users!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "active_uploaders!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "uploads!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "uploaded_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "stored_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "stored_medium_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "stored_thumbnail_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "79bc6f39159bdcaed87e96b2d17681696591e83a8ec9be09d7e03991c0b598eb"
+}

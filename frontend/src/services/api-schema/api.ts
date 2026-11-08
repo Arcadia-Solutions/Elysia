@@ -999,6 +999,19 @@ export interface PublicElysiaSettings {
 
 
 /**
+ * Outcome of `recalculate_sizes`.
+ */
+export interface RecalculatedSizes {
+    /**
+     * Files missing from disk, left unchanged.
+     */
+    'missing': number;
+    /**
+     * Files whose recorded sizes changed.
+     */
+    'updated': number;
+}
+/**
  * Image, medium and thumbnail views from one `Referer` host, of the files uploaded within the period.
  */
 export interface ReferrerTotal {
@@ -1532,6 +1545,14 @@ export interface WindowTotals {
      * Bytes still on disk of the files uploaded in the window: available and trashed files not yet wiped (main files, previews excluded).
      */
     'stored_bytes': number;
+    /**
+     * Same as `stored_bytes`, for the medium previews.
+     */
+    'stored_medium_bytes': number;
+    /**
+     * Same as `stored_bytes`, for the thumbnails.
+     */
+    'stored_thumbnail_bytes': number;
     /**
      * Bytes uploaded in the window.
      */
@@ -4188,6 +4209,35 @@ export const MaintenanceApiAxiosParamCreator = function (configuration?: Configu
             };
         },
         /**
+         * Read the on-disk size of every available and trashed image and of its medium and thumbnail previews, and record it. Images missing from disk are left unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        recalculateSizes: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/sizes/recalculate`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
          * @param {ResetViewsRequest} resetViewsRequest 
          * @param {*} [options] Override http request option.
@@ -4469,6 +4519,17 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Read the on-disk size of every available and trashed image and of its medium and thumbnail previews, and record it. Images missing from disk are left unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async recalculateSizes(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RecalculatedSizes>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.recalculateSizes(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.recalculateSizes']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
          * @param {ResetViewsRequest} resetViewsRequest 
          * @param {*} [options] Override http request option.
@@ -4604,6 +4665,14 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
             return localVarFp.listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(axios, basePath));
         },
         /**
+         * Read the on-disk size of every available and trashed image and of its medium and thumbnail previews, and record it. Images missing from disk are left unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        recalculateSizes(options?: RawAxiosRequestConfig): AxiosPromise<RecalculatedSizes> {
+            return localVarFp.recalculateSizes(options).then((request) => request(axios, basePath));
+        },
+        /**
          * Zero one view counter, or all of them, of an image or of every image for the given referrers, the totals losing what they counted. Unknown ids are ignored.
          * @param {ResetViewsRequest} resetViewsRequest 
          * @param {*} [options] Override http request option.
@@ -4722,6 +4791,15 @@ export class MaintenanceApi extends BaseAPI {
      */
     public listUnreferencedImages(page: number, pageSize: number, sortBy: ImagesSortBy, order: SortOrder, options?: RawAxiosRequestConfig) {
         return MaintenanceApiFp(this.configuration).listUnreferencedImages(page, pageSize, sortBy, order, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Read the on-disk size of every available and trashed image and of its medium and thumbnail previews, and record it. Images missing from disk are left unchanged.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public recalculateSizes(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).recalculateSizes(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

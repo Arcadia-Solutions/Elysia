@@ -24,8 +24,9 @@ pub struct NewFile<'a> {
     pub original_height: i32,
     pub requested_quality: Option<i32>,
     pub applied_quality: Option<i32>,
-    pub has_medium: bool,
-    pub has_thumbnail: bool,
+    /// Bytes of the medium and thumbnail previews, 0 when not generated.
+    pub medium_size: i64,
+    pub thumbnail_size: i64,
     /// Perceptual hash, see `image::perceptual_hash`.
     pub phash: i64,
     pub uploaded_by_user_id: Uuid,
@@ -51,8 +52,8 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         r#"insert into files
          (id, ext, mime, original_name, size, width, height, hash,
           original_hash, original_ext, original_size, original_width, original_height,
-          requested_quality, applied_quality, has_medium, has_thumbnail, phash, uploaded_by_user_id,
-          api_key_id, expires_at)
+          requested_quality, applied_quality, medium_size, thumbnail_size,
+          phash, uploaded_by_user_id, api_key_id, expires_at)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
                  $19, $20, now() + make_interval(days => $21))"#,
         f.id,
@@ -70,8 +71,8 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.original_height,
         f.requested_quality,
         f.applied_quality,
-        f.has_medium,
-        f.has_thumbnail,
+        f.medium_size,
+        f.thumbnail_size,
         f.phash,
         f.uploaded_by_user_id,
         f.api_key_id,
@@ -89,7 +90,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
 pub async fn find(pool: &PgPool, id: &str) -> Result<Option<FileRow>> {
     Ok(sqlx::query_as!(
         FileRow,
-        r#"select id, ext, mime, has_medium, uploaded_by_user_id from files where id = $1"#,
+        r#"select id, ext, mime, medium_size > 0 as "has_medium!", uploaded_by_user_id from files where id = $1"#,
         id
     )
     .fetch_optional(pool)
@@ -168,7 +169,7 @@ pub async fn find_record_by_source(
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
-                width, height, applied_quality, has_medium, has_thumbnail
+                width, height, applied_quality, medium_size > 0 as "has_medium!", thumbnail_size > 0 as "has_thumbnail!"
          from files where original_hash = $1 and status = 'available'
            and requested_quality is not distinct from $2
          order by created_at limit 1"#,
@@ -222,7 +223,7 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
         FileMetadata,
         r#"select files.id, ext, mime, original_name, size, width, height,
                 original_ext, original_size, original_width, original_height, applied_quality,
-                has_medium, views, medium_views, thumbnail_views, uploaded_by_user_id,
+                medium_size > 0 as "has_medium!", views, medium_views, thumbnail_views, uploaded_by_user_id,
                 users.username as uploader_username,
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -470,7 +471,7 @@ pub async fn list_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
+        r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.medium_size > 0 as "has_medium!", f.thumbnail_size > 0 as "has_thumbnail!",
                 f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -525,7 +526,7 @@ pub async fn unreferenced_page(
 ) -> Result<Vec<ImageListRow>> {
     Ok(sqlx::query_as!(
         ImageListRow,
-        r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
+        r#"select f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.medium_size > 0 as "has_medium!", f.thumbnail_size > 0 as "has_thumbnail!",
                 f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -696,7 +697,7 @@ pub async fn similar_page(
            order by group_id offset $1 limit $2
          )
          select page.group_id, page.total as "total!",
-                f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,
+                f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.medium_size > 0 as "has_medium!", f.thumbnail_size > 0 as "has_thumbnail!",
                 f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,
                 to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!"
@@ -779,7 +780,7 @@ pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<Fil
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
-                width, height, applied_quality, has_medium, has_thumbnail
+                width, height, applied_quality, medium_size > 0 as "has_medium!", thumbnail_size > 0 as "has_thumbnail!"
          from files where hash = $1 and status = 'available'"#,
         hash,
     )
@@ -820,6 +821,53 @@ pub async fn mark_trashed(pool: &PgPool, ids: &[String], user_id: Uuid) -> Resul
     .execute(pool)
     .await?;
     Ok(())
+}
+
+/// A file still on disk, served or trashed.
+pub struct OnDiskRow {
+    pub id: String,
+    pub ext: String,
+}
+
+/// Up to `limit` available and trashed files with an id above `after`, by id.
+pub async fn list_on_disk(pool: &PgPool, after: &str, limit: i64) -> Result<Vec<OnDiskRow>> {
+    Ok(sqlx::query_as!(
+        OnDiskRow,
+        r#"select id, ext from files
+         where status in ('available', 'trashed') and id > $1
+         order by id limit $2"#,
+        after,
+        limit,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Set the main, medium and thumbnail sizes of the files at the same index of
+/// `ids`, returning how many rows changed.
+pub async fn update_sizes(
+    pool: &PgPool,
+    ids: &[String],
+    sizes: &[i64],
+    medium_sizes: &[i64],
+    thumbnail_sizes: &[i64],
+) -> Result<u64> {
+    Ok(sqlx::query!(
+        r#"update files set size = new.size, medium_size = new.medium_size,
+             thumbnail_size = new.thumbnail_size
+         from unnest($1::text[], $2::bigint[], $3::bigint[], $4::bigint[])
+           as new(id, size, medium_size, thumbnail_size)
+         where files.id = new.id
+           and (files.size, files.medium_size, files.thumbnail_size)
+             is distinct from (new.size, new.medium_size, new.thumbnail_size)"#,
+        ids,
+        sizes,
+        medium_sizes,
+        thumbnail_sizes,
+    )
+    .execute(pool)
+    .await?
+    .rows_affected())
 }
 
 /// A trashed file the wipe acts on.

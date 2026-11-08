@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime, original_ext, original_width, original_height,\n                width, height, applied_quality, has_medium, has_thumbnail\n         from files where hash = $1 and status = 'available'",
+  "query": "select id, ext, mime, original_ext, original_width, original_height,\n                width, height, applied_quality, medium_size > 0 as \"has_medium!\", thumbnail_size > 0 as \"has_thumbnail!\"\n         from files where hash = $1 and status = 'available'",
   "describe": {
     "columns": [
       {
@@ -104,25 +104,15 @@
       },
       {
         "ordinal": 9,
-        "name": "has_medium",
+        "name": "has_medium!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "files",
-            "name": "has_medium"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 10,
-        "name": "has_thumbnail",
+        "name": "has_thumbnail!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "files",
-            "name": "has_thumbnail"
-          }
-        }
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -140,9 +130,9 @@
       false,
       false,
       true,
-      false,
-      false
+      null,
+      null
     ]
   },
-  "hash": "c17a57db83077b0668f1bfc9eac969e49fbc85fe5dfd2c0c20ecd79f028da89e"
+  "hash": "90ea28baf3c77f36d2e91a4953eaf80fbc5bf2a82c5af8c8318324379412bfae"
 }

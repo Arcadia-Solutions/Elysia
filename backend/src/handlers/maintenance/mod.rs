@@ -6,6 +6,7 @@ pub mod get_unreferenced_progress;
 pub mod list_chevereto_import_failures;
 pub mod list_similar_images;
 pub mod list_unreferenced_images;
+pub mod recalculate_sizes;
 pub mod reset_views;
 pub mod scan_similar_images;
 pub mod scan_unreferenced_images;
@@ -58,5 +59,9 @@ pub fn config(cfg: &mut ServiceConfig) {
         "/chevereto-import/failures",
         get().to(list_chevereto_import_failures::list_chevereto_import_failures),
     )
-    .route("/views/reset", post().to(reset_views::reset_views));
+    .route("/views/reset", post().to(reset_views::reset_views))
+    .route(
+        "/sizes/recalculate",
+        post().to(recalculate_sizes::recalculate_sizes),
+    );
 }

@@ -49,19 +49,12 @@ const reset = () => {
 </script>
 
 <style scoped>
-.tool,
 .form {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.form {
   padding-top: 8px;
 }
-.tool h3 {
-  margin: 0;
-}
-.tool small,
 .form small {
   color: var(--p-text-muted-color);
 }

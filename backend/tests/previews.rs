@@ -5,8 +5,8 @@ use crate::common;
 
 use sqlx::PgPool;
 
-use elysia::repository::files;
-use elysia::services::files::store_from_url;
+use elysia::repository::{files, stats};
+use elysia::services::files::{recalculate_sizes, store_from_url};
 use elysia::storage::Preview;
 
 use common::*;
@@ -75,6 +75,28 @@ async fn previews_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
     // The thumbnail is cropped to the box aspect ratio, so it fills the box.
     let thumbnail = storage.preview_path_for(&stored.id, Preview::Thumbnail);
     assert_eq!(image::image_dimensions(&thumbnail).unwrap(), (4, 4));
+
+    // The stats count the preview bytes apart from the main file.
+    let preview_totals = async || {
+        let totals = stats::window_totals(&pool, stats::StatsPeriod::AllTime)
+            .await
+            .unwrap();
+        (totals.stored_medium_bytes, totals.stored_thumbnail_bytes)
+    };
+    let thumbnail_size = std::fs::metadata(&thumbnail).unwrap().len() as i64;
+    assert_eq!(preview_totals().await, (bytes.len() as i64, thumbnail_size));
+
+    // Recalculating picks up a preview changed on disk, and only that file.
+    std::fs::write(&medium, b"RIFF").unwrap();
+    let recalculated = recalculate_sizes(&pool, &storage).await.unwrap();
+    assert_eq!((recalculated.updated, recalculated.missing), (1, 0));
+    assert_eq!(preview_totals().await, (4, thumbnail_size));
+
+    // Files moved to the trash before their row flips are still found.
+    storage.trash(&stored.id, &stored.ext).await.unwrap();
+    let recalculated = recalculate_sizes(&pool, &storage).await.unwrap();
+    assert_eq!((recalculated.updated, recalculated.missing), (0, 0));
+    assert_eq!(preview_totals().await, (4, thumbnail_size));
 }
 
 #[sqlx::test(migrations = "./migrations")]

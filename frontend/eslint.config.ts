@@ -23,6 +23,9 @@ export default defineConfigWithVueTs(
   {
     rules: {
       'vue/no-reserved-component-names': 'off',
+      'vue/no-undef-directives': 'error',
+      // router-link and router-view are registered globally by vue-router.
+      'vue/no-undef-components': ['error', { ignorePatterns: ['^router-'] }],
     },
   },
 )

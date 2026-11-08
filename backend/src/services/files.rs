@@ -627,8 +627,14 @@ pub async fn store_upload(
                 original_height: source_height,
                 requested_quality,
                 applied_quality: output.applied_quality,
-                has_medium: previews.medium.is_some(),
-                has_thumbnail: previews.thumbnail.is_some(),
+                medium_size: previews
+                    .medium
+                    .as_ref()
+                    .map_or(0, |bytes| bytes.len() as i64),
+                thumbnail_size: previews
+                    .thumbnail
+                    .as_ref()
+                    .map_or(0, |bytes| bytes.len() as i64),
                 phash,
                 uploaded_by_user_id,
                 api_key_id,
@@ -1100,6 +1106,47 @@ pub async fn delete_expired(pool: &PgPool, storage: &Storage) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Outcome of `recalculate_sizes`.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct RecalculatedSizes {
+    /// Files whose recorded sizes changed.
+    pub updated: u64,
+    /// Files missing from disk, left unchanged.
+    pub missing: u64,
+}
+
+/// Record the on-disk sizes of every available and trashed file and of its
+/// previews.
+pub async fn recalculate_sizes(pool: &PgPool, storage: &Storage) -> Result<RecalculatedSizes> {
+    const PAGE_SIZE: i64 = 1000;
+    let mut recalculated = RecalculatedSizes {
+        updated: 0,
+        missing: 0,
+    };
+    let mut after = String::new();
+    loop {
+        let rows = files::list_on_disk(pool, &after, PAGE_SIZE).await?;
+        let Some(last) = rows.last() else {
+            return Ok(recalculated);
+        };
+        after = last.id.clone();
+        let (mut ids, mut sizes, mut medium_sizes, mut thumbnail_sizes) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        for row in rows {
+            let Some(found) = storage.sizes(&row.id, &row.ext).await? else {
+                recalculated.missing += 1;
+                continue;
+            };
+            ids.push(row.id);
+            sizes.push(found.size);
+            medium_sizes.push(found.medium_size);
+            thumbnail_sizes.push(found.thumbnail_size);
+        }
+        recalculated.updated +=
+            files::update_sizes(pool, &ids, &sizes, &medium_sizes, &thumbnail_sizes).await?;
+    }
 }
 
 /// Look up a file's display metadata by id, or `NotFound`. Trashed files are

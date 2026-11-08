@@ -331,8 +331,8 @@ pub(crate) async fn seed_files(
                 original_height: 1,
                 requested_quality: None,
                 applied_quality: None,
-                has_medium: false,
-                has_thumbnail: false,
+                medium_size: 0,
+                thumbnail_size: 0,
                 // Spread like real hashes, so seeded files never look alike.
                 phash: std::hash::BuildHasher::hash_one(
                     &std::hash::BuildHasherDefault::<std::hash::DefaultHasher>::default(),

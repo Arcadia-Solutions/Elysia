@@ -19,7 +19,10 @@
           <CheveretoImport />
         </TabPanel>
         <TabPanel value="data_tools">
-          <ResetViews />
+          <div class="tools">
+            <ResetViews />
+            <RecalculateSizes />
+          </div>
         </TabPanel>
       </TabPanels>
     </Tabs>
@@ -38,6 +41,7 @@ import CheveretoImport from '@/components/maintenance/CheveretoImport.vue'
 import SimilarImages from '@/components/maintenance/SimilarImages.vue'
 import UnreferencedImages from '@/components/maintenance/UnreferencedImages.vue'
 import ResetViews from '@/components/maintenance/ResetViews.vue'
+import RecalculateSizes from '@/components/maintenance/RecalculateSizes.vue'
 
 const TABS = ['unreferenced_images', 'similar_images', 'chevereto_import', 'data_tools']
 
@@ -51,5 +55,21 @@ const tab = computed(() => TABS.find((value) => value === route.query.tab) ?? TA
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 16px;
+}
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+:deep(.tool) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+:deep(.tool h3) {
+  margin: 0;
+}
+:deep(.tool small) {
+  color: var(--p-text-muted-color);
 }
 </style>

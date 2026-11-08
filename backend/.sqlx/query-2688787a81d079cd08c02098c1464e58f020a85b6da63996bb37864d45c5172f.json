@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update files set size = new.size, medium_size = new.medium_size,\n             thumbnail_size = new.thumbnail_size\n         from unnest($1::text[], $2::bigint[], $3::bigint[], $4::bigint[])\n           as new(id, size, medium_size, thumbnail_size)\n         where files.id = new.id\n           and (files.size, files.medium_size, files.thumbnail_size)\n             is distinct from (new.size, new.medium_size, new.thumbnail_size)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2688787a81d079cd08c02098c1464e58f020a85b6da63996bb37864d45c5172f"
+}

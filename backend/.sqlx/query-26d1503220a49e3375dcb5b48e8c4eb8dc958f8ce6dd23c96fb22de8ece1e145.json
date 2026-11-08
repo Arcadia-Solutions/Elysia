@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime, has_medium, uploaded_by_user_id from files where id = $1",
+  "query": "select id, ext, mime, medium_size > 0 as \"has_medium!\", uploaded_by_user_id from files where id = $1",
   "describe": {
     "columns": [
       {
@@ -38,14 +38,9 @@
       },
       {
         "ordinal": 3,
-        "name": "has_medium",
+        "name": "has_medium!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "files",
-            "name": "has_medium"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 4,
@@ -68,9 +63,9 @@
       false,
       false,
       false,
-      false,
+      null,
       false
     ]
   },
-  "hash": "7ad06e638516b895f6e1718aebef540b4c6f1d02ff93253442e89c9ab7e071a1"
+  "hash": "26d1503220a49e3375dcb5b48e8c4eb8dc958f8ce6dd23c96fb22de8ece1e145"
 }

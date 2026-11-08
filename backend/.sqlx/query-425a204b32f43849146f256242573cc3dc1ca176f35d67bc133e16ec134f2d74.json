@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "with groups as (\n           select group_id from similar_files join files on id = file_id\n           where status = 'available' group by group_id having count(*) > 1\n         ), page as (\n           select group_id, count(*) over() as total from groups\n           order by group_id offset $1 limit $2\n         )\n         select page.group_id, page.total as \"total!\",\n                f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.has_medium, f.has_thumbnail,\n                f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,\n                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"created_at!\"\n         from page\n         join similar_files s on s.group_id = page.group_id\n         join files f on f.id = s.file_id\n         join users u on u.id = f.uploaded_by_user_id\n         where f.status = 'available'\n         order by page.group_id, f.width::bigint * f.height desc, f.size desc, f.id",
+  "query": "with groups as (\n           select group_id from similar_files join files on id = file_id\n           where status = 'available' group by group_id having count(*) > 1\n         ), page as (\n           select group_id, count(*) over() as total from groups\n           order by group_id offset $1 limit $2\n         )\n         select page.group_id, page.total as \"total!\",\n                f.id, f.ext, f.original_name, f.size, f.original_size, f.compression_ratio, f.width, f.height, f.medium_size > 0 as \"has_medium!\", f.thumbnail_size > 0 as \"has_thumbnail!\",\n                f.views, f.medium_views, f.thumbnail_views, u.username as uploader_username,\n                to_char(f.created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')\n                  as \"created_at!\"\n         from page\n         join similar_files s on s.group_id = page.group_id\n         join files f on f.id = s.file_id\n         join users u on u.id = f.uploaded_by_user_id\n         where f.status = 'available'\n         order by page.group_id, f.width::bigint * f.height desc, f.size desc, f.id",
   "describe": {
     "columns": [
       {
@@ -110,25 +110,15 @@
       },
       {
         "ordinal": 10,
-        "name": "has_medium",
+        "name": "has_medium!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "files",
-            "name": "has_medium"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 11,
-        "name": "has_thumbnail",
+        "name": "has_thumbnail!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "files",
-            "name": "has_thumbnail"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 12,
@@ -198,8 +188,8 @@
       false,
       false,
       false,
-      false,
-      false,
+      null,
+      null,
       false,
       false,
       false,
@@ -207,5 +197,5 @@
       null
     ]
   },
-  "hash": "3522af56bf01c0dabfa2342b26da4cf45c2f98cc1d310d97843adfb76b39a3be"
+  "hash": "425a204b32f43849146f256242573cc3dc1ca176f35d67bc133e16ec134f2d74"
 }
