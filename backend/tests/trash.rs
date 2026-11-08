@@ -105,6 +105,11 @@ async fn trashes_own_files(pool: PgPool) {
         .await
         .unwrap();
     assert!(!dir.path().join("trash/mine000001.png").exists());
+    // The wiped file no longer counts as stored, the trashed one still does.
+    let totals = stats::window_totals(&pool, StatsPeriod::AllTime)
+        .await
+        .unwrap();
+    assert_eq!((totals.uploaded_bytes, totals.stored_bytes), (20, 10));
     assert!(matches!(
         get_metadata(&pool, kept, true).await,
         Err(Error::NotFound)

@@ -100,7 +100,7 @@ const formatCount = (value: number) => value.toLocaleString()
 // them on every hovered point, so skip the deep reactive proxies.
 const stats = shallowRef<StatsResponse>()
 
-// Everything uploaded within the selected window, plus the disk space left.
+// Everything uploaded within the selected window, plus the space used and left on disk.
 const tiles = computed(() => {
   const totals = stats.value?.window
   const uploads = totals?.uploads ?? 0
@@ -108,8 +108,8 @@ const tiles = computed(() => {
   const disk = stats.value?.disk
   return [
     {
-      label: t('dashboard.uploaded_size'),
-      value: formatBytes(bytes),
+      label: t('dashboard.stored_size'),
+      value: formatBytes(totals?.stored_bytes ?? 0),
       detail: disk && t('dashboard.disk_free', { available: formatBytes(disk.available_bytes), total: formatBytes(disk.total_bytes) }),
       alert: disk && disk.available_bytes < disk.min_free_bytes,
     },

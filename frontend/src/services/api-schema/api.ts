@@ -512,6 +512,10 @@ export interface ImageIdsRequest {
  */
 export interface ImageSummary {
     /**
+     * `original_size / size`: how many times smaller processing made the file.
+     */
+    'compression_ratio': number;
+    /**
      * RFC 3339, UTC.
      */
     'created_at': string;
@@ -526,6 +530,10 @@ export interface ImageSummary {
      */
     'medium_url': string;
     'original_name'?: string | null;
+    /**
+     * Source bytes as uploaded.
+     */
+    'original_size': number;
     /**
      * Bytes on disk.
      */
@@ -545,6 +553,7 @@ export interface ImageSummary {
 export const ImagesSortBy = {
     CreatedAt: 'created_at',
     Size: 'size',
+    CompressionRatio: 'compression_ratio',
     Width: 'width',
     Height: 'height',
     OriginalHash: 'original_hash',
@@ -745,6 +754,10 @@ export interface PaginatedResultsImageSummary {
  */
 export interface PaginatedResultsImageSummaryResultsInner {
     /**
+     * `original_size / size`: how many times smaller processing made the file.
+     */
+    'compression_ratio': number;
+    /**
      * RFC 3339, UTC.
      */
     'created_at': string;
@@ -759,6 +772,10 @@ export interface PaginatedResultsImageSummaryResultsInner {
      */
     'medium_url': string;
     'original_name'?: string | null;
+    /**
+     * Source bytes as uploaded.
+     */
+    'original_size': number;
     /**
      * Bytes on disk.
      */
@@ -1458,6 +1475,10 @@ export interface WindowTotals {
      * Users who signed up in the window; every user for `all_time`.
      */
     'new_users': number;
+    /**
+     * Bytes still on disk of the files uploaded in the window: available and trashed files not yet wiped (main files, previews excluded).
+     */
+    'stored_bytes': number;
     /**
      * Bytes uploaded in the window.
      */

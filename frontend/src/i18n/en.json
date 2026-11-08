@@ -234,7 +234,7 @@
       "month": "Month",
       "year": "Year"
     },
-    "uploaded_size": "Uploaded size",
+    "stored_size": "Stored size",
     "disk_free": "{available} free of {total}",
     "new_users": "New users",
     "active_uploaders": "Active uploaders",

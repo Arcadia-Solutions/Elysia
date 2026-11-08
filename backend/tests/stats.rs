@@ -65,6 +65,7 @@ async fn aggregates_uploads(pool: PgPool) {
     assert_eq!(by_year.last().unwrap().files, 5);
     let last_week = window(StatsPeriod::LastWeek).await.unwrap();
     assert_eq!((last_week.uploads, last_week.uploaded_bytes), (4, 130));
+    assert_eq!(last_week.stored_bytes, 130);
 
     let formats = stats::format_totals(&pool).await.unwrap();
     assert_eq!(formats.len(), 1);
