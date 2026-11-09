@@ -119,7 +119,7 @@ fn check_dimensions_enforces_each_axis() {
     assert!(check_dimensions(&settings, u32::MAX, 600).is_ok());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejects_file_over_size_limit(pool: PgPool) {
     // The declared length is within the multipart overhead, so the cap trips
     // while the body streams.
@@ -136,7 +136,7 @@ async fn upload_rejects_file_over_size_limit(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejects_declared_oversized_body_up_front(pool: PgPool) {
     // A tiny body declaring a huge length: only the up-front check rejects it.
     let mut settings = test_settings();
@@ -163,7 +163,7 @@ async fn upload_rejects_declared_oversized_body_up_front(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_without_auth_is_rejected(pool: PgPool) {
     // The handler, the only reader of the body, never runs.
     let (status, _) = upload_with_headers(
@@ -178,7 +178,7 @@ async fn upload_without_auth_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejects_image_over_width_limit(pool: PgPool) {
     // Width over, height unlimited: isolates the width check.
     let mut settings = test_settings();
@@ -189,7 +189,7 @@ async fn upload_rejects_image_over_width_limit(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejects_image_over_height_limit(pool: PgPool) {
     // Height over, width unlimited: isolates the height check.
     let mut settings = test_settings();
@@ -200,7 +200,7 @@ async fn upload_rejects_image_over_height_limit(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
     let mut settings = test_settings();
     settings.uploads_enabled = false;
@@ -210,7 +210,7 @@ async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn rehost_rejected_while_url_uploads_disabled(pool: PgPool) {
     let (_, token) = test_user(&pool, "url-uploader").await;
     let (storage, _dir) = temp_storage();
@@ -234,7 +234,7 @@ async fn rehost_rejected_while_url_uploads_disabled(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_respects_storage_quota(pool: PgPool) {
     // 1000 bytes already stored against a 1000 byte global quota: full, until
     // an unlimited (0) override lifts it.
@@ -263,7 +263,7 @@ async fn upload_respects_storage_quota(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn storage_usage_counts_trash_and_exempts_admins(pool: PgPool) {
     // Trashed files still count, deleted ones free their bytes.
     let (user, _) = test_user(&pool, "quota-user").await;
@@ -282,7 +282,7 @@ async fn storage_usage_counts_trash_and_exempts_admins(pool: PgPool) {
     assert_eq!(usage.quota_bytes, None);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_within_limits_succeeds(pool: PgPool) {
     // Under both limits: validation passes, the row inserts, and the file is
     // stored, so the endpoint returns 200.
@@ -296,7 +296,7 @@ async fn upload_within_limits_succeeds(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn rehost_stores_a_fetched_image(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(2, 2));
@@ -318,7 +318,7 @@ async fn rehost_stores_a_fetched_image(pool: PgPool) {
     assert!(storage.path_for(&stored.id, "png").exists());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn identical_uploads_are_deduplicated(pool: PgPool) {
     // Same bytes stored twice: the second reuses the first id and sets existed,
     // and no second copy lands on disk.
@@ -369,7 +369,7 @@ async fn identical_uploads_are_deduplicated(pool: PgPool) {
     assert_eq!(stored.len(), 1);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn concurrent_identical_uploads_are_deduplicated(pool: PgPool) {
     // Same bytes stored in parallel, as a Chevereto import chunk does: every
     // upload ends on one id.
@@ -392,7 +392,7 @@ async fn concurrent_identical_uploads_are_deduplicated(pool: PgPool) {
     assert_eq!(ids.len(), 1);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn rehost_rejects_a_non_image_link(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "text/plain", b"not an image".to_vec());
@@ -414,7 +414,7 @@ async fn rehost_rejects_a_non_image_link(pool: PgPool) {
     ));
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 404 Not Found", "text/plain", b"nope".to_vec());
@@ -436,7 +436,7 @@ async fn rehost_rejects_a_failed_fetch(pool: PgPool) {
     ));
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     // A hostname, so the guarded client's resolver is what refuses it.
@@ -462,7 +462,7 @@ async fn guarded_rehost_rejects_a_loopback_host(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn rehost_rejects_a_body_over_size_limit(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     // Large enough to arrive in several chunks, so the limit trips mid-stream.
@@ -504,7 +504,7 @@ fn generate_id_varies_between_calls() {
     assert_ne!(generate_id(), generate_id());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn insert_is_collision_safe_and_find_roundtrips(pool: PgPool) {
     let uploader = test_user(&pool, "inserter").await.0.id;
     // First insert of an id succeeds.
@@ -530,7 +530,7 @@ async fn insert_is_collision_safe_and_find_roundtrips(pool: PgPool) {
     assert!(files::find(&pool, "missing0").await.unwrap().is_none());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn find_metadata_roundtrips_and_formats_created_at(pool: PgPool) {
     let uploader = test_user(&pool, "metareader").await.0.id;
     files::insert(&pool, &sample_file("meta1234", uploader))

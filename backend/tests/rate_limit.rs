@@ -74,7 +74,7 @@ macro_rules! status_from {
     }};
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn limits_each_ip_separately(pool: PgPool) {
     let app = limited_app!(pool, limits(2, 0, 0));
     for _ in 0..2 {
@@ -118,7 +118,7 @@ async fn limits_each_ip_separately(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn keys_on_the_forwarded_client_only_behind_a_trusted_proxy(pool: PgPool) {
     let app = limited_app!(pool, limits(1, 0, 0));
     // From the trusted proxy, the rightmost untrusted entry is the client: a
@@ -159,7 +159,7 @@ async fn keys_on_the_forwarded_client_only_behind_a_trusted_proxy(pool: PgPool) 
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn limits_login_attempts_per_ip(pool: PgPool) {
     let (user, _) = test_user(&pool, "rate-limited-login").await;
     let app = limited_app!(pool, limits(0, 2, 0));
@@ -178,7 +178,7 @@ async fn limits_login_attempts_per_ip(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn limits_each_user_across_ips(pool: PgPool) {
     let (_, token) = test_user(&pool, "rate-limited-user").await;
     let (_, other_token) = test_user(&pool, "other-user").await;
@@ -206,7 +206,7 @@ async fn limits_each_user_across_ips(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn failed_api_keys_spend_the_ip_budget_then_block_it(pool: PgPool) {
     let (user, _) = test_user(&pool, "api-key-owner").await;
     let key = auth_service::generate_api_key();
@@ -253,7 +253,7 @@ async fn failed_api_keys_spend_the_ip_budget_then_block_it(pool: PgPool) {
     assert_eq!(status(me(&key.token)).await, StatusCode::TOO_MANY_REQUESTS);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn limits_password_changes_per_ip(pool: PgPool) {
     let (_, token) = test_user(&pool, "rate-limited-password").await;
     let app = limited_app!(pool, limits(0, 1, 0));

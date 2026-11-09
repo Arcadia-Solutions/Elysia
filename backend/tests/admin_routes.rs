@@ -13,7 +13,7 @@ use elysia::repository::users;
 use elysia::routes;
 use elysia::services::auth as auth_service;
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn admin_routes_require_an_admin(pool: PgPool) {
     let (user, user_token) = common::test_user(&pool, "regular").await;
     let admin_id = users::find_id_by_username(&pool, "admin")

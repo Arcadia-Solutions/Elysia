@@ -199,7 +199,7 @@ macro_rules! me_status {
     }};
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn disabled_sso_rejects_login_and_callback(pool: PgPool) {
     let app = sso_app!(pool, test_config());
     let request = actix_test::TestRequest::get()
@@ -219,7 +219,7 @@ async fn disabled_sso_rejects_login_and_callback(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn login_builds_authorize_url_with_pkce(pool: PgPool) {
     let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool, sso_config(&issuer));
@@ -256,7 +256,7 @@ async fn login_builds_authorize_url_with_pkce(pool: PgPool) {
     assert_eq!(url.host_str(), url::Url::parse(&issuer).unwrap().host_str());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn callback_provisions_user_and_relogin_reuses_row(pool: PgPool) {
     let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
@@ -284,7 +284,7 @@ async fn callback_provisions_user_and_relogin_reuses_row(pool: PgPool) {
     assert_eq!(me_status!(&app, first.token), StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn callback_refuses_locally_banned_user(pool: PgPool) {
     let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
@@ -301,7 +301,7 @@ async fn callback_refuses_locally_banned_user(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn callback_refuses_provider_banned_user(pool: PgPool) {
     let (issuer, mock) = spawn_mock();
     mock.active.store(false, Ordering::SeqCst);
@@ -313,7 +313,7 @@ async fn callback_refuses_provider_banned_user(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn conflicting_username_and_email_are_handled(pool: PgPool) {
     let (issuer, mock) = spawn_mock();
     // A local account already owns the provider's username and email.
@@ -343,7 +343,7 @@ async fn conflicting_username_and_email_are_handled(pool: PgPool) {
     assert_eq!(login.user.provider, "sso");
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn unusable_provider_username_falls_back(pool: PgPool) {
     let (issuer, mock) = spawn_mock();
     *mock.username.lock().unwrap() = "  !!  ".into();
@@ -358,7 +358,7 @@ async fn unusable_provider_username_falls_back(pool: PgPool) {
     assert_eq!(login.user.email, None);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn arcadia_ban_blocks_session_but_not_local_users(pool: PgPool) {
     let (issuer, mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
@@ -379,7 +379,7 @@ async fn arcadia_ban_blocks_session_but_not_local_users(pool: PgPool) {
     assert_eq!(me_status!(&blocked, local_token), StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn unreachable_arcadia_fails_closed(pool: PgPool) {
     let (issuer, _mock) = spawn_mock();
     let app = sso_app!(pool.clone(), sso_config(&issuer));
@@ -396,7 +396,7 @@ async fn unreachable_arcadia_fails_closed(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn discovery_with_another_issuer_is_refused(pool: PgPool) {
     let (issuer, _mock) = spawn_mock();
     // Same server, but the configured issuer differs from the one the
@@ -411,7 +411,7 @@ async fn discovery_with_another_issuer_is_refused(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn no_status_endpoint_skips_the_ban_check(pool: PgPool) {
     let (issuer, mock) = spawn_mock();
     let mut config = sso_config(&issuer);
@@ -444,7 +444,7 @@ macro_rules! finish_registration {
     }};
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn new_user_accepts_legal_before_being_created(pool: PgPool) {
     let (issuer, _mock) = spawn_mock();
     let settings = elysia::settings::ElysiaSettings {

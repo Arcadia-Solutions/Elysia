@@ -120,7 +120,7 @@ macro_rules! get_me {
     }};
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn register_login_me_roundtrip(pool: PgPool) {
     let app = auth_app!(pool.clone());
     let request = actix_test::TestRequest::post()
@@ -151,7 +151,7 @@ async fn register_login_me_roundtrip(pool: PgPool) {
     assert_eq!(profile.provider, "local");
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn seeded_admin_can_login(pool: PgPool) {
     let app = auth_app!(pool);
     // Seeded by the migration: username `admin`, password `change-me-123`.
@@ -163,7 +163,7 @@ async fn seeded_admin_can_login(pool: PgPool) {
     assert!(profile.is_admin);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn login_response_reports_caller_profile(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -183,7 +183,7 @@ async fn login_response_reports_caller_profile(pool: PgPool) {
     assert!(admin.user.is_admin);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn registration_can_be_disabled(pool: PgPool) {
     let settings = elysia::settings::ElysiaSettings {
         allow_registration: false,
@@ -201,7 +201,7 @@ async fn registration_can_be_disabled(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn second_user_is_not_admin(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -220,7 +220,7 @@ async fn second_user_is_not_admin(pool: PgPool) {
     assert!(!profile.is_admin);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn duplicate_register_conflicts(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -239,7 +239,7 @@ async fn duplicate_register_conflicts(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn register_rejects_bad_input(pool: PgPool) {
     let app = auth_app!(pool.clone());
     // Too short, illegal characters, bad email, short password.
@@ -259,7 +259,7 @@ async fn register_rejects_bad_input(pool: PgPool) {
     assert_eq!(users::count_users(&pool, None).await.unwrap(), 1);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn login_rejects_unknown_user_and_wrong_password(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -276,7 +276,7 @@ async fn login_rejects_unknown_user_and_wrong_password(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn banned_user_is_blocked_until_unbanned(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -304,7 +304,7 @@ async fn banned_user_is_blocked_until_unbanned(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn settings_require_an_admin_session(pool: PgPool) {
     let app = auth_app!(pool.clone());
     // The seeded admin reaches the admin-only settings endpoint.
@@ -339,7 +339,7 @@ async fn settings_require_an_admin_session(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_records_the_uploading_user(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -382,7 +382,7 @@ async fn upload_records_the_uploading_user(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn registration_normalizes_case_and_whitespace(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -418,7 +418,7 @@ async fn registration_normalizes_case_and_whitespace(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn register_rejects_malformed_emails(pool: PgPool) {
     let app = auth_app!(pool.clone());
     for email in [
@@ -438,7 +438,7 @@ async fn register_rejects_malformed_emails(pool: PgPool) {
     assert_eq!(users::count_users(&pool, None).await.unwrap(), 1);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn password_change_roundtrip(pool: PgPool) {
     let app = auth_app!(pool.clone());
     assert_eq!(
@@ -475,7 +475,7 @@ async fn password_change_roundtrip(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn logout_revokes_only_its_session(pool: PgPool) {
     let app = auth_app!(pool.clone());
     let (_, token) = test_user(&pool, "alice").await;
@@ -507,7 +507,7 @@ macro_rules! refresh {
     }};
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn refresh_rotates_tokens_until_logout(pool: PgPool) {
     let app = auth_app!(pool.clone());
     test_user(&pool, "alice").await;
@@ -543,14 +543,14 @@ async fn refresh_rotates_tokens_until_logout(pool: PgPool) {
     assert_eq!(refresh!(&app, refresh_token).0, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn non_remembered_access_token_lives_15_minutes(pool: PgPool) {
     let (_, token) = test_user(&pool, "alice").await;
     let claims = auth_service::decode_jwt(&token, &test_config().auth.jwt_secret).unwrap();
     assert_eq!(claims.expiration - claims.issued_at, 15 * 60);
 }
 
-#[sqlx::test(migrations = "./migrations", fixtures("refresh_sessions"))]
+#[sqlx::test(fixtures("refresh_sessions"))]
 async fn refresh_refuses_expired_and_revokes_replayed_sessions(pool: PgPool) {
     let app = auth_app!(pool);
     let unauthorized = StatusCode::UNAUTHORIZED;
@@ -566,7 +566,7 @@ async fn refresh_refuses_expired_and_revokes_replayed_sessions(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn password_change_revokes_other_sessions(pool: PgPool) {
     let app = auth_app!(pool.clone());
     let (_, token) = test_user(&pool, "alice").await;
@@ -580,7 +580,7 @@ async fn password_change_revokes_other_sessions(pool: PgPool) {
     assert_eq!(get_me!(&app, other_token).0, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn password_change_requires_a_session(pool: PgPool) {
     let app = auth_app!(pool.clone());
     let request = actix_test::TestRequest::put()
@@ -595,7 +595,7 @@ async fn password_change_requires_a_session(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn registration_requires_and_records_legal_acceptance(pool: PgPool) {
     let settings = elysia::settings::ElysiaSettings {
         terms_of_service: "Be nice".into(),

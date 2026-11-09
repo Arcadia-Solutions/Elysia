@@ -11,7 +11,7 @@ use elysia::services::files::list_images;
 use elysia::services::views::ViewCounter;
 use elysia::storage::Preview;
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn paginates_with_total(pool: PgPool) {
     let per_page = page(1).page_size as usize;
     let uploader = common::test_user(&pool, "browser").await.0.id;
@@ -31,7 +31,7 @@ async fn paginates_with_total(pool: PgPool) {
     assert_eq!(empty_total, per_page as i64 + 1);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn sorts_by_column_and_direction(pool: PgPool) {
     let uploader = common::test_user(&pool, "sorter").await.0.id;
     common::seed_files(&pool, uploader, "big", 1, 5).await;
@@ -75,7 +75,7 @@ async fn sorts_by_column_and_direction(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn counts_image_and_preview_views(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 1, 1).await;
@@ -172,7 +172,7 @@ fn parses_only_plain_filenames() {
     }
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn filters_by_uploader(pool: PgPool) {
     let mine = common::test_user(&pool, "mine").await.0.id;
     let other = common::test_user(&pool, "other").await.0.id;
@@ -185,7 +185,7 @@ async fn filters_by_uploader(pool: PgPool) {
     assert_eq!(list_images(&pool, &page(1), None).await.unwrap().1, 5);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn resets_one_view_counter(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 2, 1).await;

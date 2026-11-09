@@ -134,7 +134,7 @@ fn rewrite_test_rewrites() -> Vec<(String, String)> {
     link_rewrites(&target, &settings(), &stored_file("eid", true)).unwrap()
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn apply_link_rewrites_in_postgres(pool: sqlx::PgPool) {
     let mut connection = pool.acquire().await.unwrap();
     install_backend_functions(&mut connection).await.unwrap();
@@ -198,7 +198,7 @@ async fn apply_link_rewrites_in_postgres(pool: sqlx::PgPool) {
     }
 }
 
-#[sqlx::test(migrations = "./migrations", fixtures("chevereto_links"))]
+#[sqlx::test(fixtures("chevereto_links"))]
 async fn rewrite_links_updates_text_like_columns(pool: sqlx::PgPool) {
     let mut connection = pool.acquire().await.unwrap();
     install_backend_functions(&mut connection).await.unwrap();
@@ -226,10 +226,7 @@ async fn rewrite_links_updates_text_like_columns(pool: sqlx::PgPool) {
     assert_eq!(count_link_rows(&mut connection, &pattern).await.unwrap(), 1);
 }
 
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures("chevereto_links", "chevereto_overflow")
-)]
+#[sqlx::test(fixtures("chevereto_links", "chevereto_overflow"))]
 async fn rewrite_links_errors_instead_of_truncating(pool: sqlx::PgPool) {
     let mut connection = pool.acquire().await.unwrap();
     install_backend_functions(&mut connection).await.unwrap();
@@ -244,7 +241,7 @@ async fn rewrite_links_errors_instead_of_truncating(pool: sqlx::PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations", fixtures("backend_users"))]
+#[sqlx::test(fixtures("backend_users"))]
 async fn find_backend_user_uses_configured_columns(pool: sqlx::PgPool) {
     let mut connection = pool.acquire().await.unwrap();
     install_backend_functions(&mut connection).await.unwrap();
@@ -290,7 +287,7 @@ fn import_params(backend_users: Option<BackendUsers>) -> CheveretoImportParams {
     }
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn import_checks_params_and_services_before_starting(pool: PgPool) {
     let (storage, _dir) = common::temp_storage();
     let storage = Data::new(storage);
@@ -325,7 +322,7 @@ async fn import_checks_params_and_services_before_starting(pool: PgPool) {
     assert!(progress.started_at.is_none());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn retry_keeps_resume_point_and_clears_retried_failures(pool: PgPool) {
     use elysia::repository::chevereto_import as import_repo;
     import_repo::start(&pool, Some(0), 10, false).await.unwrap();
@@ -364,7 +361,7 @@ async fn retry_keeps_resume_point_and_clears_retried_failures(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn dry_run_keeps_resume_point_and_real_failures(pool: PgPool) {
     use elysia::repository::chevereto_import as import_repo;
     import_repo::start(&pool, Some(0), 10, false).await.unwrap();

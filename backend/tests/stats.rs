@@ -6,7 +6,7 @@ use sqlx::PgPool;
 
 use elysia::repository::stats::{self, StatsInterval, StatsPeriod, period_totals};
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn aggregates_uploads(pool: PgPool) {
     let all_days = || period_totals(&pool, StatsPeriod::AllTime, StatsInterval::Day);
     let window = |period| stats::window_totals(&pool, period);
@@ -94,7 +94,7 @@ async fn aggregates_uploads(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn groups_referrers_past_the_top_ones(pool: PgPool) {
     let uploader = common::test_user(&pool, "viewer").await.0.id;
     common::seed_files(&pool, uploader, "seen", 2, 1).await;

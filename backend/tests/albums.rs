@@ -13,7 +13,7 @@ use elysia::repository::users;
 use elysia::routes;
 use elysia::services::auth as auth_service;
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn albums_are_public_and_hold_any_image(pool: PgPool) {
     let (owner, owner_token) = common::test_user(&pool, "owner").await;
     let (uploader, other_token) = common::test_user(&pool, "uploader").await;

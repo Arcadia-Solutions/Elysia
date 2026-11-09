@@ -83,7 +83,7 @@ fn browse_uri(username: &str) -> String {
     )
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn lists_and_searches_users(pool: PgPool) {
     let seeded = seed_users(&pool).await;
 
@@ -147,7 +147,7 @@ async fn lists_and_searches_users(pool: PgPool) {
     assert!(last_seen(seeded.local.id).await.is_none());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn bans_local_and_sso_users(pool: PgPool) {
     let seeded = seed_users(&pool).await;
 
@@ -193,7 +193,7 @@ async fn bans_local_and_sso_users(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn admin_routes_are_refused_to_regular_users(pool: PgPool) {
     let seeded = seed_users(&pool).await;
 
@@ -221,7 +221,7 @@ async fn admin_routes_are_refused_to_regular_users(pool: PgPool) {
     }
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn grants_and_revokes_admin_rights(pool: PgPool) {
     let seeded = seed_users(&pool).await;
     let set_admin = |id: Uuid, is_admin: bool| {

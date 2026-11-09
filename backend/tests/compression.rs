@@ -256,7 +256,7 @@ fn expiry_override_respects_allow_flag() {
     assert!(options(Some(1)).into_options(&settings).is_err());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let source = real_png(8, 8);
@@ -290,7 +290,7 @@ async fn upload_converts_to_webp_and_records_actions(pool: PgPool) {
     assert_eq!(row.original_size, source_size);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_accepts_and_decodes_avif(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let mut avif_options = pipeline_options(TargetFormat::Avif);
@@ -321,7 +321,7 @@ async fn upload_accepts_and_decodes_avif(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let image = real_png(8, 8);
@@ -357,7 +357,7 @@ async fn same_source_and_quality_skips_reprocessing(pool: PgPool) {
     assert_eq!(first.id, second.id);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn uploading_a_stored_output_is_deduplicated(pool: PgPool) {
     // Re-uploading the processed bytes must not re-encode them into a new file.
     let (storage, _dir) = temp_storage();
@@ -388,7 +388,7 @@ async fn uploading_a_stored_output_is_deduplicated(pool: PgPool) {
     assert_eq!(first.id, second.id);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn different_quality_reprocesses(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let image = noisy_png(32, 32);
@@ -420,7 +420,7 @@ async fn different_quality_reprocesses(pool: PgPool) {
     assert_ne!(ids[0], ids[1]);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let url = serve_once("HTTP/1.1 200 OK", "image/png", real_png(8, 8));
@@ -442,7 +442,7 @@ async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
     assert!(stored.actions.is_none());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
@@ -497,7 +497,7 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
         .any(|window| window == needle)
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let exif_marker = &b"Exif\0\0"[..];
@@ -560,7 +560,7 @@ async fn strip_exif_removes_metadata_on_passthrough(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn exif_orientation_is_applied(pool: PgPool) {
     use image::ImageDecoder;
     let (storage, _dir) = temp_storage();
@@ -630,7 +630,7 @@ async fn exif_orientation_is_applied(pool: PgPool) {
     }
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_rejects_quality_above_100(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
@@ -642,7 +642,7 @@ async fn upload_rejects_quality_above_100(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_accepts_quality_zero_as_lossless(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
@@ -654,7 +654,7 @@ async fn upload_accepts_quality_zero_as_lossless(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_accepts_compression_when_feature_on(pool: PgPool) {
     let status = upload_status_with_query(
         pool,
@@ -666,7 +666,7 @@ async fn upload_accepts_compression_when_feature_on(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn upload_to_png_with_default_compression_is_rejected(pool: PgPool) {
     let settings = ElysiaSettings {
         default_compression: 75,
@@ -879,7 +879,7 @@ fn gif_frame_larger_than_its_screen_is_rejected() {
     ));
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn conversion_larger_than_source_keeps_source(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     // A low-quality JPEG re-encoded at quality 100 can only grow.

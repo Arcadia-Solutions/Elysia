@@ -47,7 +47,7 @@ async fn delegated_upload(
     .await
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn delegated_upload_is_attributed_to_the_sso_user(pool: PgPool) {
     let (status, body) =
         delegated_upload(&pool, &delegation_headers("elysia-test-secret", "42")).await;
@@ -72,7 +72,7 @@ async fn delegated_upload_is_attributed_to_the_sso_user(pool: PgPool) {
     assert_eq!(file.uploaded_by_user_id, row.id);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn delegation_is_refused_without_valid_credentials(pool: PgPool) {
     let (status, _) = delegated_upload(&pool, &delegation_headers("wrong-secret", "42")).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
@@ -93,7 +93,7 @@ async fn delegation_is_refused_without_valid_credentials(pool: PgPool) {
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn delegation_respects_local_ban(pool: PgPool) {
     let row = users::upsert_sso_user(&pool, ISSUER, "42", "arcadia-bob", None, false)
         .await
@@ -104,7 +104,7 @@ async fn delegation_respects_local_ban(pool: PgPool) {
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn client_credentials_open_nothing_but_uploads(pool: PgPool) {
     let app = actix_test::init_service(
         App::new()

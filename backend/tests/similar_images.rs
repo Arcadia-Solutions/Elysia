@@ -84,7 +84,7 @@ async fn finished() -> SimilarProgress {
 
 /// Uploads are hashed whether converted or stored as is, and only look-alikes
 /// are grouped, largest first.
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn scans_and_lists_similar_images(pool: PgPool) {
     let (_, token) = common::test_user(&pool, "uploader").await;
     for (settings, image) in [

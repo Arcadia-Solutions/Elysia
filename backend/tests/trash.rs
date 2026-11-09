@@ -20,7 +20,7 @@ use elysia::services::files::{
 use elysia::services::views::ViewCounter;
 use elysia::storage::Preview;
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn trashes_own_files(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
     let owner = common::test_user(&pool, "owner").await.0.id;
@@ -116,7 +116,7 @@ async fn trashes_own_files(pool: PgPool) {
     ));
 }
 
-#[sqlx::test(migrations = "./migrations", fixtures("trash"))]
+#[sqlx::test(fixtures("trash"))]
 async fn wipes_trash(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
     for file in ["expired0.png", "expired0.m.webp", "recent00.png"] {
@@ -207,7 +207,7 @@ async fn insert_expiring_png(
     .unwrap();
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn deletes_expired_files(pool: PgPool) {
     let (storage, _dir) = common::temp_storage();
     let uploader = common::test_user(&pool, "expirer").await.0.id;
@@ -241,7 +241,7 @@ async fn deletes_expired_files(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations", fixtures("trash"))]
+#[sqlx::test(fixtures("trash"))]
 async fn restores_trashed_files(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
     for file in ["expired0.png", "recent00.png", "recent00.m.webp"] {
@@ -310,7 +310,7 @@ async fn restores_trashed_files(pool: PgPool) {
     assert!(available_ids(&["recent00"]).await.is_empty());
 }
 
-#[sqlx::test(migrations = "./migrations", fixtures("trash"))]
+#[sqlx::test(fixtures("trash"))]
 async fn serves_trashed_files_to_own_pages_only(pool: PgPool) {
     let (storage, dir) = common::temp_storage();
     std::fs::write(dir.path().join("trash/recent00.png"), b"bytes").unwrap();

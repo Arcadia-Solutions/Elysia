@@ -49,7 +49,7 @@ macro_rules! settings_app {
     }};
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn get_requires_an_admin_session(pool: PgPool) {
     let app = settings_app!(pool);
     let request = actix_test::TestRequest::get()
@@ -59,7 +59,7 @@ async fn get_requires_an_admin_session(pool: PgPool) {
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn public_settings_require_a_session(pool: PgPool) {
     let app = settings_app!(pool.clone());
     let request = actix_test::TestRequest::get()
@@ -81,7 +81,7 @@ async fn public_settings_require_a_session(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn unauth_settings_are_open_and_expose_legal_texts(pool: PgPool) {
     let mut settings = settings_repo::load(&pool).await.unwrap();
     settings.terms_of_service = "Be nice".into();
@@ -103,7 +103,7 @@ async fn unauth_settings_are_open_and_expose_legal_texts(pool: PgPool) {
     assert_eq!(body["terms_of_service"], "Be nice");
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn get_returns_the_seeded_defaults(pool: PgPool) {
     let app = settings_app!(pool.clone());
     let (name, value) = auth_header(&pool).await;
@@ -127,7 +127,7 @@ async fn get_returns_the_seeded_defaults(pool: PgPool) {
     settings.validate().unwrap();
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn put_persists_and_reflects_new_settings(pool: PgPool) {
     let app = settings_app!(pool.clone());
     let (name, value) = auth_header(&pool).await;
@@ -151,7 +151,7 @@ async fn put_persists_and_reflects_new_settings(pool: PgPool) {
     assert_eq!(reloaded.max_width_pixels, 4000);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn put_rejects_contradictory_settings(pool: PgPool) {
     let app = settings_app!(pool.clone());
     let (name, value) = auth_header(&pool).await;

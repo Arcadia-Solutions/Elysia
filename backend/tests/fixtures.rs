@@ -21,7 +21,7 @@ fn params(image_count: u32) -> FixturesParams {
     }
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn generates_images_and_reports_progress(pool: PgPool) {
     let (storage, _dir) = common::temp_storage();
     let storage = Data::new(storage);

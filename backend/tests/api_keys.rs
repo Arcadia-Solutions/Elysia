@@ -14,7 +14,7 @@ use elysia::repository::users;
 use elysia::routes;
 use elysia::services::auth as auth_service;
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn api_keys_are_scoped_tracked_and_revoked(pool: PgPool) {
     let (_, session_token) = common::test_user(&pool, "keyholder").await;
     let app = actix_test::init_service(
@@ -153,7 +153,7 @@ async fn api_keys_are_scoped_tracked_and_revoked(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn expired_keys_behave_like_revoked_ones(pool: PgPool) {
     let (user, session_token) = common::test_user(&pool, "expired").await;
     let generated = auth_service::generate_api_key();
@@ -204,7 +204,7 @@ async fn expired_keys_behave_like_revoked_ones(pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn admin_keys_reach_neither_admin_routes_nor_password_change(pool: PgPool) {
     let config = common::test_config();
     let admin = users::find_by_username_or_email(&pool, "admin")

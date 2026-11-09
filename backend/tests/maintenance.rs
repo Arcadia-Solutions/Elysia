@@ -60,7 +60,7 @@ async fn unreferenced_ids(pool: &PgPool) -> Vec<String> {
 
 /// Links in text, array and json columns count, `exclude` skips columns, and
 /// trashing empties the list. The test database doubles as the scanned one.
-#[sqlx::test(migrations = "./migrations", fixtures("maintenance_links"))]
+#[sqlx::test(fixtures("maintenance_links"))]
 async fn scans_and_trashes_unreferenced_images(pool: PgPool) {
     let (storage, _dir) = common::temp_storage();
     let uploader = common::test_user(&pool, "uploader").await.0.id;

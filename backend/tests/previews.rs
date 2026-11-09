@@ -45,7 +45,7 @@ fn validate_requires_caps_and_quality_when_medium_enabled() {
     assert!(settings.validate().is_err());
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn previews_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let settings = preview_settings(4);
@@ -99,7 +99,7 @@ async fn previews_generated_as_webp_when_image_exceeds_box(pool: PgPool) {
     assert_eq!(preview_totals().await, (4, thumbnail_size));
 }
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn no_previews_when_image_fits_box(pool: PgPool) {
     let (storage, _dir) = temp_storage();
     let settings = preview_settings(64);

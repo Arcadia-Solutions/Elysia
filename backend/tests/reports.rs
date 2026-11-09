@@ -13,7 +13,7 @@ use elysia::repository::users;
 use elysia::routes;
 use elysia::services::auth as auth_service;
 
-#[sqlx::test(migrations = "./migrations")]
+#[sqlx::test]
 async fn reports_reach_the_moderation_queue_until_dismissed(pool: PgPool) {
     let (uploader, _) = common::test_user(&pool, "uploader").await;
     let (_, first_token) = common::test_user(&pool, "first").await;
