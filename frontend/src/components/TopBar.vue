@@ -1,7 +1,10 @@
 <template>
   <header class="topbar">
     <span class="actions">
-      <router-link to="/upload" class="brand">{{ $t('app.name') }}</router-link>
+      <router-link to="/upload" class="brand">
+        <img src="@/assets/logo.svg" alt="" class="logo" />
+        {{ $t('app.name') }}
+      </router-link>
       <Button
         :icon="darkMode ? 'pi pi-sun' : 'pi pi-moon'"
         size="small"
@@ -87,6 +90,13 @@ const navItems = computed(() =>
 }
 .topbar .brand {
   color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar .logo {
+  width: 32px;
+  height: 32px;
 }
 .topbar .actions {
   display: flex;

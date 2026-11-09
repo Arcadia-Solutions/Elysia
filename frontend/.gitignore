@@ -11,3 +11,6 @@ public/favicon.ico
 # instance custom css/js, loaded on every page
 public/custom.css
 public/custom.js
+
+# instance logo, falls back to src/assets/logo.example.svg
+src/assets/logo.svg

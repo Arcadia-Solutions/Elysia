@@ -73,7 +73,10 @@ and the frontend (`npm ci && npm run build` in `frontend/`). Serve
 `frontend/Caddyfile` to the backend. Migrations run automatically when the
 backend starts.
 
-## Favicon
+## Logo and favicon
+
+Place your logo at `frontend/src/assets/logo.svg` before building the frontend,
+otherwise `logo.example.svg` is used.
 
 Place your icon at `frontend/public/favicon.ico` before building the frontend.
 The file is gitignored.

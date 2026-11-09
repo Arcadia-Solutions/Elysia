@@ -28,6 +28,8 @@ const customAssets = (): Plugin => ({
   },
 })
 
+const logo = existsSync(new URL('./src/assets/logo.svg', import.meta.url)) ? 'logo.svg' : 'logo.example.svg'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), customAssets()],
@@ -52,6 +54,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@/assets/logo.svg': fileURLToPath(new URL(`./src/assets/${logo}`, import.meta.url)),
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
