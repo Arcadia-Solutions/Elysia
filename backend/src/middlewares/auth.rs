@@ -155,8 +155,27 @@ impl FromRequest for AuthUser {
 /// routes take this extractor, so the client secret opens nothing else.
 pub struct UploadUser {
     pub user_id: Uuid,
-    /// The API key the upload authenticated with, recorded on the file.
-    pub api_key_id: Option<Uuid>,
+    pub source: UploadSource,
+}
+
+/// How an upload authenticated.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum UploadSource {
+    Session,
+    /// The API key, recorded on the file.
+    ApiKey(Uuid),
+    /// The SSO provider uploading on behalf of the user.
+    Delegated,
+}
+
+impl UploadUser {
+    /// The API key the upload authenticated with, if any.
+    pub fn api_key_id(&self) -> Option<Uuid> {
+        match self.source {
+            UploadSource::ApiKey(id) => Some(id),
+            _ => None,
+        }
+    }
 }
 
 /// Decoded `Authorization: Basic` credentials, if present.
@@ -197,7 +216,9 @@ impl FromRequest for UploadUser {
                 let authenticated = authenticated.await?;
                 Ok(UploadUser {
                     user_id: authenticated.user_id,
-                    api_key_id: authenticated.api_key_id,
+                    source: authenticated
+                        .api_key_id
+                        .map_or(UploadSource::Session, UploadSource::ApiKey),
                 })
             });
         };
@@ -235,7 +256,7 @@ impl FromRequest for UploadUser {
             users::update_last_seen(pool.get_ref(), row.id, None).await?;
             Ok(UploadUser {
                 user_id: row.id,
-                api_key_id: None,
+                source: UploadSource::Delegated,
             })
         })
     }

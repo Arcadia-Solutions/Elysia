@@ -38,6 +38,9 @@ Elysia: call `POST /api/upload` (file) or `POST /api/upload-url` (link) with:
 
 The upload counts against that user's quota as if they made it.
 
+To let the provider rehost links while users cannot do it themselves, set
+"Uploading from a URL" to "Only the SSO provider" in Settings.
+
 ## API keys
 
 Any user can create API keys from the Account page, to upload from scripts or

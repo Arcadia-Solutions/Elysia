@@ -116,9 +116,9 @@ pub struct ElysiaSettings {
     /// When false, images cannot be added to or removed from albums.
     #[serde(default = "default_albums_enabled")]
     pub albums_enabled: bool,
-    /// When false, images cannot be rehosted from a URL, admins included.
-    #[serde(default = "default_url_uploads_enabled")]
-    pub url_uploads_enabled: bool,
+    /// Who may rehost images from a URL.
+    #[serde(default)]
+    pub url_uploads: UrlUploads,
     /// Shown on the upload page while uploads are disabled; empty shows a
     /// generic notice.
     #[serde(default)]
@@ -140,8 +140,19 @@ fn default_albums_enabled() -> bool {
     true
 }
 
-fn default_url_uploads_enabled() -> bool {
-    true
+/// Who may rehost images from a URL; admins get no exception. Stored in the DB
+/// as the `url_uploads` Postgres enum.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type,
+)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "url_uploads", rename_all = "snake_case")]
+pub enum UrlUploads {
+    Disabled,
+    /// Only the SSO provider uploading on behalf of its users.
+    SsoOnly,
+    #[default]
+    Everyone,
 }
 
 /// The subset of [`ElysiaSettings`] exposed to logged-in users, loaded once
@@ -180,8 +191,8 @@ pub struct PublicElysiaSettings {
     /// Whether images may be added to or removed from albums; drives the album
     /// controls on the upload, image and album pages.
     pub albums_enabled: bool,
-    /// Whether images may be rehosted from a URL; drives the URL field on the
-    /// upload page.
+    /// Whether users may rehost images from a URL themselves; drives the URL
+    /// field on the upload page.
     pub url_uploads_enabled: bool,
     /// Shown on the upload page while uploads are disabled; empty shows a
     /// generic notice.
@@ -208,7 +219,7 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             default_expiry_days: s.default_expiry_days,
             allow_overriding_expiry: s.allow_overriding_expiry,
             albums_enabled: s.albums_enabled,
-            url_uploads_enabled: s.url_uploads_enabled,
+            url_uploads_enabled: s.url_uploads == UrlUploads::Everyone,
             uploads_disabled_message: s.uploads_disabled_message,
         }
     }

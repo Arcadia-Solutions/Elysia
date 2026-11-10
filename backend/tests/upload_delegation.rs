@@ -7,7 +7,6 @@ use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
 use actix_web::web::Data;
-use base64::{Engine, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
 
 use elysia::repository::{files, users};
@@ -16,21 +15,6 @@ use elysia::routes;
 use common::*;
 
 const ISSUER: &str = "http://arcadia.test/api/oauth";
-
-fn basic(client_id: &str, client_secret: &str) -> String {
-    format!(
-        "Basic {}",
-        STANDARD.encode(format!("{client_id}:{client_secret}"))
-    )
-}
-
-fn delegation_headers(client_secret: &str, subject: &str) -> Vec<(&'static str, String)> {
-    vec![
-        ("Authorization", basic("elysia-test-client", client_secret)),
-        ("On-Behalf-Of-Sub", subject.into()),
-        ("On-Behalf-Of-Username", "arcadia-bob".into()),
-    ]
-}
 
 async fn delegated_upload(
     pool: &PgPool,

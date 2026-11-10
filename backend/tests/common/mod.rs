@@ -6,6 +6,7 @@ use actix_web::App;
 use actix_web::http::StatusCode;
 use actix_web::test as actix_test;
 use actix_web::web::Data;
+use base64::{Engine, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -18,7 +19,7 @@ use elysia::routes;
 use elysia::services::auth as auth_service;
 use elysia::services::files::generate_id;
 use elysia::services::image::{ProcessOptions, TargetFormat};
-use elysia::settings::ElysiaSettings;
+use elysia::settings::{ElysiaSettings, UrlUploads};
 use elysia::storage::Storage;
 
 pub(crate) fn test_config() -> Config {
@@ -53,6 +54,27 @@ pub(crate) fn test_config() -> Config {
 /// Test config with single sign-on enabled against a mock issuer. The
 /// redirect URI is never visited in tests; it is only echoed into the
 /// authorize URL and the token request.
+/// HTTP Basic `Authorization` header value.
+pub(crate) fn basic(client_id: &str, client_secret: &str) -> String {
+    format!(
+        "Basic {}",
+        STANDARD.encode(format!("{client_id}:{client_secret}"))
+    )
+}
+
+/// Headers of the SSO provider (see [`sso_config`]) uploading on behalf of
+/// the user with `subject`.
+pub(crate) fn delegation_headers(
+    client_secret: &str,
+    subject: &str,
+) -> Vec<(&'static str, String)> {
+    vec![
+        ("Authorization", basic("elysia-test-client", client_secret)),
+        ("On-Behalf-Of-Sub", subject.into()),
+        ("On-Behalf-Of-Username", "arcadia-bob".into()),
+    ]
+}
+
 pub(crate) fn sso_config(issuer: &str) -> Config {
     let mut config = test_config();
     config.auth.sso = Some(SsoConfig {
@@ -99,7 +121,7 @@ pub(crate) fn test_settings() -> ElysiaSettings {
         default_expiry_days: 0,
         allow_overriding_expiry: true,
         albums_enabled: true,
-        url_uploads_enabled: true,
+        url_uploads: UrlUploads::Everyone,
         uploads_disabled_message: String::new(),
     }
 }
@@ -221,6 +243,35 @@ pub(crate) async fn upload_with_headers(
     let status = response.status();
     let response_body: serde_json::Value = actix_test::read_body_json(response).await;
     (status, response_body)
+}
+
+/// POST `url` to `/api/upload-url` with the given headers, returning the status.
+pub(crate) async fn rehost_status(
+    pool: PgPool,
+    config: Config,
+    settings: ElysiaSettings,
+    url: &str,
+    headers: &[(&str, String)],
+) -> StatusCode {
+    let (storage, _dir) = temp_storage();
+    let app = actix_test::init_service(
+        App::new()
+            .app_data(Data::new(config))
+            .app_data(Data::new(pool))
+            .app_data(Data::new(storage))
+            .app_data(Data::new(RwLock::new(settings)))
+            .configure(routes::init),
+    )
+    .await;
+    let mut request = actix_test::TestRequest::post()
+        .uri("/api/upload-url")
+        .set_json(serde_json::json!({ "url": url }));
+    for (name, value) in headers {
+        request = request.insert_header((*name, value.as_str()));
+    }
+    actix_test::call_service(&app, request.to_request())
+        .await
+        .status()
 }
 
 /// One-shot HTTP server on a loopback port: answers a single request with the

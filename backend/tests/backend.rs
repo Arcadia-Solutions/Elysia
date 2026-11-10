@@ -14,6 +14,7 @@ use elysia::error::Error;
 use elysia::repository::files::{self, NewFile};
 use elysia::repository::users;
 use elysia::services::files::{check_dimensions, check_size, generate_id, store_from_url};
+use elysia::settings::UrlUploads;
 use elysia::storage::Storage;
 
 use common::*;
@@ -213,25 +214,20 @@ async fn upload_rejected_while_uploads_disabled(pool: PgPool) {
 #[sqlx::test]
 async fn rehost_rejected_while_url_uploads_disabled(pool: PgPool) {
     let (_, token) = test_user(&pool, "url-uploader").await;
-    let (storage, _dir) = temp_storage();
     let mut settings = test_settings();
-    settings.url_uploads_enabled = false;
-    let app = actix_web::test::init_service(
-        actix_web::App::new()
-            .app_data(actix_web::web::Data::new(test_config()))
-            .app_data(actix_web::web::Data::new(pool))
-            .app_data(actix_web::web::Data::new(storage))
-            .app_data(actix_web::web::Data::new(std::sync::RwLock::new(settings)))
-            .configure(elysia::routes::init),
-    )
-    .await;
-    let request = actix_web::test::TestRequest::post()
-        .uri("/api/upload-url")
-        .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(serde_json::json!({ "url": "https://example.com/x.png" }))
-        .to_request();
-    let response = actix_web::test::call_service(&app, request).await;
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    settings.url_uploads = UrlUploads::Disabled;
+    let headers = [("Authorization", format!("Bearer {token}"))];
+    assert_eq!(
+        rehost_status(
+            pool,
+            test_config(),
+            settings,
+            "https://example.com/x.png",
+            &headers
+        )
+        .await,
+        StatusCode::FORBIDDEN
+    );
 }
 
 #[sqlx::test]

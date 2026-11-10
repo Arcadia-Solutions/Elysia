@@ -438,9 +438,9 @@ export interface ElysiaSettings {
      */
     'uploads_enabled'?: boolean;
     /**
-     * When false, images cannot be rehosted from a URL, admins included.
+     * Who may rehost images from a URL.
      */
-    'url_uploads_enabled'?: boolean;
+    'url_uploads'?: UrlUploads;
 }
 
 
@@ -992,7 +992,7 @@ export interface PublicElysiaSettings {
      */
     'uploads_enabled': boolean;
     /**
-     * Whether images may be rehosted from a URL; drives the URL field on the upload page.
+     * Whether users may rehost images from a URL themselves; drives the URL field on the upload page.
      */
     'url_uploads_enabled': boolean;
 }
@@ -1458,6 +1458,19 @@ export interface Uploader {
     'last_upload': string;
     'username': string;
 }
+/**
+ * Who may rehost images from a URL; admins get no exception. Stored in the DB as the `url_uploads` Postgres enum.
+ */
+
+export const UrlUploads = {
+    Disabled: 'disabled',
+    SsoOnly: 'sso_only',
+    Everyone: 'everyone'
+} as const;
+
+export type UrlUploads = typeof UrlUploads[keyof typeof UrlUploads];
+
+
 /**
  * A user as the admin user list and profile page show it.
  */

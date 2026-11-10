@@ -141,9 +141,20 @@
       </div>
 
       <div class="field">
-        <label>{{ $t('settings.url_uploads_enabled.label') }}</label>
-        <small>{{ $t('settings.url_uploads_enabled.help') }}</small>
-        <ToggleSwitch v-model="form.url_uploads_enabled" />
+        <label>{{ $t('settings.url_uploads.label') }}</label>
+        <small>{{ $t('settings.url_uploads.help') }}</small>
+        <Select
+          v-model="form.url_uploads"
+          size="small"
+          fluid
+          :options="[
+            { label: $t('settings.url_uploads.everyone'), value: 'everyone' },
+            { label: $t('settings.url_uploads.sso_only'), value: 'sso_only' },
+            { label: $t('settings.url_uploads.disabled'), value: 'disabled' },
+          ]"
+          option-label="label"
+          option-value="value"
+        />
       </div>
 
       <div class="field">
@@ -315,7 +326,7 @@ const form = reactive<Required<ElysiaSettings>>({
   default_expiry_days: 0,
   allow_overriding_expiry: true,
   albums_enabled: true,
-  url_uploads_enabled: true,
+  url_uploads: 'everyone',
   uploads_disabled_message: '',
 })
 

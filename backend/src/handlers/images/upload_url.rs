@@ -9,9 +9,9 @@ use utoipa::ToSchema;
 use super::upload::{UploadOptionsQuery, UploadResponse};
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::middlewares::UploadUser;
+use crate::middlewares::{UploadSource, UploadUser};
 use crate::services::files;
-use crate::settings::SharedElysiaSettings;
+use crate::settings::{SharedElysiaSettings, UrlUploads};
 use crate::storage::Storage;
 
 /// A link to an image to rehost.
@@ -31,7 +31,7 @@ pub struct UploadUrlRequest {
         (status = 200, description = "Image rehosted", body = UploadResponse),
         (status = 400, description = "Could not fetch the url, url not http(s) or not pointing to a public address, file too large, or storage quota exceeded"),
         (status = 401, description = "Missing or invalid session, or invalid SSO client credentials. The SSO provider may upload on behalf of its users with its client credentials as Basic auth and the user subject in the On-Behalf-Of-Sub header (On-Behalf-Of-Username names the account on first upload)"),
-        (status = 403, description = "Uploads or URL uploads are disabled"),
+        (status = 403, description = "Uploads or URL uploads are disabled, or URL uploads are reserved to the SSO provider uploading on behalf of its users"),
         (status = 415, description = "Link does not point to a supported image"),
         (status = 507, description = "The server disk is nearly full"),
     )
@@ -46,7 +46,12 @@ pub async fn upload_url(
     body: Json<UploadUrlRequest>,
 ) -> Result<HttpResponse> {
     let settings = settings.read().expect("settings lock poisoned").clone();
-    if !settings.url_uploads_enabled {
+    let allowed = match settings.url_uploads {
+        UrlUploads::Disabled => false,
+        UrlUploads::SsoOnly => authenticated.source == UploadSource::Delegated,
+        UrlUploads::Everyone => true,
+    };
+    if !allowed {
         return Err(Error::Forbidden);
     }
     let mut options = query.into_inner().into_options(&settings)?;
@@ -69,7 +74,7 @@ pub async fn upload_url(
         None,
         &options,
         authenticated.user_id,
-        authenticated.api_key_id,
+        authenticated.api_key_id(),
     )
     .await?;
 
