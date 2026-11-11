@@ -168,19 +168,128 @@ impl Random {
     }
 }
 
-/// A two-colour gradient with some noise, so encoded sizes vary like photos do.
+/// Landscape palettes: sky top, horizon, nearest mountains, sun.
+const PALETTES: [[[f32; 3]; 4]; 6] = [
+    // dusk
+    [
+        [25., 35., 90.],
+        [240., 150., 110.],
+        [30., 20., 50.],
+        [255., 240., 180.],
+    ],
+    // dawn
+    [
+        [120., 160., 220.],
+        [255., 200., 170.],
+        [60., 50., 90.],
+        [255., 250., 220.],
+    ],
+    // day
+    [
+        [60., 130., 220.],
+        [190., 225., 250.],
+        [30., 70., 60.],
+        [255., 255., 235.],
+    ],
+    // night
+    [
+        [5., 10., 30.],
+        [40., 60., 110.],
+        [5., 8., 20.],
+        [230., 235., 255.],
+    ],
+    // forest haze
+    [
+        [150., 190., 170.],
+        [230., 240., 210.],
+        [20., 50., 35.],
+        [255., 250., 220.],
+    ],
+    // desert
+    [
+        [200., 110., 60.],
+        [255., 215., 150.],
+        [90., 40., 30.],
+        [255., 245., 200.],
+    ],
+];
+
+fn mix(from: [f32; 3], to: [f32; 3], ratio: f32) -> [f32; 3] {
+    std::array::from_fn(|channel| from[channel] + (to[channel] - from[channel]) * ratio)
+}
+
+/// One mountain ridgeline: per column height in [0, 1], fractal value noise.
+fn ridge(random: &mut Random, width: u32) -> Vec<f32> {
+    let octaves: Vec<(f32, Vec<f32>)> = (0..7)
+        .map(|octave| {
+            let cells = 2u32 << octave;
+            let lattice = (0..=cells + 1).map(|_| random.unit() as f32).collect();
+            (cells as f32, lattice)
+        })
+        .collect();
+    (0..width)
+        .map(|x| {
+            let position = x as f32 / width as f32;
+            let (mut sum, mut amplitude) = (0.0, 0.5);
+            for (cells, lattice) in &octaves {
+                let at = position * cells;
+                let (cell, fraction) = (at as usize, at.fract());
+                let smooth = fraction * fraction * (3.0 - 2.0 * fraction);
+                sum += amplitude * (lattice[cell] + (lattice[cell + 1] - lattice[cell]) * smooth);
+                amplitude *= 0.55;
+            }
+            sum
+        })
+        .collect()
+}
+
+/// Layered mountains under a sky with a sun, plus grain so encoded sizes vary
+/// like photos do.
 fn generate_image(random: &mut Random, width: u32, height: u32) -> RgbImage {
-    let start: [u8; 3] = std::array::from_fn(|_| random.next() as u8);
-    let end: [u8; 3] = std::array::from_fn(|_| random.next() as u8);
-    let noise = random.range(1, 40);
+    let [sky_top, horizon, near, sun] = PALETTES[random.range(0, PALETTES.len() as u32) as usize];
+    let (width_f32, height_f32) = (width as f32, height as f32);
+    let (sun_x, sun_y) = (
+        width_f32 * random.unit() as f32,
+        height_f32 * (0.2 + 0.3 * random.unit() as f32),
+    );
+    let sun_radius = width_f32.min(height_f32) * (0.03 + 0.05 * random.unit() as f32);
+    // Far to near: each layer sits lower, and far ones fade into the horizon haze.
+    let layer_count = random.range(3, 7);
+    let layers: Vec<(Vec<f32>, f32, f32, [f32; 3])> = (0..layer_count)
+        .map(|layer| {
+            let depth = (layer + 1) as f32 / layer_count as f32;
+            let base = height_f32 * (0.35 + 0.45 * depth);
+            let amplitude = height_f32 * (0.35 - 0.15 * depth);
+            (
+                ridge(random, width),
+                base,
+                amplitude,
+                mix(horizon, near, 0.25 + 0.75 * depth),
+            )
+        })
+        .collect();
+    let grain = random.range(1, 16);
     RgbImage::from_fn(width, height, |x, y| {
-        let ratio = (x + y) as f32 / (width + height) as f32;
-        let jitter = random.range(0, noise) as u8;
-        Rgb(std::array::from_fn(|channel| {
-            let value =
-                start[channel] as f32 + (end[channel] as f32 - start[channel] as f32) * ratio;
-            (value as u8).saturating_add(jitter)
-        }))
+        let (pixel_x, pixel_y) = (x as f32, y as f32);
+        let terrain = layers
+            .iter()
+            .rev()
+            .find(|(ridge, base, amplitude, _)| pixel_y >= base - ridge[x as usize] * amplitude);
+        let color = match terrain {
+            Some((_, _, _, color)) => *color,
+            None => {
+                let distance = ((pixel_x - sun_x).powi(2) + (pixel_y - sun_y).powi(2)).sqrt();
+                if distance < sun_radius {
+                    sun
+                } else {
+                    let sky = mix(sky_top, horizon, (pixel_y / (height_f32 * 0.75)).min(1.0));
+                    let glow = (-(distance - sun_radius) / (sun_radius * 4.0)).exp() * 0.6;
+                    mix(sky, sun, glow)
+                }
+            }
+        };
+        let jitter = random.range(0, grain) as f32;
+        Rgb(color.map(|value| (value + jitter).min(255.0) as u8))
     })
 }
 
