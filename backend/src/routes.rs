@@ -1,4 +1,5 @@
-use actix_web::web::{ServiceConfig, scope};
+use actix_web::HttpResponse;
+use actix_web::web::{ServiceConfig, get, scope};
 
 use crate::handlers::{
     albums, api_keys, auth, fixtures, images, maintenance, reports, settings, stats, users,
@@ -18,5 +19,7 @@ pub fn init(cfg: &mut ServiceConfig) {
             .configure(images::config)
             .configure(settings::config),
     )
-    .configure(images::config_public);
+    .configure(images::config_public)
+    // unauthenticated, used by the docker health check
+    .route("/health", get().to(|| async { HttpResponse::Ok().await }));
 }
