@@ -16,7 +16,7 @@ services:
   # Elysia in docker, reading ./config.yml with the database host overridden.
   elysia:
     profiles: [app]
-    build: backend
+    image: ghcr.io/arcadia-solutions/elysia-backend:${ELYSIA_VERSION:-latest}
     restart: always
     stop_grace_period: 30s
     environment:
@@ -31,7 +31,7 @@ services:
   # Web UI on http://localhost:5174, also proxies the API and the images to elysia.
   frontend:
     profiles: [app]
-    build: frontend
+    image: ghcr.io/arcadia-solutions/elysia-frontend:${ELYSIA_VERSION:-latest}
     restart: always
     ports:
       - "5174:80"

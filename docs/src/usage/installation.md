@@ -6,8 +6,11 @@ The repository's `compose.yml` runs PostgreSQL, the backend and the web UI:
 
 ```sh
 cp config.example.yml config.yml   # then edit it, see below
-docker compose --profile app up -d --build
+docker compose --profile app up -d
 ```
+
+It pulls the images published on each release, `latest` by default. Pin a
+version with `ELYSIA_VERSION=0.0.1` (in the environment or a `.env` file).
 
 The web UI is on <http://localhost:5174>. It serves the single page app and
 proxies the API (`/api`), the images (`/i`, `/m`, `/t`) and the API docs to the
@@ -24,7 +27,8 @@ Uploaded files live in the `elysia_uploads` volume, the database in
 The rate limits key on the client IP. If another proxy (Cloudflare, a load
 balancer...) sits in front of the web UI, the web UI's Caddy throws away the
 `X-Forwarded-For` it sends, and every user ends up sharing that proxy's
-address. Trust it in the `frontend/Caddyfile` global options, then add its
+address. Trust it in the global options of a copy of `frontend/Caddyfile`
+mounted over `/etc/caddy/Caddyfile` in the frontend container, then add its
 ranges to `rate_limit.trusted_proxies` in `config.yml` if they are public:
 
 ```caddyfile
