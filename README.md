@@ -54,3 +54,7 @@ docker compose --profile app up -d
 ```
 
 The web UI is then on <http://localhost:5174>. See [the docs](https://arcadia-solutions.github.io/Elysia/) for installation, administration, integration, backups and development.
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) and the [AI policy](./AI_POLICY.md).
