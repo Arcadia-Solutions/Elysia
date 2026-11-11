@@ -112,15 +112,15 @@ async fn get_returns_the_seeded_defaults(pool: PgPool) {
         .insert_header((name, value))
         .to_request();
     let settings: ElysiaSettings = actix_test::call_and_read_body_json(&app, request).await;
-    // The migration seeds a 25 MiB ceiling, WebP at quality 75, medium images on,
+    // The migration seeds a 25 MiB ceiling, lossless WebP, medium images on,
     // EXIF stripped and registration closed, and that row is valid.
     assert_eq!(settings.max_file_size_bytes, 25 * 1024 * 1024);
     assert_eq!(
         settings.default_target_file_format,
         Some(TargetFormat::Webp)
     );
-    assert_eq!(settings.default_compression, 75);
-    assert!(!settings.allow_overriding_compression);
+    assert_eq!(settings.default_compression, 0);
+    assert!(!settings.allow_lossless);
     assert!(settings.medium_enabled());
     assert!(settings.strip_exif_by_default);
     assert!(!settings.allow_registration);

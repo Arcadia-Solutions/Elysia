@@ -181,9 +181,7 @@ pub fn process_decoded(
         Some(quality) => {
             // PNG has no lossy mode; refuse rather than silently encode lossless.
             if matches!(options.format, TargetFormat::Png) {
-                return Err(ProcessError::Encode(
-                    "png has no lossy mode; set lossy_compression_value to 0".into(),
-                ));
+                return Err(ProcessError::Encode("png has no lossy mode".into()));
             }
             (
                 encode(
@@ -202,8 +200,7 @@ pub fn process_decoded(
             // encode a near-lossless frame.
             if matches!(options.format, TargetFormat::Avif | TargetFormat::Jpg) {
                 return Err(ProcessError::Encode(
-                    "this image format has no lossless mode; set lossy_compression_value (1-100)"
-                        .into(),
+                    "this image format has no lossless mode".into(),
                 ));
             }
             let lossless = encode(&rgba, width, height, &options.format, icc_profile, None)?;

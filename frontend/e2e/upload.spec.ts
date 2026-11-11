@@ -138,7 +138,6 @@ test.describe('upload', () => {
     await expect(metaValue(viewer, 'Dimensions')).toHaveText('200 × 100')
     await expect(metaValue(viewer, 'Format')).toHaveText('image/webp')
     await expect(metaValue(viewer, 'Processing')).toContainText('Converted from PNG to WEBP')
-    await expect(metaValue(viewer, 'Processing')).toContainText('Compressed at quality 75')
     await expect(viewer.locator('dt', { hasText: 'Expires at' })).toHaveCount(0)
     await view(viewer, id)
   })
@@ -281,7 +280,7 @@ test.describe('upload', () => {
 
 test.describe('upload settings', () => {
   test('processing off stores the file as uploaded', async ({ page, settings }) => {
-    await settings({ default_target_file_format: null, default_compression: 0, allow_overriding_file_format: false, allow_overriding_compression: false })
+    await settings({ default_target_file_format: null, default_compression: 0, allow_lossless: false })
     await login(page)
     await choose(page, [await image(page, 'raw.png')])
     const [id] = await upload(page, 1)
@@ -322,19 +321,10 @@ test.describe('upload settings', () => {
     await expect(metaValue(page, 'Name')).toHaveText('fits.png')
   })
 
-  test('format and quality overrides', async ({ page, settings }) => {
-    await settings({ allow_overriding_file_format: true, allow_overriding_compression: true })
+  test('default format and compression', async ({ page, settings }) => {
+    await settings({ default_target_file_format: 'avif', default_compression: 79, allow_lossless: false })
     await login(page)
-    const quality = page.getByText(/^Compression quality: \d+$/)
-    await expect(quality).toHaveText('Compression quality: 80')
-
-    await page.locator('.p-select', { hasText: 'Use default' }).click()
-    await page.getByRole('option', { name: 'AVIF' }).click()
-    await expect(quality).toBeVisible()
-    await expect(page.locator('.toggle-row', { hasText: 'Lossless' })).toHaveCount(0)
-    await page.locator('.p-slider-handle').focus()
-    await page.keyboard.press('ArrowLeft')
-    await expect(quality).toHaveText('Compression quality: 79')
+    await expect(page.getByText('Lossless')).toBeHidden()
     await choose(page, [await image(page, 'to-avif.jpg')])
     const [avif] = await upload(page, 1)
     await expect(linkRow(page, 'Link')).toHaveValue(new RegExp(`/i/${avif}\\.avif$`))
@@ -342,26 +332,12 @@ test.describe('upload settings', () => {
     await expect(metaValue(page, 'Format')).toHaveText('image/avif')
     await expect(metaValue(page, 'Processing')).toContainText('Converted from JPG to AVIF')
     await expect(metaValue(page, 'Processing')).toContainText('Compressed at quality 79')
-
-    // PNG is always lossless: no quality slider.
-    await page.goto('/upload')
-    await page.locator('.p-select', { hasText: 'Use default' }).click()
-    await page.getByRole('option', { name: 'PNG' }).click()
-    await expect(quality).toBeHidden()
-    // Must be lighter as PNG than as JPG, or the source is kept: a tiny flat
-    // image, where the JPEG headers dominate.
-    await choose(page, [await image(page, 'to-png.jpg', 20, 10, true)])
-    const [png] = await upload(page, 1)
-    await view(page, png)
-    await expect(metaValue(page, 'Format')).toHaveText('image/png')
-    await expect(metaValue(page, 'Processing')).toHaveText('Converted from JPG to PNG')
   })
 
   test('lossless WebP', async ({ page, settings }) => {
-    await settings({ allow_overriding_compression: true })
+    await settings({ default_target_file_format: 'webp', default_compression: 75, allow_lossless: true })
     await login(page)
     await page.locator('.toggle-row', { hasText: 'Lossless' }).getByRole('switch').check()
-    await expect(page.getByText(/^Compression quality/)).toBeHidden()
     await choose(page, [await image(page, 'lossless.png')])
     const [id] = await upload(page, 1)
     await view(page, id)
@@ -369,16 +345,13 @@ test.describe('upload settings', () => {
     await expect(metaValue(page, 'Processing')).toHaveText('Converted from PNG to WEBP')
   })
 
-  test('format and quality options hidden when not overridable', async ({ page, settings }) => {
+  test('upload options hidden when not overridable', async ({ page, settings }) => {
     await settings({
-      allow_overriding_file_format: false,
-      allow_overriding_compression: false,
+      allow_lossless: false,
       allow_overriding_strip_exif: false,
       allow_overriding_expiry: false,
     })
     await login(page)
-    await expect(page.getByText('Output format')).toBeHidden()
-    await expect(page.getByText(/^Compression quality/)).toBeHidden()
     await expect(page.getByText('Lossless')).toBeHidden()
     await expect(page.getByText('Strip EXIF')).toBeHidden()
     await expect(page.getByText('Delete after')).toBeHidden()

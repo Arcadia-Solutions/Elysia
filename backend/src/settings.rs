@@ -32,20 +32,16 @@ pub struct ElysiaSettings {
     /// Default output format; null stores uploads as-is (processing off).
     #[serde(default)]
     pub default_target_file_format: Option<TargetFormat>,
-    /// When false, an upload may not request its own target file format and the
-    /// default is always used.
-    #[serde(default)]
-    pub allow_overriding_file_format: bool,
     /// Lossy target size in bytes; 0 = no target.
     #[serde(default)]
     pub target_file_size_bytes: u64,
-    /// Lossy quality (1-100) applied when an upload requests none; 0 = none.
+    /// Lossy quality (1-100) applied to uploads; 0 = lossless.
     #[serde(default)]
     pub default_compression: u8,
-    /// When false, an upload may not request its own compression and the
-    /// default is always used.
+    /// When true, an upload may ask for lossless instead of the default
+    /// compression.
     #[serde(default)]
-    pub allow_overriding_compression: bool,
+    pub allow_lossless: bool,
     /// When true, EXIF is stripped from an upload that does not
     /// request otherwise.
     #[serde(default)]
@@ -165,12 +161,9 @@ pub struct PublicElysiaSettings {
     pub target_width_pixels: u32,
     pub target_height_pixels: u32,
     pub default_target_file_format: Option<TargetFormat>,
-    /// Whether an upload may pick its own target file format; drives the
-    /// format selector on the upload page.
-    pub allow_overriding_file_format: bool,
-    /// Whether an upload may request its own compression quality; drives the
-    /// quality slider on the upload page.
-    pub allow_overriding_compression: bool,
+    /// Whether an upload may ask for lossless; drives the lossless toggle on
+    /// the upload page.
+    pub allow_lossless: bool,
     /// Whether an upload may choose to strip its own metadata; drives the
     /// EXIF-stripping control on the upload page.
     pub allow_overriding_strip_exif: bool,
@@ -208,8 +201,7 @@ impl From<ElysiaSettings> for PublicElysiaSettings {
             target_width_pixels: s.target_width_pixels,
             target_height_pixels: s.target_height_pixels,
             default_target_file_format: s.default_target_file_format,
-            allow_overriding_file_format: s.allow_overriding_file_format,
-            allow_overriding_compression: s.allow_overriding_compression,
+            allow_lossless: s.allow_lossless,
             allow_overriding_strip_exif: s.allow_overriding_strip_exif,
             strip_exif_by_default: s.strip_exif_by_default,
             target_file_size_bytes: s.target_file_size_bytes,
@@ -345,35 +337,42 @@ impl ElysiaSettings {
                 "default_compression requires a default_target_file_format to re-encode to".into(),
             );
         }
-        // AVIF and JPEG have no lossless mode, so they can only be produced with
-        // a selected quality. If such a format can be the output (it is the default, or an
-        // upload may pick it) there must be a quality source: a default
-        // compression, or the ability to request one per upload.
-        let lossless_incapable_reachable = self.allow_overriding_file_format
-            || self
-                .default_target_file_format
-                .is_some_and(|format| !format.supports_lossless());
-        if lossless_incapable_reachable
+        if self.default_compression > 0
+            && self.default_target_file_format == Some(TargetFormat::Png)
+        {
+            return Err("png has no lossy mode, default_compression must be 0".into());
+        }
+        // AVIF and JPEG have no lossless mode, so they need a default compression.
+        if matches!(self.default_target_file_format, Some(format) if !format.supports_lossless())
             && self.default_compression == 0
-            && !self.allow_overriding_compression
         {
             return Err(
-                "allow_overriding_compression cannot be disabled without a default_compression \
-                 when a format with no lossless mode can be produced (AVIF, JPEG)"
+                "default_compression is required for a format with no lossless mode (AVIF, JPEG)"
+                    .into(),
+            );
+        }
+        // Lossless is only an alternative to a lossy default, in a format that has it.
+        if self.allow_lossless
+            && (self.default_compression == 0
+                || !self
+                    .default_target_file_format
+                    .is_some_and(|format| format.supports_lossless()))
+        {
+            return Err(
+                "allow_lossless requires a default_compression and a format with a lossless mode \
+                 (WebP, JPEG XL)"
                     .into(),
             );
         }
         // Processing decodes the source into memory (width * height * 4 bytes),
         // so it must run behind pixel caps or a small file declaring huge
-        // dimensions is a decompression bomb. An allowed per-upload format
-        // override can trigger a decode even with no default format, so the caps
-        // are required then too.
-        if (self.default_target_file_format.is_some() || self.allow_overriding_file_format)
+        // dimensions is a decompression bomb.
+        if self.default_target_file_format.is_some()
             && (self.max_width_pixels == 0 || self.max_height_pixels == 0)
         {
             return Err(
                 "max_width_pixels and max_height_pixels must be > 0 when a target file \
-                 format is set or overriding it is allowed (they bound the server-side decode)"
+                 format is set (they bound the server-side decode)"
                     .into(),
             );
         }

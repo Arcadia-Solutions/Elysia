@@ -94,15 +94,9 @@
       "options": "Options"
     },
     "processing": "Processing…",
-    "format_override": {
-      "label": "Output format",
-      "keep_default": "Use default"
-    },
     "lossless": {
-      "label": "Lossless"
-    },
-    "quality": {
-      "label": "Compression quality: {value}"
+      "label": "Lossless",
+      "help": "Enable this if preserving exact image quality is important (e.g. video screenshot comparison). When off, some lossy compression is applied."
     },
     "strip_exif": {
       "label": "Strip EXIF"
@@ -292,7 +286,9 @@
     "errors": {
       "max_file_size_required": "Required: uploads need a byte ceiling.",
       "max_dimension_required": "Required when a target format is set, or when medium images are enabled.",
-      "quality_range": "Must be between 1 and 100."
+      "quality_range": "Must be between 1 and 100.",
+      "compression_required": "Required: AVIF and JPEG have no lossless mode.",
+      "png_lossless": "PNG has no lossy mode: must be 0."
     },
     "max_file_size": {
       "label": "Maximum file size (bytes)",
@@ -311,10 +307,6 @@
       "help": "Re-encode every upload to this format by default. 'Store as-is' turns off all processing (resize, conversion and target size below).",
       "store_as_is": "Store as-is (no processing)"
     },
-    "allow_overriding_file_format": {
-      "label": "Allow overriding the file format",
-      "help": "Let an upload pick its own output format. When off, the default above is always used. Enabling this requires the maximum width and height above (overrides can trigger server-side decoding)."
-    },
     "target_width": {
       "label": "Resize to fit width (pixels)",
       "help": "Shrink images to fit within this width, keeping aspect ratio. Images are never upscaled."
@@ -329,12 +321,13 @@
     },
     "default_compression": {
       "label": "Default compression quality (1-100)",
-      "help": "Lossy quality applied when an upload does not request one. 0 means lossless."
+      "help": "Lossy quality applied to uploads. 0 means lossless."
     },
-    "allow_overriding_compression": {
-      "label": "Allow overriding compression",
-      "help": "Let an upload request its own compression quality. When off, the default above is always used.",
-      "forced_help": "Required: AVIF and JPEG have no lossless mode, so with no default compression an upload must set its own quality."
+    "allow_lossless": {
+      "label": "Allow lossless uploads",
+      "help": "Let an upload be stored lossless instead of with the default compression. Needs a default compression and WebP or JPEG XL.",
+      "already_lossless": "The default compression is 0, so uploads are already lossless.",
+      "format_unsupported": "Only WebP and JPEG XL have a lossless mode."
     },
     "strip_exif_by_default": {
       "label": "Strip EXIF by default",

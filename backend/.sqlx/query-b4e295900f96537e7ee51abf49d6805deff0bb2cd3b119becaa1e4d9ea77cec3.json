@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  allow_overriding_file_format,\n                  target_file_size_bytes, default_compression,\n                  allow_overriding_compression,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   medium_width_pixels, medium_height_pixels, medium_quality,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads as \"url_uploads: UrlUploads\", uploads_disabled_message\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  target_file_size_bytes, default_compression, allow_lossless,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   medium_width_pixels, medium_height_pixels, medium_quality,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads as \"url_uploads: UrlUploads\", uploads_disabled_message\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -84,17 +84,6 @@
       },
       {
         "ordinal": 6,
-        "name": "allow_overriding_file_format",
-        "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "elysia_settings",
-            "name": "allow_overriding_file_format"
-          }
-        }
-      },
-      {
-        "ordinal": 7,
         "name": "target_file_size_bytes",
         "type_info": "Int8",
         "origin": {
@@ -105,7 +94,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "default_compression",
         "type_info": "Int4",
         "origin": {
@@ -116,18 +105,18 @@
         }
       },
       {
-        "ordinal": 9,
-        "name": "allow_overriding_compression",
+        "ordinal": 8,
+        "name": "allow_lossless",
         "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "elysia_settings",
-            "name": "allow_overriding_compression"
+            "name": "allow_lossless"
           }
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "strip_exif_by_default",
         "type_info": "Bool",
         "origin": {
@@ -138,7 +127,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "allow_overriding_strip_exif",
         "type_info": "Bool",
         "origin": {
@@ -149,7 +138,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "medium_width_pixels",
         "type_info": "Int4",
         "origin": {
@@ -160,7 +149,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "medium_height_pixels",
         "type_info": "Int4",
         "origin": {
@@ -171,7 +160,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "medium_quality",
         "type_info": "Int4",
         "origin": {
@@ -182,7 +171,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "thumbnail_width_pixels",
         "type_info": "Int4",
         "origin": {
@@ -193,7 +182,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "thumbnail_height_pixels",
         "type_info": "Int4",
         "origin": {
@@ -204,7 +193,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "thumbnail_quality",
         "type_info": "Int4",
         "origin": {
@@ -215,7 +204,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "allow_registration",
         "type_info": "Bool",
         "origin": {
@@ -226,7 +215,7 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "allowed_referrers",
         "type_info": "TextArray",
         "origin": {
@@ -237,7 +226,7 @@
         }
       },
       {
-        "ordinal": 20,
+        "ordinal": 19,
         "name": "uploads_enabled",
         "type_info": "Bool",
         "origin": {
@@ -248,7 +237,7 @@
         }
       },
       {
-        "ordinal": 21,
+        "ordinal": 20,
         "name": "default_storage_quota_bytes",
         "type_info": "Int8",
         "origin": {
@@ -259,7 +248,7 @@
         }
       },
       {
-        "ordinal": 22,
+        "ordinal": 21,
         "name": "record_referrer_views",
         "type_info": "Bool",
         "origin": {
@@ -270,7 +259,7 @@
         }
       },
       {
-        "ordinal": 23,
+        "ordinal": 22,
         "name": "terms_of_service",
         "type_info": "Text",
         "origin": {
@@ -281,7 +270,7 @@
         }
       },
       {
-        "ordinal": 24,
+        "ordinal": 23,
         "name": "privacy_policy",
         "type_info": "Text",
         "origin": {
@@ -292,7 +281,7 @@
         }
       },
       {
-        "ordinal": 25,
+        "ordinal": 24,
         "name": "default_expiry_days",
         "type_info": "Int4",
         "origin": {
@@ -303,7 +292,7 @@
         }
       },
       {
-        "ordinal": 26,
+        "ordinal": 25,
         "name": "allow_overriding_expiry",
         "type_info": "Bool",
         "origin": {
@@ -314,7 +303,7 @@
         }
       },
       {
-        "ordinal": 27,
+        "ordinal": 26,
         "name": "albums_enabled",
         "type_info": "Bool",
         "origin": {
@@ -325,7 +314,7 @@
         }
       },
       {
-        "ordinal": 28,
+        "ordinal": 27,
         "name": "url_uploads: UrlUploads",
         "type_info": {
           "Custom": {
@@ -347,7 +336,7 @@
         }
       },
       {
-        "ordinal": 29,
+        "ordinal": 28,
         "name": "uploads_disabled_message",
         "type_info": "Text",
         "origin": {
@@ -392,9 +381,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "2f961aa464f07fc9bc7672e37f120e113d02c284e7e96e06cefaaa2335f27485"
+  "hash": "b4e295900f96537e7ee51abf49d6805deff0bb2cd3b119becaa1e4d9ea77cec3"
 }

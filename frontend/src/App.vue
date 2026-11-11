@@ -54,6 +54,9 @@ body {
   background: var(--p-content-background);
   color: var(--p-text-color);
 }
+.p-tooltip-text {
+  font-size: 0.9em;
+}
 /* PrimeVue renders the summary even when empty, and the text gap then pushes
    the detail below the icon. Toasts here only use detail. */
 .p-toast-summary:empty {

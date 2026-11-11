@@ -100,8 +100,8 @@ pub async fn list_images(
 #[derive(Default)]
 pub struct UploadOptions {
     pub lossy_compression_value: Option<u8>,
-    /// Effective output format: the per-upload override, or the configured
-    /// default. `None` stores the upload as-is (processing off).
+    /// Output format overriding the configured default (fixtures only); `None`
+    /// uses the default.
     pub target_file_format: Option<TargetFormat>,
     /// Effective EXIF-stripping choice: the per-upload override, or the
     /// configured default.
@@ -445,7 +445,6 @@ pub async fn store_upload(
     }
 
     // Run the pipeline when a target format is in effect; `None` passes through.
-    // The per-upload override wins, else the configured default.
     let target_file_format = options
         .target_file_format
         .or(settings.default_target_file_format);

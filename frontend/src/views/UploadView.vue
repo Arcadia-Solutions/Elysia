@@ -71,30 +71,9 @@
           <AlbumSelect v-model="albumId" mine :disabled="uploading" :placeholder="$t('albums.none')" />
         </div>
 
-        <div v-if="settings?.allow_overriding_file_format" class="format-row">
-          <label>{{ $t('upload.format_override.label') }}</label>
-          <Select
-            v-model="formatOverride"
-            size="small"
-            fluid
-            :disabled="uploading"
-            :options="[
-              { label: $t('upload.format_override.keep_default'), value: 'default' },
-              ...Object.values(TargetFormat).map((f) => ({ label: formatLabels[f], value: f })),
-            ]"
-            option-label="label"
-            option-value="value"
-          />
-        </div>
-
-        <div v-if="showLosslessToggle" class="toggle-row">
+        <div v-if="settings?.allow_lossless" v-tooltip="{ value: $t('upload.lossless.help'), showDelay: 150 }" class="toggle-row">
           <label>{{ $t('upload.lossless.label') }}</label>
           <ToggleSwitch v-model="lossless" :disabled="uploading" />
-        </div>
-
-        <div v-if="showCompression && !losslessSelected" class="quality-row">
-          <label>{{ $t('upload.quality.label', { value: quality }) }}</label>
-          <Slider v-model="quality" :min="1" :max="100" :disabled="uploading" />
         </div>
 
         <div v-if="settings?.allow_overriding_strip_exif" class="toggle-row">
@@ -130,15 +109,15 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
-import Select from 'primevue/select'
-import Slider from 'primevue/slider'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Tooltip from 'primevue/tooltip'
 import { useI18n } from 'vue-i18n'
 import AlbumSelect from '@/components/AlbumSelect.vue'
 import { api } from '@/services/api/http'
-import { TargetFormat, type PublicElysiaSettings } from '@/services/api-schema'
+import { type PublicElysiaSettings } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
 
+const vTooltip = Tooltip
 const { t } = useI18n()
 const router = useRouter()
 // 'uploading' = files in flight (each shows its own bar), 'processing' = backend
@@ -154,20 +133,8 @@ type Selected = { file: File; preview: string; status: 'pending' | 'uploading' |
 const selected = ref<Selected[]>([])
 // Cached by App.vue on load and on login.
 const settings: PublicElysiaSettings | null = JSON.parse(localStorage.getItem('elysia_public_settings') ?? 'null')
-// Per-upload output format; 'default' uses the server's default (a non-empty
-// sentinel so PrimeVue shows it as selected). Only honored when the settings
-// allow overriding; the backend rejects it otherwise.
-const formatOverride = ref<TargetFormat | 'default'>('default')
-const formatLabels: Record<TargetFormat, string> = {
-  webp: 'WebP',
-  jpegxl: 'JPEG XL',
-  avif: 'AVIF',
-  png: 'PNG',
-  jpg: 'JPEG',
-}
-// Per-upload lossy quality, sent only while the slider is shown.
-const quality = ref(80)
-// Per-upload lossless choice, offered only for formats with a lossless mode.
+// Per-upload lossless choice over the default compression. Only honored when
+// the settings allow it.
 const lossless = ref(false)
 // Per-upload EXIF-stripping choice, initialized from the server default.
 // Only honored when the settings allow overriding.
@@ -179,26 +146,10 @@ const expiryDays = ref<number | null>(settings?.default_expiry_days ?? 0)
 // One of the caller's albums the uploads go into, if any.
 const albumId = ref<string | null>(null)
 
-// The format that will actually be applied: the override, or the server default.
-const effectiveFormat = computed(() => (formatOverride.value === 'default' ? settings?.default_target_file_format : formatOverride.value))
-// Quality applies only to lossy-capable formats (every target format but PNG),
-// and only when the settings allow overriding compression.
-const showCompression = computed(() => !!settings?.allow_overriding_compression && !!effectiveFormat.value && effectiveFormat.value !== 'png')
-// PNG is always lossless and AVIF/JPEG never are, so only WebP and JPEG XL get the toggle.
-const showLosslessToggle = computed(() => showCompression.value && ['webp', 'jpegxl'].includes(effectiveFormat.value ?? ''))
-const losslessSelected = computed(() => showLosslessToggle.value && lossless.value)
-// The lossless toggle only shows alongside compression, so it needs no check here.
 const hasOptions = computed(
-  () =>
-    settings?.albums_enabled !== false ||
-    !!settings?.allow_overriding_file_format ||
-    showCompression.value ||
-    !!settings?.allow_overriding_strip_exif ||
-    !!settings?.allow_overriding_expiry,
+  () => settings?.albums_enabled !== false || !!settings?.allow_lossless || !!settings?.allow_overriding_strip_exif || !!settings?.allow_overriding_expiry,
 )
-// 0 asks the backend for lossless, overriding its default quality, which PNG refuses.
-const qualityValue = () =>
-  losslessSelected.value || (settings?.allow_overriding_compression && effectiveFormat.value === 'png') ? 0 : showCompression.value ? quality.value : undefined
+const losslessValue = () => (settings?.allow_lossless ? lossless.value : undefined)
 const stripExifValue = () => (settings?.allow_overriding_strip_exif ? stripExif.value : undefined)
 const expiryDaysValue = () => (settings?.allow_overriding_expiry ? (expiryDays.value ?? undefined) : undefined)
 // Puts the uploaded images in the picked album, if any; resolves either way so
@@ -276,7 +227,7 @@ const uploadAll = (items: Selected[]) => {
         chain.then(() => {
           item.status = 'uploading'
           return api
-            .upload(item.file, qualityValue(), formatOverride.value === 'default' ? undefined : formatOverride.value, stripExifValue(), expiryDaysValue(), {
+            .upload(item.file, losslessValue(), stripExifValue(), expiryDaysValue(), {
               onUploadProgress: (event) => {
                 item.progress = event.total ? Math.round((event.loaded / event.total) * 100) : 0
                 // Bytes all sent: backend is now processing, switch to indeterminate.
@@ -385,13 +336,7 @@ const rehost = () => {
   // no client-side transfer to track, just the processing phase.
   phase.value = 'processing'
   api
-    .uploadUrl(
-      { url: urlInput.value },
-      qualityValue(),
-      formatOverride.value === 'default' ? undefined : formatOverride.value,
-      stripExifValue(),
-      expiryDaysValue(),
-    )
+    .uploadUrl({ url: urlInput.value }, losslessValue(), stripExifValue(), expiryDaysValue())
     .then((uploaded) => addToAlbum([uploaded.data.id]).then(() => uploaded))
     .then((uploaded) => {
       router.push({ name: 'Uploaded', query: { id: uploaded.data.id, url: uploaded.data.url, mediumUrl: uploaded.data.medium_url } })
@@ -484,16 +429,6 @@ const rehost = () => {
   gap: 4px;
 }
 .format-row label {
-  color: var(--p-text-muted-color);
-  font-size: 0.875rem;
-}
-.quality-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 0 4px;
-}
-.quality-row label {
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
 }

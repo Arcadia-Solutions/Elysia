@@ -64,132 +64,60 @@ fn validate_rejects_default_compression_without_format() {
 }
 
 #[test]
-fn validate_lossless_incapable_format_needs_quality_source() {
-    // Base: valid AVIF (no lossless mode) processing config.
-    let mut settings = test_settings();
+fn validate_compression_matches_format() {
+    let mut settings = ElysiaSettings {
+        max_file_size_bytes: 50 * 1024 * 1024,
+        max_width_pixels: 10_000,
+        max_height_pixels: 10_000,
+        ..webp_settings()
+    };
+    assert!(settings.validate().is_ok());
+
+    // AVIF has no lossless mode: it needs a default compression.
     settings.default_target_file_format = Some(TargetFormat::Avif);
-    settings.max_file_size_bytes = 50 * 1024 * 1024;
-    settings.max_width_pixels = 10_000;
-    settings.max_height_pixels = 10_000;
-
-    // No default compression and no override: no quality source, rejected.
-    settings.default_compression = 0;
-    settings.allow_overriding_compression = false;
     assert!(settings.validate().is_err());
-
-    // A default compression supplies the quality.
     settings.default_compression = 80;
     assert!(settings.validate().is_ok());
 
-    // Or allowing per-upload override does.
-    settings.default_compression = 0;
-    settings.allow_overriding_compression = true;
+    // PNG has no lossy mode.
+    settings.default_target_file_format = Some(TargetFormat::Png);
+    assert!(settings.validate().is_err());
+}
+
+#[test]
+fn validate_lossless_needs_lossy_default_in_lossless_capable_format() {
+    let mut settings = ElysiaSettings {
+        max_file_size_bytes: 50 * 1024 * 1024,
+        max_width_pixels: 10_000,
+        max_height_pixels: 10_000,
+        ..webp_settings()
+    };
+    settings.allow_lossless = true;
+    // Already lossless by default.
+    assert!(settings.validate().is_err());
+    settings.default_compression = 80;
     assert!(settings.validate().is_ok());
-
-    // A lossless-capable default (WebP) is fine with neither.
-    settings.default_target_file_format = Some(TargetFormat::Webp);
-    settings.allow_overriding_compression = false;
-    assert!(settings.validate().is_ok());
+    settings.default_target_file_format = Some(TargetFormat::Avif);
+    assert!(settings.validate().is_err());
 }
 
 #[test]
-fn default_compression_applies_when_none_requested() {
+fn lossless_request_respects_allow_flag() {
     let mut settings = webp_settings();
-    settings.default_compression = 50;
-    let options = UploadOptionsQuery {
-        lossy_compression_value: None,
-        target_file_format: None,
-        strip_exif: None,
-        expiry_days: None,
-    }
-    .into_options(&settings)
-    .unwrap();
-    assert_eq!(options.lossy_compression_value, Some(50));
-}
-
-#[test]
-fn zero_requests_lossless_over_default() {
-    let mut settings = webp_settings();
-    settings.default_compression = 50;
-    let options = UploadOptionsQuery {
-        lossy_compression_value: Some(0),
-        target_file_format: None,
-        strip_exif: None,
-        expiry_days: None,
-    }
-    .into_options(&settings)
-    .unwrap();
-    assert_eq!(options.lossy_compression_value, None);
-}
-
-#[test]
-fn request_overrides_default_when_allowed() {
-    let mut settings = webp_settings();
-    settings.default_compression = 50;
-    let options = UploadOptionsQuery {
-        lossy_compression_value: Some(90),
-        target_file_format: None,
-        strip_exif: None,
-        expiry_days: None,
-    }
-    .into_options(&settings)
-    .unwrap();
-    assert_eq!(options.lossy_compression_value, Some(90));
-}
-
-#[test]
-fn override_rejected_when_disabled_but_default_still_used() {
-    let mut settings = webp_settings();
-    settings.allow_overriding_compression = false;
     settings.default_compression = 40;
-    assert!(
+    let quality = |settings: &ElysiaSettings, lossless| {
         UploadOptionsQuery {
-            lossy_compression_value: Some(90),
-            target_file_format: None,
-            strip_exif: None,
-            expiry_days: None,
+            lossless,
+            ..Default::default()
         }
-        .into_options(&settings)
-        .is_err()
-    );
-    let options = UploadOptionsQuery {
-        lossy_compression_value: None,
-        target_file_format: None,
-        strip_exif: None,
-        expiry_days: None,
-    }
-    .into_options(&settings)
-    .unwrap();
-    assert_eq!(options.lossy_compression_value, Some(40));
-}
-
-#[test]
-fn file_format_override_respects_allow_flag() {
-    let mut settings = webp_settings();
-
-    // Forbidden by default: a requested format is rejected.
-    assert!(
-        UploadOptionsQuery {
-            lossy_compression_value: None,
-            target_file_format: Some(TargetFormat::Png),
-            strip_exif: None,
-            expiry_days: None,
-        }
-        .into_options(&settings)
-        .is_err()
-    );
-
-    // Allowed: the request wins over the default format.
-    settings.allow_overriding_file_format = true;
-    let options = UploadOptionsQuery {
-        lossy_compression_value: None,
-        target_file_format: Some(TargetFormat::Png),
-        strip_exif: None,
-        expiry_days: None,
-    }
-    .into_options(&settings)
-    .unwrap();
-    assert_eq!(options.target_file_format, Some(TargetFormat::Png));
+        .into_options(settings)
+        .map(|options| options.lossy_compression_value)
+    };
+    assert_eq!(quality(&settings, None).unwrap(), Some(40));
+    assert!(quality(&settings, Some(true)).is_err());
+    settings.allow_lossless = true;
+    assert_eq!(quality(&settings, Some(true)).unwrap(), None);
+    assert_eq!(quality(&settings, Some(false)).unwrap(), Some(40));
 }
 
 #[test]
@@ -199,8 +127,7 @@ fn strip_exif_override_respects_allow_flag() {
 
     // Allowed by default: a request wins over the configured default.
     let options = UploadOptionsQuery {
-        lossy_compression_value: None,
-        target_file_format: None,
+        lossless: None,
         strip_exif: Some(false),
         expiry_days: None,
     }
@@ -212,8 +139,7 @@ fn strip_exif_override_respects_allow_flag() {
     settings.allow_overriding_strip_exif = false;
     assert!(
         UploadOptionsQuery {
-            lossy_compression_value: None,
-            target_file_format: None,
+            lossless: None,
             strip_exif: Some(false),
             expiry_days: None,
         }
@@ -221,8 +147,7 @@ fn strip_exif_override_respects_allow_flag() {
         .is_err()
     );
     let options = UploadOptionsQuery {
-        lossy_compression_value: None,
-        target_file_format: None,
+        lossless: None,
         strip_exif: None,
         expiry_days: None,
     }
@@ -442,18 +367,6 @@ async fn feature_off_stores_as_is_with_no_actions(pool: PgPool) {
     assert!(stored.actions.is_none());
 }
 
-#[sqlx::test]
-async fn upload_rejects_compression_when_feature_off(pool: PgPool) {
-    let status = upload_status_with_query(
-        pool,
-        test_settings(),
-        real_png(8, 8),
-        "lossy_compression_value=80",
-    )
-    .await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-}
-
 /// A real baseline JPEG carrying an EXIF APP1 segment, with an Orientation tag
 /// when `orientation` is set. `color` varies the pixels so two fixtures hash
 /// differently (the store dedups identical sources).
@@ -631,51 +544,14 @@ async fn exif_orientation_is_applied(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn upload_rejects_quality_above_100(pool: PgPool) {
-    let status = upload_status_with_query(
-        pool,
-        webp_settings(),
-        real_png(8, 8),
-        "lossy_compression_value=150",
-    )
-    .await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-}
-
-#[sqlx::test]
-async fn upload_accepts_quality_zero_as_lossless(pool: PgPool) {
-    let status = upload_status_with_query(
-        pool,
-        webp_settings(),
-        real_png(8, 8),
-        "lossy_compression_value=0",
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-}
-
-#[sqlx::test]
-async fn upload_accepts_compression_when_feature_on(pool: PgPool) {
-    let status = upload_status_with_query(
-        pool,
-        webp_settings(),
-        real_png(8, 8),
-        "lossy_compression_value=80",
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-}
-
-#[sqlx::test]
-async fn upload_to_png_with_default_compression_is_rejected(pool: PgPool) {
+async fn upload_accepts_lossless_when_allowed(pool: PgPool) {
     let settings = ElysiaSettings {
         default_compression: 75,
-        allow_overriding_file_format: true,
+        allow_lossless: true,
         ..webp_settings()
     };
-    let status =
-        upload_status_with_query(pool, settings, real_png(8, 8), "target_file_format=png").await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let status = upload_status_with_query(pool, settings, real_png(8, 8), "lossless=true").await;
+    assert_eq!(status, StatusCode::OK);
 }
 
 #[test]

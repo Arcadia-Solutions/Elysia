@@ -326,17 +326,13 @@ export interface ElysiaSettings {
      */
     'albums_enabled'?: boolean;
     /**
-     * When false, an upload may not request its own compression and the default is always used.
+     * When true, an upload may ask for lossless instead of the default compression.
      */
-    'allow_overriding_compression'?: boolean;
+    'allow_lossless'?: boolean;
     /**
      * When false, an upload may not request its own expiry and the default is always used.
      */
     'allow_overriding_expiry'?: boolean;
-    /**
-     * When false, an upload may not request its own target file format and the default is always used.
-     */
-    'allow_overriding_file_format'?: boolean;
     /**
      * When false, an upload may not request its own EXIF-stripping choice and the default is always used.
      */
@@ -350,7 +346,7 @@ export interface ElysiaSettings {
      */
     'allowed_referrers'?: Array<string>;
     /**
-     * Lossy quality (1-100) applied when an upload requests none; 0 = none.
+     * Lossy quality (1-100) applied to uploads; 0 = lossless.
      */
     'default_compression'?: number;
     /**
@@ -945,17 +941,13 @@ export interface PublicElysiaSettings {
      */
     'albums_enabled': boolean;
     /**
-     * Whether an upload may request its own compression quality; drives the quality slider on the upload page.
+     * Whether an upload may ask for lossless; drives the lossless toggle on the upload page.
      */
-    'allow_overriding_compression': boolean;
+    'allow_lossless': boolean;
     /**
      * Whether an upload may pick its own expiry; drives the expiry control on the upload page.
      */
     'allow_overriding_expiry': boolean;
-    /**
-     * Whether an upload may pick its own target file format; drives the format selector on the upload page.
-     */
-    'allow_overriding_file_format': boolean;
     /**
      * Whether an upload may choose to strip its own metadata; drives the EXIF-stripping control on the upload page.
      */
@@ -1409,20 +1401,14 @@ export interface UploadOptionsQuery {
      */
     'expiry_days'?: number | null;
     /**
-     * Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
+     * True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
      */
-    'lossy_compression_value'?: number | null;
+    'lossless'?: boolean | null;
     /**
      * Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      */
     'strip_exif'?: boolean | null;
-    /**
-     * Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
-     */
-    'target_file_format'?: TargetFormat | null;
 }
-
-
 export interface UploadResponse {
     /**
      * What processing changed; null when the file is stored as uploaded.
@@ -3463,14 +3449,13 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * 
          * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        upload: async (file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        upload: async (file: File, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'file' is not null or undefined
             assertParamExists('upload', 'file', file)
             const localVarPath = `/api/upload`;
@@ -3486,12 +3471,8 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarQueryParameter = {} as any;
             const localVarFormParams = new ((configuration && configuration.formDataCtor) || FormData)();
 
-            if (lossyCompressionValue !== undefined) {
-                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
-            }
-
-            if (targetFileFormat !== undefined) {
-                localVarQueryParameter['target_file_format'] = targetFileFormat;
+            if (lossless !== undefined) {
+                localVarQueryParameter['lossless'] = lossless;
             }
 
             if (stripExif !== undefined) {
@@ -3523,14 +3504,13 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * 
          * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        uploadUrl: async (uploadUrlRequest: UploadUrlRequest, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'uploadUrlRequest' is not null or undefined
             assertParamExists('uploadUrl', 'uploadUrlRequest', uploadUrlRequest)
             const localVarPath = `/api/upload-url`;
@@ -3545,12 +3525,8 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-            if (lossyCompressionValue !== undefined) {
-                localVarQueryParameter['lossy_compression_value'] = lossyCompressionValue;
-            }
-
-            if (targetFileFormat !== undefined) {
-                localVarQueryParameter['target_file_format'] = targetFileFormat;
+            if (lossless !== undefined) {
+                localVarQueryParameter['lossless'] = lossless;
             }
 
             if (stripExif !== undefined) {
@@ -3701,15 +3677,14 @@ export const ImagesApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossyCompressionValue, targetFileFormat, stripExif, expiryDays, options);
+        async upload(file: File, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.upload(file, lossless, stripExif, expiryDays, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ImagesApi.upload']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3717,15 +3692,14 @@ export const ImagesApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, expiryDays, options);
+        async uploadUrl(uploadUrlRequest: UploadUrlRequest, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadUrl(uploadUrlRequest, lossless, stripExif, expiryDays, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ImagesApi.uploadUrl']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3829,28 +3803,26 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
         /**
          * 
          * @param {File} file 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.upload(file, lossyCompressionValue, targetFileFormat, stripExif, expiryDays, options).then((request) => request(axios, basePath));
+        upload(file: File, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.upload(file, lossless, stripExif, expiryDays, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @param {UploadUrlRequest} uploadUrlRequest 
-         * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-         * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+         * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
          * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
          * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
-            return localVarFp.uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, expiryDays, options).then((request) => request(axios, basePath));
+        uploadUrl(uploadUrlRequest: UploadUrlRequest, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig): AxiosPromise<UploadResponse> {
+            return localVarFp.uploadUrl(uploadUrlRequest, lossless, stripExif, expiryDays, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -3958,29 +3930,27 @@ export class ImagesApi extends BaseAPI {
     /**
      * 
      * @param {File} file 
-     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-     * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+     * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
      * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public upload(file: File, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig) {
-        return ImagesApiFp(this.configuration).upload(file, lossyCompressionValue, targetFileFormat, stripExif, expiryDays, options).then((request) => request(this.axios, this.basePath));
+    public upload(file: File, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).upload(file, lossless, stripExif, expiryDays, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @param {UploadUrlRequest} uploadUrlRequest 
-     * @param {number} [lossyCompressionValue] Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the configured default. Requires a configured target format.
-     * @param {TargetFormat} [targetFileFormat] Requested output format; absent uses the configured default. Rejected unless overriding the file format is allowed in settings.
+     * @param {boolean} [lossless] True encodes losslessly instead of applying the configured default compression; absent uses the default. Rejected unless lossless is allowed in settings.
      * @param {boolean} [stripExif] Requested EXIF-stripping choice; absent uses the configured default. Rejected unless overriding EXIF stripping is allowed in settings.
      * @param {number} [expiryDays] Days after which the image is deleted, or 0 to never expire; absent uses the configured default. Rejected unless overriding the expiry is allowed in settings.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossyCompressionValue?: number, targetFileFormat?: TargetFormat, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig) {
-        return ImagesApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossyCompressionValue, targetFileFormat, stripExif, expiryDays, options).then((request) => request(this.axios, this.basePath));
+    public uploadUrl(uploadUrlRequest: UploadUrlRequest, lossless?: boolean, stripExif?: boolean, expiryDays?: number, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).uploadUrl(uploadUrlRequest, lossless, stripExif, expiryDays, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

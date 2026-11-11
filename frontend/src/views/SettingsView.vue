@@ -47,12 +47,6 @@
         />
       </div>
 
-      <div class="field">
-        <label>{{ $t('settings.allow_overriding_file_format.label') }}</label>
-        <small>{{ $t('settings.allow_overriding_file_format.help') }}</small>
-        <ToggleSwitch v-model="form.allow_overriding_file_format" />
-      </div>
-
       <div
         class="section"
         :class="{ disabled: !form.default_target_file_format }"
@@ -79,22 +73,32 @@
         <div class="field">
           <label>{{ $t('settings.default_compression.label') }}</label>
           <small>{{ $t('settings.default_compression.help') }}</small>
-          <InputNumber v-model="form.default_compression" size="small" :min="0" :max="100" fluid :disabled="!form.default_target_file_format" />
+          <InputNumber
+            v-model="form.default_compression"
+            size="small"
+            :min="0"
+            :max="100"
+            fluid
+            :disabled="!form.default_target_file_format"
+            :invalid="!!errors.default_compression"
+          />
+          <Message v-if="errors.default_compression" severity="error" size="small" variant="simple">{{ errors.default_compression }}</Message>
         </div>
 
         <div
           class="field"
           v-tooltip="
-            compressionOverrideForced && form.default_target_file_format
-              ? { value: $t('settings.allow_overriding_compression.forced_help'), showDelay: 150 }
+            form.default_target_file_format && !losslessAllowed
+              ? {
+                  value: form.default_compression === 0 ? $t('settings.allow_lossless.already_lossless') : $t('settings.allow_lossless.format_unsupported'),
+                  showDelay: 150,
+                }
               : undefined
           "
         >
-          <label>{{ $t('settings.allow_overriding_compression.label') }}</label>
-          <small>{{
-            compressionOverrideForced ? $t('settings.allow_overriding_compression.forced_help') : $t('settings.allow_overriding_compression.help')
-          }}</small>
-          <ToggleSwitch v-model="form.allow_overriding_compression" :disabled="!form.default_target_file_format || compressionOverrideForced" />
+          <label>{{ $t('settings.allow_lossless.label') }}</label>
+          <small>{{ $t('settings.allow_lossless.help') }}</small>
+          <ToggleSwitch v-model="form.allow_lossless" :disabled="!losslessAllowed" />
         </div>
       </div>
     </Panel>
@@ -304,10 +308,9 @@ const form = reactive<Required<ElysiaSettings>>({
   target_width_pixels: 0,
   target_height_pixels: 0,
   default_target_file_format: null,
-  allow_overriding_file_format: false,
   target_file_size_bytes: 0,
   default_compression: 0,
-  allow_overriding_compression: true,
+  allow_lossless: false,
   strip_exif_by_default: false,
   allow_overriding_strip_exif: true,
   medium_width_pixels: 0,
@@ -342,13 +345,12 @@ const targetFormat = computed({
   set: (v: TargetFormat | 'store_as_is') => (form.default_target_file_format = v === 'store_as_is' ? null : v),
 })
 
-// AVIF and JPEG have no lossless mode, so if one can be the output there must be
-// a quality source. With no default compression, per-upload overriding is the
-// only source, so it cannot be turned off.
-const losslessIncapableReachable = computed(() => form.allow_overriding_file_format || ['avif', 'jpg'].includes(form.default_target_file_format ?? ''))
-const compressionOverrideForced = computed(() => losslessIncapableReachable.value && form.default_compression === 0)
-watch(compressionOverrideForced, (forced) => {
-  if (forced) form.allow_overriding_compression = true
+// Mirrors TargetFormat::supports_lossless on the backend, minus PNG (never lossy).
+const lossyAndLosslessFormats = ['webp', 'jpegxl']
+// Lossless is only an alternative to a lossy default, in a format that has it.
+const losslessAllowed = computed(() => form.default_compression > 0 && lossyAndLosslessFormats.includes(form.default_target_file_format ?? ''))
+watch(losslessAllowed, (allowed) => {
+  if (!allowed) form.allow_lossless = false
 })
 
 // Mirrors ElysiaSettings::validate on the backend. The "targets set without a
@@ -359,11 +361,17 @@ const errors = computed(() => {
   if (form.max_file_size_bytes === 0) {
     result.max_file_size_bytes = t('settings.errors.max_file_size_required')
   }
-  // A set default format, an allowed override, or preview generation can all
-  // trigger a server-side decode, so the pixel caps are required in each case.
-  if (form.default_target_file_format || form.allow_overriding_file_format || mediumEnabled.value || thumbnailEnabled.value) {
+  // A set default format or preview generation can trigger a server-side
+  // decode, so the pixel caps are required in each case.
+  if (form.default_target_file_format || mediumEnabled.value || thumbnailEnabled.value) {
     if (form.max_width_pixels === 0) result.max_width_pixels = t('settings.errors.max_dimension_required')
     if (form.max_height_pixels === 0) result.max_height_pixels = t('settings.errors.max_dimension_required')
+  }
+  if (['avif', 'jpg'].includes(form.default_target_file_format ?? '') && form.default_compression === 0) {
+    result.default_compression = t('settings.errors.compression_required')
+  }
+  if (form.default_target_file_format === 'png' && form.default_compression > 0) {
+    result.default_compression = t('settings.errors.png_lossless')
   }
   if (mediumEnabled.value && (form.medium_quality < 1 || form.medium_quality > 100)) {
     result.medium_quality = t('settings.errors.quality_range')

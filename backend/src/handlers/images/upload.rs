@@ -15,7 +15,6 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::middlewares::UploadUser;
 use crate::services::files::{self, Actions, UploadOptions};
-use crate::services::image::TargetFormat;
 use crate::settings::SharedElysiaSettings;
 use crate::settings::{ElysiaSettings, MAX_EXPIRY_DAYS};
 use crate::storage::Storage;
@@ -50,13 +49,10 @@ pub struct UploadResponse {
 #[derive(Debug, Default, Deserialize, ToSchema, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct UploadOptionsQuery {
-    /// Requested lossy quality, 1 to 100, or 0 for lossless; absent uses the
-    /// configured default. Requires a configured target format.
-    #[param(minimum = 0, maximum = 100)]
-    pub lossy_compression_value: Option<u8>,
-    /// Requested output format; absent uses the configured default. Rejected
-    /// unless overriding the file format is allowed in settings.
-    pub target_file_format: Option<TargetFormat>,
+    /// True encodes losslessly instead of applying the configured default
+    /// compression; absent uses the default. Rejected unless lossless is
+    /// allowed in settings.
+    pub lossless: Option<bool>,
     /// Requested EXIF-stripping choice; absent uses the configured default.
     /// Rejected unless overriding EXIF stripping is allowed in settings.
     pub strip_exif: Option<bool>,
@@ -70,22 +66,14 @@ pub struct UploadOptionsQuery {
 
 impl UploadOptionsQuery {
     /// Convert to service options: reject everything while uploads are
-    /// disabled, reject a client-supplied quality when
-    /// overriding is disabled, fall back to the configured default, then reject
-    /// compression when processing is off or the quality is out of range.
+    /// disabled or an option the settings do not allow, else fall back to the
+    /// configured defaults.
     pub fn into_options(self, settings: &ElysiaSettings) -> Result<UploadOptions> {
         if !settings.uploads_enabled {
             return Err(Error::Forbidden);
         }
-        if self.lossy_compression_value.is_some() && !settings.allow_overriding_compression {
-            return Err(Error::BadRequest(
-                "overriding compression is disabled".into(),
-            ));
-        }
-        if self.target_file_format.is_some() && !settings.allow_overriding_file_format {
-            return Err(Error::BadRequest(
-                "overriding the target file format is disabled".into(),
-            ));
+        if self.lossless.is_some() && !settings.allow_lossless {
+            return Err(Error::BadRequest("lossless uploads are disabled".into()));
         }
         if self.strip_exif.is_some() && !settings.allow_overriding_strip_exif {
             return Err(Error::BadRequest(
@@ -105,28 +93,12 @@ impl UploadOptionsQuery {
         let expiry_days =
             Some(self.expiry_days.unwrap_or(settings.default_expiry_days)).filter(|days| *days > 0);
         let strip_exif = self.strip_exif.unwrap_or(settings.strip_exif_by_default);
-        let target_file_format = self
-            .target_file_format
-            .or(settings.default_target_file_format);
-        let default = (settings.default_compression > 0).then_some(settings.default_compression);
-        if self.lossy_compression_value.is_some_and(|q| q > 100) {
-            return Err(Error::BadRequest(
-                "lossy_compression_value must be between 0 and 100".into(),
-            ));
-        }
-        // 0 explicitly requests lossless, overriding the default quality.
-        let lossy_compression_value = match self.lossy_compression_value {
-            Some(0) => None,
-            requested => requested.or(default),
-        };
-        if lossy_compression_value.is_some() && target_file_format.is_none() {
-            return Err(Error::BadRequest(
-                "compression is disabled: no target file format configured".into(),
-            ));
-        }
+        let lossy_compression_value = (settings.default_compression > 0
+            && self.lossless != Some(true))
+        .then_some(settings.default_compression);
         Ok(UploadOptions {
             lossy_compression_value,
-            target_file_format,
+            target_file_format: None,
             strip_exif,
             expiry_days,
             remaining_storage_bytes: None,
