@@ -13,6 +13,7 @@ pub mod metadata;
 pub mod report_image;
 pub mod restore_images;
 pub mod serve;
+pub mod serve_checksum;
 pub mod serve_preview;
 pub mod trash_images;
 pub mod upload;
@@ -38,6 +39,24 @@ pub fn config_public(cfg: &mut ServiceConfig) {
     cfg.route(
         "/i/{filename}",
         get().to(serve::serve).wrap(from_fn(limit_unauthenticated)),
+    )
+    .route(
+        "/ih/{algorithm}/{filename}",
+        get()
+            .to(serve_checksum::serve_image_by_checksum)
+            .wrap(from_fn(limit_unauthenticated)),
+    )
+    .route(
+        "/mh/{algorithm}/{filename}",
+        get()
+            .to(serve_checksum::serve_medium_by_checksum)
+            .wrap(from_fn(limit_unauthenticated)),
+    )
+    .route(
+        "/th/{algorithm}/{filename}",
+        get()
+            .to(serve_checksum::serve_thumbnail_by_checksum)
+            .wrap(from_fn(limit_unauthenticated)),
     )
     .route(
         "/m/{filename}",

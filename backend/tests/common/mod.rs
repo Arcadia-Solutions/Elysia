@@ -122,6 +122,7 @@ pub(crate) fn test_settings() -> ElysiaSettings {
         albums_enabled: true,
         url_uploads: UrlUploads::Everyone,
         uploads_disabled_message: String::new(),
+        checksum_algorithms: Vec::new(),
     }
 }
 
@@ -373,7 +374,7 @@ pub(crate) async fn seed_files(
                 size,
                 width: 1,
                 height: 1,
-                hash: &id,
+                sha256: &id,
                 original_hash: &id,
                 original_ext: "png",
                 original_size: size,

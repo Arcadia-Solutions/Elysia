@@ -16,7 +16,7 @@ pub struct NewFile<'a> {
     pub size: i64,
     pub width: i32,
     pub height: i32,
-    pub hash: &'a str,
+    pub sha256: &'a str,
     pub original_hash: &'a str,
     pub original_ext: &'a str,
     pub original_size: i64,
@@ -50,7 +50,7 @@ pub struct FileRow {
 pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
     let res = sqlx::query!(
         r#"insert into files
-         (id, ext, mime, original_name, size, width, height, hash,
+         (id, ext, mime, original_name, size, width, height, sha256,
           original_hash, original_ext, original_size, original_width, original_height,
           requested_quality, applied_quality, medium_size, thumbnail_size,
           phash, uploaded_by_user_id, api_key_id, expires_at)
@@ -63,7 +63,7 @@ pub async fn insert(pool: &PgPool, f: &NewFile<'_>) -> Result<bool> {
         f.size,
         f.width,
         f.height,
-        f.hash,
+        f.sha256,
         f.original_hash,
         f.original_ext,
         f.original_size,
@@ -194,6 +194,7 @@ pub struct FileMetadata {
     pub original_height: i32,
     pub applied_quality: Option<i32>,
     pub has_medium: bool,
+    pub has_thumbnail: bool,
     pub views: i64,
     pub medium_views: i64,
     pub thumbnail_views: i64,
@@ -223,7 +224,8 @@ pub async fn find_metadata(pool: &PgPool, id: &str) -> Result<Option<FileMetadat
         FileMetadata,
         r#"select files.id, ext, mime, original_name, size, width, height,
                 original_ext, original_size, original_width, original_height, applied_quality,
-                medium_size > 0 as "has_medium!", views, medium_views, thumbnail_views, uploaded_by_user_id,
+                medium_size > 0 as "has_medium!", thumbnail_size > 0 as "has_thumbnail!",
+                views, medium_views, thumbnail_views, uploaded_by_user_id,
                 users.username as uploader_username,
                 to_char(files.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   as "created_at!",
@@ -775,14 +777,14 @@ pub async fn count(
     .await?)
 }
 
-/// Available file whose stored bytes hash to `hash`.
-pub async fn find_record_by_hash(pool: &PgPool, hash: &str) -> Result<Option<FileRecord>> {
+/// Available file whose stored bytes have this SHA-256.
+pub async fn find_record_by_sha256(pool: &PgPool, sha256: &str) -> Result<Option<FileRecord>> {
     Ok(sqlx::query_as!(
         FileRecord,
         r#"select id, ext, mime, original_ext, original_width, original_height,
                 width, height, applied_quality, medium_size > 0 as "has_medium!", thumbnail_size > 0 as "has_thumbnail!"
-         from files where hash = $1 and status = 'available'"#,
-        hash,
+         from files where sha256 = $1 and status = 'available'"#,
+        sha256,
     )
     .fetch_optional(pool)
     .await?)
@@ -925,10 +927,10 @@ pub async fn extend_expiry(pool: &PgPool, id: &str, expiry_days: Option<i32>) ->
 }
 
 /// Flag the trashed files among `ids` that can be served again as available,
-/// returning them: one per hash, none past `TRASH_RETENTION_DAYS` (the wipe is
+/// returning them: one per SHA-256, none past `TRASH_RETENTION_DAYS` (the wipe is
 /// due), and none whose bytes are available again (re-uploaded), so dedup
 /// stays unique. A concurrent restore of the same bytes waits on
-/// `files_hash_idx` and fails once this transaction commits.
+/// `files_sha256_idx` and fails once this transaction commits.
 pub async fn mark_restored(
     connection: &mut PgConnection,
     ids: &[String],
@@ -936,13 +938,13 @@ pub async fn mark_restored(
     Ok(sqlx::query_as!(
         TrashedRow,
         r#"update files set status = 'available', trashed_at = null, trashed_by_id = null
-         where id in (select distinct on (hash) id from files trashed
+         where id in (select distinct on (sha256) id from files trashed
                       where id = any($1) and status = 'trashed'
                         and trashed_at > now() - make_interval(days => $2)
                         and not exists (select 1 from files available
-                                        where available.hash = trashed.hash
+                                        where available.sha256 = trashed.sha256
                                           and available.status = 'available')
-                      order by hash, trashed_at desc)
+                      order by sha256, trashed_at desc)
          returning id, ext"#,
         ids,
         TRASH_RETENTION_DAYS

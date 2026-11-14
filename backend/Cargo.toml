@@ -34,7 +34,7 @@ config = "0.14"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 tempfile = "3"
 futures-util = "0.3"
-sha2 = "0.10"
+sha2 = "0.11"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "avif-native"] }
 img-parts = "0.3"
 webp = "0.3"
@@ -58,6 +58,27 @@ opentelemetry-appender-tracing = "0.32"
 governor = "0.10.4"
 ipnet = { version = "2.12.2", features = ["serde"] }
 rustix = { version = "1", features = ["fs"] }
+ascon-hash256 = "0.1"
+bash-hash = "0.1"
+belt-hash = "0.2"
+blake2 = "0.11"
+fsb = "0.2"
+gost94 = "0.11"
+groestl = "0.11"
+jh = "0.2"
+kupyna = "0.1"
+md2 = "0.11"
+md4 = "0.11"
+md-5 = "0.11"
+ripemd = "0.2"
+sha1 = "0.11"
+sha3 = "0.12"
+shabal = "0.5"
+skein = "0.2"
+sm3 = "0.5"
+streebog = "0.11"
+tiger = "0.3"
+whirlpool = "0.11"
 
 # Argon2 and the image codecs crawl unoptimized; optimize dependencies even in dev and tests.
 [profile.dev.package."*"]

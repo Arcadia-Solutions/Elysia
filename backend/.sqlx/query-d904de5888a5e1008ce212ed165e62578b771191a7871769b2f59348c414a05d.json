@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id, ext, mime, original_ext, original_width, original_height,\n                width, height, applied_quality, medium_size > 0 as \"has_medium!\", thumbnail_size > 0 as \"has_thumbnail!\"\n         from files where hash = $1 and status = 'available'",
+  "query": "select id, ext, mime, original_ext, original_width, original_height,\n                width, height, applied_quality, medium_size > 0 as \"has_medium!\", thumbnail_size > 0 as \"has_thumbnail!\"\n         from files where sha256 = $1 and status = 'available'",
   "describe": {
     "columns": [
       {
@@ -134,5 +134,5 @@
       null
     ]
   },
-  "hash": "90ea28baf3c77f36d2e91a4953eaf80fbc5bf2a82c5af8c8318324379412bfae"
+  "hash": "d904de5888a5e1008ce212ed165e62578b771191a7871769b2f59348c414a05d"
 }

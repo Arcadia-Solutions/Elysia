@@ -563,7 +563,7 @@ fn sample_file(id: &str, uploaded_by_user_id: uuid::Uuid) -> NewFile<'_> {
         width: 2,
         height: 2,
         // Hash tied to the id so distinct ids get distinct (unique) hashes.
-        hash: id,
+        sha256: id,
         original_hash: id,
         original_ext: "png",
         original_size: 33,

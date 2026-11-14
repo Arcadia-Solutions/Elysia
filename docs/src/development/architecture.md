@@ -47,6 +47,12 @@ files are sharded by the first two characters of their id, and trashed files
 move to a separate directory. View counts are kept in memory per file and
 `Referer` host, and flushed to the database every 10 seconds.
 
+`/ih/<algorithm>/<digest>[.<ext>]` is a content-addressed link: it looks the
+checksum of the stored bytes up in `file_checksums`, then serves the file like
+`/i/`; `/mh/` and `/th/` serve its medium and thumbnail the same way. SHA-256 is
+always computed, other algorithms on upload when enabled in the settings, or for
+existing files by the maintenance job.
+
 `/i/<id>` without an extension is the frontend's image page, which is why the
 proxies route on the presence of an extension.
 

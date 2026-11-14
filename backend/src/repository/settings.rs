@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 
 use crate::error::Result;
+use crate::services::checksums::ChecksumAlgorithm;
 use crate::services::image::TargetFormat;
 use crate::settings::{ElysiaSettings, UrlUploads};
 
@@ -22,7 +23,8 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
                    default_storage_quota_bytes, record_referrer_views,
                    terms_of_service, privacy_policy,
                    default_expiry_days, allow_overriding_expiry, albums_enabled,
-                   url_uploads as "url_uploads: UrlUploads", uploads_disabled_message
+                   url_uploads as "url_uploads: UrlUploads", uploads_disabled_message,
+                   checksum_algorithms as "checksum_algorithms: Vec<ChecksumAlgorithm>"
            from elysia_settings where id = $1"#,
         SINGLETON_ID,
     )
@@ -59,6 +61,7 @@ pub async fn load(pool: &PgPool) -> Result<ElysiaSettings> {
         albums_enabled: row.albums_enabled,
         url_uploads: row.url_uploads,
         uploads_disabled_message: row.uploads_disabled_message,
+        checksum_algorithms: row.checksum_algorithms,
     })
 }
 
@@ -81,7 +84,7 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
             albums_enabled = $24, url_uploads = $25,
             uploads_disabled_message = $26,
             thumbnail_width_pixels = $28, thumbnail_height_pixels = $29,
-            thumbnail_quality = $30
+            thumbnail_quality = $30, checksum_algorithms = $31
          where id = $27"#,
         settings.max_file_size_bytes as i64,
         settings.max_width_pixels as i32,
@@ -113,6 +116,7 @@ pub async fn save(pool: &PgPool, settings: &ElysiaSettings) -> Result<()> {
         settings.thumbnail_width_pixels as i32,
         settings.thumbnail_height_pixels as i32,
         settings.thumbnail_quality as i32,
+        &settings.checksum_algorithms as &[ChecksumAlgorithm],
     )
     .execute(pool)
     .await?;

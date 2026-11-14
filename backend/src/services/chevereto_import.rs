@@ -65,10 +65,7 @@ pub struct LinkSettings {
 
 /// Port of Chevereto's `cheveretoID()` encoding (salted, shuffled base 62).
 pub fn encode_id(id: u64, salt: &str, padding: u64) -> String {
-    let hash: String = Sha256::digest(salt.as_bytes())
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect();
+    let hash = crate::services::checksums::to_hex(&Sha256::digest(salt.as_bytes()));
     let mut pairs: Vec<(u8, u8)> = ALPHABET.bytes().zip(hash.bytes()).collect();
     pairs.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
     let digits: Vec<u8> = pairs.into_iter().map(|(character, _)| character).collect();

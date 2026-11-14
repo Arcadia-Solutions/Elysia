@@ -2,13 +2,22 @@
 
 use crate::common;
 
+use std::sync::RwLock;
+
+use actix_web::http::StatusCode;
+use actix_web::test as actix_test;
+use actix_web::{App, web::Data};
 use sqlx::PgPool;
 
 use common::page;
 use elysia::handlers::images::parse_filename;
+use elysia::repository::checksums as checksum_repository;
 use elysia::repository::files::{self, ImagesQuery, ImagesSortBy, SortOrder, ViewKind};
+use elysia::routes;
+use elysia::services::checksums::{self, ChecksumAlgorithm, ComputeChecksumsParams};
 use elysia::services::files::list_images;
 use elysia::services::views::ViewCounter;
+use elysia::settings::ElysiaSettings;
 use elysia::storage::Preview;
 
 #[sqlx::test]
@@ -242,4 +251,158 @@ async fn resets_one_view_counter(pool: PgPool) {
         counters("seen000001").await,
         (1, 0, vec![("a.com".into(), 1)])
     );
+}
+
+#[sqlx::test(fixtures("checksums"))]
+async fn computes_and_serves_checksums(pool: PgPool) {
+    let (storage, _dir) = common::temp_storage();
+    let path = storage.path_for("hashed00", "png");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, b"bytes").unwrap();
+    let sha512 = checksums::hash_file(&path, &[ChecksumAlgorithm::Sha512])
+        .await
+        .unwrap()
+        .remove(0);
+    let coverage = |pool: PgPool| async move {
+        let counts = checksums::counts(&pool).await.unwrap();
+        let files: Vec<_> = counts
+            .counts
+            .iter()
+            .map(|count| (count.algorithm, count.files))
+            .collect();
+        (counts.total_files, files)
+    };
+    assert_eq!(
+        coverage(pool.clone()).await,
+        (1, vec![(ChecksumAlgorithm::Sha256, 1)])
+    );
+
+    let storage = Data::new(storage);
+    let params = ComputeChecksumsParams {
+        algorithms: vec![ChecksumAlgorithm::Sha512],
+    };
+    checksums::start_compute(pool.clone(), storage.clone(), params).unwrap();
+    while checksums::progress().running {
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    let progress = checksums::progress();
+    assert_eq!(
+        (progress.done, progress.total, progress.error),
+        (1, 1, None)
+    );
+    assert_eq!(
+        coverage(pool.clone()).await,
+        (
+            1,
+            vec![
+                (ChecksumAlgorithm::Sha256, 1),
+                (ChecksumAlgorithm::Sha512, 1)
+            ]
+        )
+    );
+
+    let app = actix_test::init_service(
+        App::new()
+            .app_data(Data::new(common::test_config()))
+            .app_data(Data::new(pool))
+            .app_data(storage)
+            .app_data(Data::new(RwLock::new(common::test_settings())))
+            .app_data(Data::new(ViewCounter::default()))
+            .configure(routes::init),
+    )
+    .await;
+    let sha256 = "ab".repeat(32);
+    // The extension is optional and ignored, the digest case-insensitive.
+    // Without generated previews, /mh/ and /th/ serve the image.
+    for uri in [
+        format!("/ih/sha256/{sha256}"),
+        format!("/ih/sha256/{}.jpg", sha256.to_uppercase()),
+        format!("/ih/sha512/{sha512}.png"),
+        format!("/mh/sha256/{sha256}.png"),
+        format!("/th/sha512/{sha512}.png"),
+    ] {
+        let response =
+            actix_test::call_service(&app, actix_test::TestRequest::get().uri(&uri).to_request())
+                .await;
+        assert_eq!(response.status(), StatusCode::OK, "{uri}");
+        assert_eq!(actix_test::read_body(response).await, "bytes");
+    }
+    for uri in [
+        format!("/ih/sha256/{}.png", "cd".repeat(32)),
+        format!("/ih/sha512/{sha256}.png"),
+        format!("/ih/md5/{sha256}.png"),
+        "/ih/sha256/hashed00.png".to_string(),
+    ] {
+        let request = actix_test::TestRequest::get().uri(&uri).to_request();
+        assert_eq!(
+            actix_test::call_service(&app, request).await.status(),
+            StatusCode::NOT_FOUND,
+            "{uri}"
+        );
+    }
+}
+
+#[sqlx::test]
+async fn upload_records_enabled_checksums(pool: PgPool) {
+    let (_, token) = common::test_user(&pool, "hasher").await;
+    let settings = ElysiaSettings {
+        checksum_algorithms: vec![ChecksumAlgorithm::Md5],
+        ..common::test_settings()
+    };
+    let (status, body) =
+        common::upload_with_token(pool.clone(), settings, common::real_png(2, 2), "", &token).await;
+    assert_eq!(status, StatusCode::OK);
+    let id = body["id"].as_str().unwrap();
+    let recorded: Vec<_> = checksum_repository::for_file(&pool, id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| (row.algorithm, row.digest.len()))
+        .collect();
+    assert_eq!(
+        recorded,
+        [
+            (ChecksumAlgorithm::Md5, 32),
+            (ChecksumAlgorithm::Sha256, 64)
+        ]
+    );
+}
+
+#[tokio::test]
+async fn hashes_with_every_algorithm() {
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let digests = checksums::hash_file(file.path(), ChecksumAlgorithm::ALL)
+        .await
+        .unwrap();
+    assert!(digests.iter().all(|digest| !digest.is_empty()));
+    let digest_of = |algorithm| {
+        let index = ChecksumAlgorithm::ALL
+            .iter()
+            .position(|other| *other == algorithm)
+            .unwrap();
+        digests[index].as_str()
+    };
+    assert_eq!(
+        digest_of(ChecksumAlgorithm::Md5),
+        "d41d8cd98f00b204e9800998ecf8427e"
+    );
+    assert_eq!(
+        digest_of(ChecksumAlgorithm::Sha1),
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+    );
+    assert_eq!(
+        digest_of(ChecksumAlgorithm::Sha256),
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
+}
+
+#[test]
+fn serializes_algorithms_by_name() {
+    for algorithm in ChecksumAlgorithm::ALL {
+        assert_eq!(
+            serde_json::to_value(algorithm).unwrap(),
+            algorithm.name(),
+            "{algorithm:?}"
+        );
+    }
 }

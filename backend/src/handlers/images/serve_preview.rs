@@ -1,3 +1,4 @@
+use actix_files::NamedFile;
 use actix_web::{
     HttpRequest, HttpResponse,
     web::{Data, Path},
@@ -90,16 +91,25 @@ fn serve_preview(
 ) -> Result<HttpResponse> {
     let decision = check_referrer(req, base_path, settings)?;
     let (id, ext) = parse_filename(filename)?;
-    let file = match storage.open_preview(id, preview) {
+    let file = match open_preview_or_original(storage, id, ext, preview) {
         Ok(file) => file,
-        Err(_) => match storage.open(id, ext) {
-            Ok(file) => file,
-            Err(_) => {
-                let trashed_file = storage.open_trashed_preview(id, ext, preview);
-                return trashed_response(req, &decision, trashed_file);
-            }
-        },
+        Err(_) => {
+            let trashed_file = storage.open_trashed_preview(id, ext, preview);
+            return trashed_response(req, &decision, trashed_file);
+        }
     };
     views.count(id, &decision.referrer, Some(preview));
     Ok(file_response(req, file, decision.cache_control))
+}
+
+/// Open a stored file's preview, or the file itself when none was generated.
+pub(crate) fn open_preview_or_original(
+    storage: &Storage,
+    id: &str,
+    ext: &str,
+    preview: Preview,
+) -> std::io::Result<NamedFile> {
+    storage
+        .open_preview(id, preview)
+        .or_else(|_| storage.open(id, ext))
 }

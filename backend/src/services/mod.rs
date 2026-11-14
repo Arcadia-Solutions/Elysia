@@ -1,5 +1,6 @@
 pub mod albums;
 pub mod auth;
+pub mod checksums;
 pub mod chevereto_import;
 pub mod files;
 pub mod fixtures;

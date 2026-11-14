@@ -22,6 +22,7 @@
           <div class="tools">
             <ResetViews />
             <RecalculateSizes />
+            <ComputeChecksums />
           </div>
         </TabPanel>
       </TabPanels>
@@ -42,6 +43,7 @@ import SimilarImages from '@/components/maintenance/SimilarImages.vue'
 import UnreferencedImages from '@/components/maintenance/UnreferencedImages.vue'
 import ResetViews from '@/components/maintenance/ResetViews.vue'
 import RecalculateSizes from '@/components/maintenance/RecalculateSizes.vue'
+import ComputeChecksums from '@/components/maintenance/ComputeChecksums.vue'
 
 const TABS = ['unreferenced_images', 'similar_images', 'chevereto_import', 'data_tools']
 

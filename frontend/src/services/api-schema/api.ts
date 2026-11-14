@@ -156,6 +156,146 @@ export interface ChangePasswordRequest {
     'new_password': string;
 }
 /**
+ * A checksum algorithm, as the `checksum_algorithm` Postgres enum.
+ */
+
+export const ChecksumAlgorithm = {
+    AsconHash256: 'ascon_hash256',
+    BashHash256: 'bash_hash256',
+    BashHash384: 'bash_hash384',
+    BashHash512: 'bash_hash512',
+    BeltHash: 'belt_hash',
+    Blake2b128: 'blake2b128',
+    Blake2b256: 'blake2b256',
+    Blake2b512: 'blake2b512',
+    Blake2s128: 'blake2s128',
+    Blake2s256: 'blake2s256',
+    Fsb160: 'fsb160',
+    Fsb224: 'fsb224',
+    Fsb256: 'fsb256',
+    Fsb384: 'fsb384',
+    Fsb512: 'fsb512',
+    Gost94CryptoPro: 'gost94_crypto_pro',
+    Gost94S2015: 'gost94_s2015',
+    Gost94Test: 'gost94_test',
+    Gost94Ua: 'gost94_ua',
+    Groestl224: 'groestl224',
+    Groestl256: 'groestl256',
+    Groestl384: 'groestl384',
+    Groestl512: 'groestl512',
+    Jh224: 'jh224',
+    Jh256: 'jh256',
+    Jh384: 'jh384',
+    Jh512: 'jh512',
+    Kupyna224: 'kupyna224',
+    Kupyna256: 'kupyna256',
+    Kupyna384: 'kupyna384',
+    Kupyna512: 'kupyna512',
+    Md2: 'md2',
+    Md4: 'md4',
+    Md5: 'md5',
+    Ripemd128: 'ripemd128',
+    Ripemd160: 'ripemd160',
+    Ripemd256: 'ripemd256',
+    Ripemd320: 'ripemd320',
+    Sha1: 'sha1',
+    Sha224: 'sha224',
+    Sha256: 'sha256',
+    Sha384: 'sha384',
+    Sha512: 'sha512',
+    Sha512224: 'sha512_224',
+    Sha512256: 'sha512_256',
+    Sha3224: 'sha3_224',
+    Sha3256: 'sha3_256',
+    Sha3384: 'sha3_384',
+    Sha3512: 'sha3_512',
+    Keccak224: 'keccak224',
+    Keccak256: 'keccak256',
+    Keccak384: 'keccak384',
+    Keccak512: 'keccak512',
+    Shabal192: 'shabal192',
+    Shabal224: 'shabal224',
+    Shabal256: 'shabal256',
+    Shabal384: 'shabal384',
+    Shabal512: 'shabal512',
+    Skein256256: 'skein256_256',
+    Skein256512: 'skein256_512',
+    Skein512256: 'skein512_256',
+    Skein512512: 'skein512_512',
+    Skein1024256: 'skein1024_256',
+    Skein1024512: 'skein1024_512',
+    Skein10241024: 'skein1024_1024',
+    Sm3: 'sm3',
+    Streebog256: 'streebog256',
+    Streebog512: 'streebog512',
+    Tiger: 'tiger',
+    Tiger2: 'tiger2',
+    Whirlpool: 'whirlpool'
+} as const;
+
+export type ChecksumAlgorithm = typeof ChecksumAlgorithm[keyof typeof ChecksumAlgorithm];
+
+
+/**
+ * How many available files have a checksum of one algorithm.
+ */
+export interface ChecksumCount {
+    'algorithm': ChecksumAlgorithm;
+    'files': number;
+}
+
+
+/**
+ * Checksum coverage of the available files.
+ */
+export interface ChecksumCounts {
+    /**
+     * One entry per algorithm at least one available file has, in algorithm order.
+     */
+    'counts': Array<ChecksumCount>;
+    /**
+     * Available files.
+     */
+    'total_files': number;
+}
+/**
+ * Content-addressed public URLs of a stored image and its previews, by one checksum of its bytes.
+ */
+export interface ChecksumLinks {
+    'algorithm': ChecksumAlgorithm;
+    /**
+     * Lowercase hex digest of the stored bytes.
+     */
+    'digest': string;
+    'medium_url': string;
+    'thumbnail_url': string;
+    'url': string;
+}
+
+
+/**
+ * State of the current or last checksum computation.
+ */
+export interface ChecksumsProgress {
+    /**
+     * Files hashed so far.
+     */
+    'done': number;
+    /**
+     * Why the last run stopped early, if it did.
+     */
+    'error'?: string | null;
+    /**
+     * Files missing from disk, skipped.
+     */
+    'missing': number;
+    'running': boolean;
+    /**
+     * Files missing one of the algorithms when the run started.
+     */
+    'total': number;
+}
+/**
  * An image that could not be imported.
  */
 export interface CheveretoImportFailure {
@@ -276,6 +416,12 @@ export type CompressionAction = CompressionActionOneOf | string;
 export interface CompressionActionOneOf {
     'lossy_quality': number;
 }
+export interface ComputeChecksumsParams {
+    /**
+     * Algorithms to compute for the available files missing them.
+     */
+    'algorithms': Array<ChecksumAlgorithm>;
+}
 /**
  * File extensions before and after.
  */
@@ -345,6 +491,10 @@ export interface ElysiaSettings {
      * Hostnames (e.g. `example.com`) whose `Referer` may load `/i/` and `/m/`. Empty allows any request, including ones without a `Referer`. Elysia\'s own pages (its host, under the path of `server.public_url`) are always allowed so the web UI keeps showing images.
      */
     'allowed_referrers'?: Array<string>;
+    /**
+     * Checksums computed on upload besides SHA-256, which always is. Each one gives the image links by that checksum.
+     */
+    'checksum_algorithms'?: Array<ChecksumAlgorithm>;
     /**
      * Lossy quality (1-100) applied to uploads; 0 = lossless.
      */
@@ -634,6 +784,10 @@ export interface MetadataResponse {
      * Whether the caller may trash the image: an admin, or its uploader during the hour after upload. False once trashed.
      */
     'can_delete': boolean;
+    /**
+     * Content-addressed links, one per checksum of the stored bytes, SHA-256 first. Not served while trashed.
+     */
+    'checksums': Array<ChecksumLinks>;
     /**
      * Upload time as a UTC ISO-8601 string.
      */
@@ -3346,6 +3500,43 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * Content-addressed link: serves the available image whose stored bytes have this checksum, like `/i/`. SHA-256 checksums always exist, the other algorithms once computed on upload or by the maintenance job. The extension is optional and ignored, the digest case-insensitive. Trashed images are not served.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm
+         * @param {string} filename &lt;hex digest&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveImageByChecksum: async (algorithm: ChecksumAlgorithm, filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'algorithm' is not null or undefined
+            assertParamExists('serveImageByChecksum', 'algorithm', algorithm)
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveImageByChecksum', 'filename', filename)
+            const localVarPath = `/ih/{algorithm}/{filename}`
+                .replace(`{${"algorithm"}}`, encodeURIComponent(String(algorithm)))
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
@@ -3379,6 +3570,43 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
+         * The medium of the image whose stored bytes have this checksum, served like `/m/`, keyed like `/ih/`.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+         * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveMediumByChecksum: async (algorithm: ChecksumAlgorithm, filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'algorithm' is not null or undefined
+            assertParamExists('serveMediumByChecksum', 'algorithm', algorithm)
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveMediumByChecksum', 'filename', filename)
+            const localVarPath = `/mh/{algorithm}/{filename}`
+                .replace(`{${"algorithm"}}`, encodeURIComponent(String(algorithm)))
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
@@ -3388,6 +3616,43 @@ export const ImagesApiAxiosParamCreator = function (configuration?: Configuratio
             // verify required parameter 'filename' is not null or undefined
             assertParamExists('serveThumbnail', 'filename', filename)
             const localVarPath = `/t/{filename}`
+                .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * The thumbnail of the image whose stored bytes have this checksum, served like `/t/`, keyed like `/ih/`.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+         * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnailByChecksum: async (algorithm: ChecksumAlgorithm, filename: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'algorithm' is not null or undefined
+            assertParamExists('serveThumbnailByChecksum', 'algorithm', algorithm)
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('serveThumbnailByChecksum', 'filename', filename)
+            const localVarPath = `/th/{algorithm}/{filename}`
+                .replace(`{${"algorithm"}}`, encodeURIComponent(String(algorithm)))
                 .replace(`{${"filename"}}`, encodeURIComponent(String(filename)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3639,6 +3904,19 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Content-addressed link: serves the available image whose stored bytes have this checksum, like `/i/`. SHA-256 checksums always exist, the other algorithms once computed on upload or by the maintenance job. The extension is optional and ignored, the digest case-insensitive. Trashed images are not served.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm
+         * @param {string} filename &lt;hex digest&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveImageByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveImageByChecksum(algorithm, filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveImageByChecksum']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
@@ -3651,6 +3929,19 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * The medium of the image whose stored bytes have this checksum, served like `/m/`, keyed like `/ih/`.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+         * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveMediumByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveMediumByChecksum(algorithm, filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveMediumByChecksum']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
@@ -3660,6 +3951,19 @@ export const ImagesApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnail(filename, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveThumbnail']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * The thumbnail of the image whose stored bytes have this checksum, served like `/t/`, keyed like `/ih/`.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+         * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async serveThumbnailByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.serveThumbnailByChecksum(algorithm, filename, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ImagesApi.serveThumbnailByChecksum']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -3774,6 +4078,16 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serve(filename, options).then((request) => request(axios, basePath));
         },
         /**
+         * Content-addressed link: serves the available image whose stored bytes have this checksum, like `/i/`. SHA-256 checksums always exist, the other algorithms once computed on upload or by the maintenance job. The extension is optional and ignored, the digest case-insensitive. Trashed images are not served.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm
+         * @param {string} filename &lt;hex digest&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveImageByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveImageByChecksum(algorithm, filename, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
@@ -3783,6 +4097,16 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.serveMedium(filename, options).then((request) => request(axios, basePath));
         },
         /**
+         * The medium of the image whose stored bytes have this checksum, served like `/m/`, keyed like `/ih/`.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+         * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveMediumByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveMediumByChecksum(algorithm, filename, options).then((request) => request(axios, basePath));
+        },
+        /**
          * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
          * @param {string} filename &lt;id&gt;.&lt;ext&gt;
          * @param {*} [options] Override http request option.
@@ -3790,6 +4114,16 @@ export const ImagesApiFactory = function (configuration?: Configuration, basePat
          */
         serveThumbnail(filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.serveThumbnail(filename, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * The thumbnail of the image whose stored bytes have this checksum, served like `/t/`, keyed like `/ih/`.
+         * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+         * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        serveThumbnailByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.serveThumbnailByChecksum(algorithm, filename, options).then((request) => request(axios, basePath));
         },
         /**
          * Move images to the trash: they stop being served to other sites at once (Elysia\'s own pages still show them to admins) and are wiped from disk 30 days later, or at once when `permanent`. Admins may trash any image, uploaders their own during the hour after upload. Unknown or already trashed ids are skipped.
@@ -3898,6 +4232,17 @@ export class ImagesApi extends BaseAPI {
     }
 
     /**
+     * Content-addressed link: serves the available image whose stored bytes have this checksum, like `/i/`. SHA-256 checksums always exist, the other algorithms once computed on upload or by the maintenance job. The extension is optional and ignored, the digest case-insensitive. Trashed images are not served.
+     * @param {ChecksumAlgorithm} algorithm Checksum algorithm
+     * @param {string} filename &lt;hex digest&gt;, optionally followed by .&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveImageByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serveImageByChecksum(algorithm, filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Served straight from disk, without a database lookup. Falls back to the original file when no medium was generated (the image was within the medium box, or medium images were off at store time): its medium URL then carries the original extension. A trashed image\'s medium is still served, uncached, when the `Referer` is one of Elysia\'s own pages.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
@@ -3908,6 +4253,17 @@ export class ImagesApi extends BaseAPI {
     }
 
     /**
+     * The medium of the image whose stored bytes have this checksum, served like `/m/`, keyed like `/ih/`.
+     * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+     * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveMediumByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serveMediumByChecksum(algorithm, filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * The image cropped to the thumbnail box, used by the browse pages. Served like `/m/`, falling back to the original file when no thumbnail was generated.
      * @param {string} filename &lt;id&gt;.&lt;ext&gt;
      * @param {*} [options] Override http request option.
@@ -3915,6 +4271,17 @@ export class ImagesApi extends BaseAPI {
      */
     public serveThumbnail(filename: string, options?: RawAxiosRequestConfig) {
         return ImagesApiFp(this.configuration).serveThumbnail(filename, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * The thumbnail of the image whose stored bytes have this checksum, served like `/t/`, keyed like `/ih/`.
+     * @param {ChecksumAlgorithm} algorithm Checksum algorithm of the image
+     * @param {string} filename &lt;hex digest of the image&gt;, optionally followed by .&lt;ext&gt;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public serveThumbnailByChecksum(algorithm: ChecksumAlgorithm, filename: string, options?: RawAxiosRequestConfig) {
+        return ImagesApiFp(this.configuration).serveThumbnailByChecksum(algorithm, filename, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3961,6 +4328,99 @@ export class ImagesApi extends BaseAPI {
  */
 export const MaintenanceApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
+        /**
+         * Start computing the given checksums of the available images missing them in the background, so their `/ih/`, `/mh/` and `/th/` links work. Images missing from disk are skipped. Follow it with `GET /api/maintenance/checksums/progress`.
+         * @param {ComputeChecksumsParams} computeChecksumsParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        computeChecksums: async (computeChecksumsParams: ComputeChecksumsParams, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'computeChecksumsParams' is not null or undefined
+            assertParamExists('computeChecksums', 'computeChecksumsParams', computeChecksumsParams)
+            const localVarPath = `/api/maintenance/checksums/compute`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(computeChecksumsParams, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * How many available images have a checksum of each algorithm.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getChecksumCounts: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/checksums`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Progress of the current or last checksum computation.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getChecksumsProgress: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/maintenance/checksums/progress`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
         /**
          * Progress of the current or last Chevereto import.
          * @param {*} [options] Override http request option.
@@ -4428,6 +4888,40 @@ export const MaintenanceApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = MaintenanceApiAxiosParamCreator(configuration)
     return {
         /**
+         * Start computing the given checksums of the available images missing them in the background, so their `/ih/`, `/mh/` and `/th/` links work. Images missing from disk are skipped. Follow it with `GET /api/maintenance/checksums/progress`.
+         * @param {ComputeChecksumsParams} computeChecksumsParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async computeChecksums(computeChecksumsParams: ComputeChecksumsParams, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.computeChecksums(computeChecksumsParams, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.computeChecksums']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * How many available images have a checksum of each algorithm.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getChecksumCounts(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ChecksumCounts>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getChecksumCounts(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.getChecksumCounts']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Progress of the current or last checksum computation.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getChecksumsProgress(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ChecksumsProgress>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getChecksumsProgress(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MaintenanceApi.getChecksumsProgress']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Progress of the current or last Chevereto import.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4592,6 +5086,31 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
     const localVarFp = MaintenanceApiFp(configuration)
     return {
         /**
+         * Start computing the given checksums of the available images missing them in the background, so their `/ih/`, `/mh/` and `/th/` links work. Images missing from disk are skipped. Follow it with `GET /api/maintenance/checksums/progress`.
+         * @param {ComputeChecksumsParams} computeChecksumsParams 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        computeChecksums(computeChecksumsParams: ComputeChecksumsParams, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.computeChecksums(computeChecksumsParams, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * How many available images have a checksum of each algorithm.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getChecksumCounts(options?: RawAxiosRequestConfig): AxiosPromise<ChecksumCounts> {
+            return localVarFp.getChecksumCounts(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Progress of the current or last checksum computation.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getChecksumsProgress(options?: RawAxiosRequestConfig): AxiosPromise<ChecksumsProgress> {
+            return localVarFp.getChecksumsProgress(options).then((request) => request(axios, basePath));
+        },
+        /**
          * Progress of the current or last Chevereto import.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4714,6 +5233,34 @@ export const MaintenanceApiFactory = function (configuration?: Configuration, ba
  * MaintenanceApi - object-oriented interface
  */
 export class MaintenanceApi extends BaseAPI {
+    /**
+     * Start computing the given checksums of the available images missing them in the background, so their `/ih/`, `/mh/` and `/th/` links work. Images missing from disk are skipped. Follow it with `GET /api/maintenance/checksums/progress`.
+     * @param {ComputeChecksumsParams} computeChecksumsParams 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public computeChecksums(computeChecksumsParams: ComputeChecksumsParams, options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).computeChecksums(computeChecksumsParams, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * How many available images have a checksum of each algorithm.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getChecksumCounts(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).getChecksumCounts(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Progress of the current or last checksum computation.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getChecksumsProgress(options?: RawAxiosRequestConfig) {
+        return MaintenanceApiFp(this.configuration).getChecksumsProgress(options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * Progress of the current or last Chevereto import.
      * @param {*} [options] Override http request option.
