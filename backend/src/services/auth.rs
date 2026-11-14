@@ -308,5 +308,5 @@ pub fn generate_api_key() -> GeneratedApiKey {
 
 /// SHA-256 (hex) of an API key or refresh token, as stored.
 pub fn hash_token(token: &str) -> String {
-    format!("{:x}", Sha256::digest(token.as_bytes()))
+    crate::services::checksums::to_hex(&Sha256::digest(token.as_bytes()))
 }

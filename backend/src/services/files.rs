@@ -8,8 +8,11 @@ use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
+use crate::repository::checksums as checksum_repository;
+use crate::repository::checksums::ChecksumRow;
 use crate::repository::files::{self, NewFile};
 use crate::repository::users;
+use crate::services::checksums::{self, ChecksumAlgorithm};
 use crate::services::image::{self, TargetFormat};
 use crate::services::paginate;
 use crate::settings::ElysiaSettings;
@@ -74,8 +77,53 @@ pub fn preview_url(
     preview: Preview,
     generated: bool,
 ) -> String {
-    let extension = if generated { "webp" } else { ext };
-    format!("{public_url}/{}/{id}.{extension}", preview.letter())
+    format!(
+        "{public_url}/{}/{id}.{}",
+        preview.letter(),
+        preview_extension(ext, generated)
+    )
+}
+
+/// Extension of a preview: generated ones are always WebP, without one the
+/// route falls back to the original.
+fn preview_extension(ext: &str, generated: bool) -> &str {
+    if generated { "webp" } else { ext }
+}
+
+/// Content-addressed public URLs of a stored image and its previews, by one
+/// checksum of its bytes.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct ChecksumLinks {
+    pub algorithm: ChecksumAlgorithm,
+    /// Lowercase hex digest of the stored bytes.
+    pub digest: String,
+    pub url: String,
+    pub medium_url: String,
+    pub thumbnail_url: String,
+}
+
+/// Build the `/ih/`, `/mh/` and `/th/` links of a stored image from one checksum.
+pub fn checksum_links(
+    public_url: &str,
+    checksum: ChecksumRow,
+    ext: &str,
+    has_medium: bool,
+    has_thumbnail: bool,
+) -> ChecksumLinks {
+    let link = |prefix: &str, extension: &str| {
+        format!(
+            "{public_url}/{prefix}h/{}/{}.{extension}",
+            checksum.algorithm.name(),
+            checksum.digest
+        )
+    };
+    ChecksumLinks {
+        url: link("i", ext),
+        medium_url: link("m", preview_extension(ext, has_medium)),
+        thumbnail_url: link("t", preview_extension(ext, has_thumbnail)),
+        algorithm: checksum.algorithm,
+        digest: checksum.digest,
+    }
 }
 
 /// Fetch one page (1-based) of images matching the query, only `uploader`'s
@@ -426,7 +474,7 @@ pub async fn store_upload(
         | Orientation::Rotate270FlipH => (dimensions.height as i32, dimensions.width as i32),
         _ => (dimensions.width as i32, dimensions.height as i32),
     };
-    let original_hash = hash_file(path).await?;
+    let original_hash = checksums::sha256_file(path).await?;
     let requested_quality = options.lossy_compression_value.map(|q| q as i32);
 
     // Same source under the same requested quality was already processed.
@@ -440,7 +488,7 @@ pub async fn store_upload(
     }
     // The source is a file we already store (e.g. a re-upload of a processed output):
     // re-encoding it would only produce a degraded duplicate.
-    if let Some(record) = files::find_record_by_hash(pool, &original_hash).await? {
+    if let Some(record) = files::find_record_by_sha256(pool, &original_hash).await? {
         return keep_existing(pool, record, options).await;
     }
 
@@ -558,10 +606,13 @@ pub async fn store_upload(
         previews = generate_previews(source_bytes, passthrough_previews).await?;
     }
 
-    let hash = hash_file(output.temp.path()).await?;
+    let checksum_algorithms = checksums::upload_algorithms(&settings.checksum_algorithms);
+    let digests = checksums::hash_file(output.temp.path(), &checksum_algorithms).await?;
+    // SHA-256 comes first.
+    let sha256 = digests[0].clone();
 
     // A different source that produced identical output bytes.
-    if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
+    if let Some(record) = files::find_record_by_sha256(pool, &sha256).await? {
         return keep_existing(pool, record, options).await;
     }
 
@@ -618,7 +669,7 @@ pub async fn store_upload(
                 size: output.size,
                 width: output.width,
                 height: output.height,
-                hash: &hash,
+                sha256: &sha256,
                 original_hash: &original_hash,
                 original_ext: source_ext,
                 original_size: size as i64,
@@ -643,6 +694,14 @@ pub async fn store_upload(
         .await;
         match inserted {
             Ok(true) => {
+                // SHA-256 went in with the row.
+                checksum_repository::set(
+                    pool,
+                    &candidate,
+                    &checksum_algorithms[1..],
+                    &digests[1..],
+                )
+                .await?;
                 id = Some(candidate);
                 break;
             }
@@ -655,7 +714,7 @@ pub async fn store_upload(
                 }
                 // A failed insert is an id collision or a concurrent upload of the same
                 // bytes winning the hash race; in the latter case, reuse its row.
-                if let Some(record) = files::find_record_by_hash(pool, &hash).await? {
+                if let Some(record) = files::find_record_by_sha256(pool, &sha256).await? {
                     return keep_existing(pool, record, options).await;
                 }
             }
@@ -771,24 +830,6 @@ fn existing_stored(record: files::FileRecord) -> StoredFile {
         has_medium: record.has_medium,
         has_thumbnail: record.has_thumbnail,
     }
-}
-
-/// SHA-256 of a file's bytes, as a hex string. Streamed so large files never
-/// buffer in memory.
-async fn hash_file(path: &std::path::Path) -> Result<String> {
-    use sha2::{Digest, Sha256};
-
-    let mut file = tokio::fs::File::open(path).await?;
-    let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 8192];
-    loop {
-        let read = file.read(&mut buffer).await?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..read]);
-    }
-    Ok(format!("{:x}", hasher.finalize()))
 }
 
 /// Format a byte count with a human-readable binary unit (e.g. "1.5 MiB").

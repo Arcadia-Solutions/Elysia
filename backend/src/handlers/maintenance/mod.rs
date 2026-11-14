@@ -1,5 +1,8 @@
 use actix_web::web::{ServiceConfig, get, post};
 
+pub mod compute_checksums;
+pub mod get_checksum_counts;
+pub mod get_checksums_progress;
 pub mod get_chevereto_import_progress;
 pub mod get_similar_progress;
 pub mod get_unreferenced_progress;
@@ -58,6 +61,18 @@ pub fn config(cfg: &mut ServiceConfig) {
     .route(
         "/chevereto-import/failures",
         get().to(list_chevereto_import_failures::list_chevereto_import_failures),
+    )
+    .route(
+        "/checksums",
+        get().to(get_checksum_counts::get_checksum_counts),
+    )
+    .route(
+        "/checksums/compute",
+        post().to(compute_checksums::compute_checksums),
+    )
+    .route(
+        "/checksums/progress",
+        get().to(get_checksums_progress::get_checksums_progress),
     )
     .route("/views/reset", post().to(reset_views::reset_views))
     .route(

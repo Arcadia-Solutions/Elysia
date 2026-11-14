@@ -1,5 +1,6 @@
 pub mod albums;
 pub mod api_keys;
+pub mod checksums;
 pub mod chevereto_import;
 pub mod files;
 pub mod reports;

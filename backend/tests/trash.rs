@@ -80,7 +80,7 @@ async fn trashes_own_files(pool: PgPool) {
     assert_eq!(stats::format_totals(&pool).await.unwrap()[0].files, 1);
     // The same bytes may be uploaded again: dedup only matches available files.
     assert!(
-        files::find_record_by_hash(&pool, &id)
+        files::find_record_by_sha256(&pool, &id)
             .await
             .unwrap()
             .is_none()
@@ -187,7 +187,7 @@ async fn insert_expiring_png(
             size: 1,
             width: 1,
             height: 1,
-            hash,
+            sha256: hash,
             original_hash: hash,
             original_ext: "png",
             original_size: 1,

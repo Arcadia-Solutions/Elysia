@@ -142,7 +142,9 @@
       "link": "Link",
       "markdown": "Markdown",
       "bbcode": "BBCode",
-      "html": "HTML"
+      "html": "HTML",
+      "thumbnail": "Thumbnail",
+      "by_checksum": "By {algorithm}"
     },
     "processing": {
       "title": "Processing",
@@ -413,6 +415,10 @@
     },
     "privacy_policy": {
       "label": "Privacy policy"
+    },
+    "checksum_algorithms": {
+      "label": "Extra checksums",
+      "help": "Computed on upload besides SHA-256, which always is. Each one gives the images links by that checksum (/ih/, /mh/ and /th/). Compute them for existing images from the maintenance page."
     }
   },
   "reports": {
@@ -486,6 +492,15 @@
         "help": "Reads the size on disk of every available and trashed image and of its medium image and thumbnail, and records it for the stats and storage quotas. Images missing from disk are left unchanged.",
         "done": "Sizes recalculated: {updated} images updated, {missing} missing from disk",
         "confirm": "Read the size on disk of every image? This can take a while on large instances."
+      },
+      "compute_checksums": {
+        "title": "Compute checksums",
+        "help": "Computes the chosen checksums of the available images missing them in the background, so their links by checksum work. Images missing from disk are skipped.",
+        "coverage": "{count} / {total} images",
+        "algorithms": "Algorithms",
+        "start": "Compute",
+        "progress": "{done} / {total} images hashed",
+        "done": "Checksums computed: {done} images, {missing} missing from disk"
       }
     },
     "unreferenced_images": {
@@ -638,5 +653,78 @@
     "agree": "I accept the",
     "sso_intro": "One last step before your account is created.",
     "continue": "Create account"
+  },
+  "checksums": {
+    "ascon_hash256": "Ascon-Hash256",
+    "bash_hash256": "bash-hash256",
+    "bash_hash384": "bash-hash384",
+    "bash_hash512": "bash-hash512",
+    "belt_hash": "BelT hash",
+    "blake2b128": "BLAKE2b-128",
+    "blake2b256": "BLAKE2b-256",
+    "blake2b512": "BLAKE2b-512",
+    "blake2s128": "BLAKE2s-128",
+    "blake2s256": "BLAKE2s-256",
+    "fsb160": "FSB-160",
+    "fsb224": "FSB-224",
+    "fsb256": "FSB-256",
+    "fsb384": "FSB-384",
+    "fsb512": "FSB-512",
+    "gost94_crypto_pro": "GOST R 34.11-94 (CryptoPro)",
+    "gost94_s2015": "GOST R 34.11-94 (2015)",
+    "gost94_test": "GOST R 34.11-94 (test)",
+    "gost94_ua": "GOST R 34.11-94 (UA)",
+    "groestl224": "Grøstl-224",
+    "jh224": "JH-224",
+    "kupyna224": "Kupyna-224",
+    "groestl256": "Grøstl-256",
+    "jh256": "JH-256",
+    "kupyna256": "Kupyna-256",
+    "groestl384": "Grøstl-384",
+    "jh384": "JH-384",
+    "kupyna384": "Kupyna-384",
+    "groestl512": "Grøstl-512",
+    "jh512": "JH-512",
+    "kupyna512": "Kupyna-512",
+    "md2": "MD2",
+    "md4": "MD4",
+    "md5": "MD5",
+    "ripemd128": "RIPEMD-128",
+    "ripemd160": "RIPEMD-160",
+    "ripemd256": "RIPEMD-256",
+    "ripemd320": "RIPEMD-320",
+    "sha1": "SHA-1",
+    "sha224": "SHA-224",
+    "sha256": "SHA-256",
+    "sha384": "SHA-384",
+    "sha512": "SHA-512",
+    "sha512_224": "SHA-512/224",
+    "sha512_256": "SHA-512/256",
+    "sha3_224": "SHA3-224",
+    "keccak224": "Keccak-224",
+    "sha3_256": "SHA3-256",
+    "keccak256": "Keccak-256",
+    "sha3_384": "SHA3-384",
+    "keccak384": "Keccak-384",
+    "sha3_512": "SHA3-512",
+    "keccak512": "Keccak-512",
+    "shabal192": "Shabal-192",
+    "shabal224": "Shabal-224",
+    "shabal256": "Shabal-256",
+    "shabal384": "Shabal-384",
+    "shabal512": "Shabal-512",
+    "skein256_256": "Skein-256-256",
+    "skein256_512": "Skein-256-512",
+    "skein512_256": "Skein-512-256",
+    "skein512_512": "Skein-512-512",
+    "skein1024_256": "Skein-1024-256",
+    "skein1024_512": "Skein-1024-512",
+    "skein1024_1024": "Skein-1024-1024",
+    "sm3": "SM3",
+    "streebog256": "Streebog-256",
+    "streebog512": "Streebog-512",
+    "tiger": "Tiger",
+    "tiger2": "Tiger2",
+    "whirlpool": "Whirlpool"
   }
 }

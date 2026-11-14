@@ -1,0 +1,154 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update elysia_settings set\n            max_file_size_bytes = $1, max_width_pixels = $2, max_height_pixels = $3,\n            target_width_pixels = $4, target_height_pixels = $5,\n            default_target_file_format = $6, target_file_size_bytes = $7,\n            default_compression = $8, allow_lossless = $9,\n            strip_exif_by_default = $10, allow_overriding_strip_exif = $11,\n            medium_width_pixels = $12, medium_height_pixels = $13,\n            medium_quality = $14, allow_registration = $15,\n            allowed_referrers = $16, uploads_enabled = $17,\n            default_storage_quota_bytes = $18, record_referrer_views = $19,\n            terms_of_service = $20, privacy_policy = $21,\n            default_expiry_days = $22, allow_overriding_expiry = $23,\n            albums_enabled = $24, url_uploads = $25,\n            uploads_disabled_message = $26,\n            thumbnail_width_pixels = $28, thumbnail_height_pixels = $29,\n            thumbnail_quality = $30, checksum_algorithms = $31\n         where id = $27",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        {
+          "Custom": {
+            "name": "target_format",
+            "kind": {
+              "Enum": [
+                "webp",
+                "jpegxl",
+                "avif",
+                "png",
+                "jpg"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int4",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Bool",
+        "TextArray",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Text",
+        "Text",
+        "Int4",
+        "Bool",
+        "Bool",
+        {
+          "Custom": {
+            "name": "url_uploads",
+            "kind": {
+              "Enum": [
+                "disabled",
+                "sso_only",
+                "everyone"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        {
+          "Custom": {
+            "name": "checksum_algorithm[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "checksum_algorithm",
+                  "kind": {
+                    "Enum": [
+                      "ascon_hash256",
+                      "bash_hash256",
+                      "bash_hash384",
+                      "bash_hash512",
+                      "belt_hash",
+                      "blake2b128",
+                      "blake2b256",
+                      "blake2b512",
+                      "blake2s128",
+                      "blake2s256",
+                      "fsb160",
+                      "fsb224",
+                      "fsb256",
+                      "fsb384",
+                      "fsb512",
+                      "gost94_crypto_pro",
+                      "gost94_s2015",
+                      "gost94_test",
+                      "gost94_ua",
+                      "groestl224",
+                      "groestl256",
+                      "groestl384",
+                      "groestl512",
+                      "jh224",
+                      "jh256",
+                      "jh384",
+                      "jh512",
+                      "kupyna224",
+                      "kupyna256",
+                      "kupyna384",
+                      "kupyna512",
+                      "md2",
+                      "md4",
+                      "md5",
+                      "ripemd128",
+                      "ripemd160",
+                      "ripemd256",
+                      "ripemd320",
+                      "sha1",
+                      "sha224",
+                      "sha256",
+                      "sha384",
+                      "sha512",
+                      "sha512_224",
+                      "sha512_256",
+                      "sha3_224",
+                      "sha3_256",
+                      "sha3_384",
+                      "sha3_512",
+                      "keccak224",
+                      "keccak256",
+                      "keccak384",
+                      "keccak512",
+                      "shabal192",
+                      "shabal224",
+                      "shabal256",
+                      "shabal384",
+                      "shabal512",
+                      "skein256_256",
+                      "skein256_512",
+                      "skein512_256",
+                      "skein512_512",
+                      "skein1024_256",
+                      "skein1024_512",
+                      "skein1024_1024",
+                      "sm3",
+                      "streebog256",
+                      "streebog512",
+                      "tiger",
+                      "tiger2",
+                      "whirlpool"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "55a0e9d1d2ce954dfc03ad459286f06a25681b00b51d50e0a4462788abea3817"
+}

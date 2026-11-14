@@ -166,6 +166,24 @@
         <small>{{ $t('settings.albums_enabled.help') }}</small>
         <ToggleSwitch v-model="form.albums_enabled" />
       </div>
+
+      <div class="field">
+        <label>{{ $t('settings.checksum_algorithms.label') }}</label>
+        <small>{{ $t('settings.checksum_algorithms.help') }}</small>
+        <MultiSelect
+          v-model="form.checksum_algorithms"
+          size="small"
+          fluid
+          :options="
+            Object.values(ChecksumAlgorithm)
+              .filter((algorithm) => algorithm !== 'sha256')
+              .map((value) => ({ label: $t(`checksums.${value}`), value }))
+          "
+          filter
+          option-label="label"
+          option-value="value"
+        />
+      </div>
     </Panel>
 
     <Panel :header="$t('settings.sections.accounts')" toggleable collapsed>
@@ -275,6 +293,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { MAX_EXPIRY_DAYS } from '@/services/format'
 import AutoComplete from 'primevue/autocomplete'
 import InputNumber from 'primevue/inputnumber'
+import MultiSelect from 'primevue/multiselect'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
@@ -285,7 +304,7 @@ import Tooltip from 'primevue/tooltip'
 import { useI18n } from 'vue-i18n'
 import ByteInput from '@/components/ByteInput.vue'
 import { api } from '@/services/api/http'
-import type { ElysiaSettings, TargetFormat } from '@/services/api-schema'
+import { ChecksumAlgorithm, type ElysiaSettings, type TargetFormat } from '@/services/api-schema'
 import { showToast } from '@/services/toast'
 
 const vTooltip = Tooltip
@@ -331,6 +350,7 @@ const form = reactive<Required<ElysiaSettings>>({
   albums_enabled: true,
   url_uploads: 'everyone',
   uploads_disabled_message: '',
+  checksum_algorithms: [],
 })
 
 // Medium images are on when a box is set on either axis.

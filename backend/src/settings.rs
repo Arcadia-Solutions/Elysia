@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::services::checksums::ChecksumAlgorithm;
 use crate::services::image::TargetFormat;
 
 /// Shared, hot-swappable elysia settings. Uploads read a snapshot; a save
@@ -119,6 +120,10 @@ pub struct ElysiaSettings {
     /// generic notice.
     #[serde(default)]
     pub uploads_disabled_message: String,
+    /// Checksums computed on upload besides SHA-256, which always is. Each one
+    /// gives the image links by that checksum.
+    #[serde(default)]
+    pub checksum_algorithms: Vec<ChecksumAlgorithm>,
 }
 
 /// Longest expiry, in days, an upload or the default may set.
@@ -275,6 +280,10 @@ impl ElysiaSettings {
             .collect();
         self.allowed_referrers.sort();
         self.allowed_referrers.dedup();
+        self.checksum_algorithms
+            .retain(|algorithm| *algorithm != ChecksumAlgorithm::Sha256);
+        self.checksum_algorithms.sort();
+        self.checksum_algorithms.dedup();
     }
 
     /// Whether an image request may be served: the list is empty, or the

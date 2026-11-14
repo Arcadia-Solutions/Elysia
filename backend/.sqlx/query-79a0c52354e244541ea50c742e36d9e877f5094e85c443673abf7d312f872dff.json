@@ -1,0 +1,109 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select count(*) as \"count!\" from files\n           where status = 'available'\n             and exists (select 1 from unnest($1::checksum_algorithm[]) as algorithm\n                         where to_jsonb(files) ->> algorithm::text is null)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "checksum_algorithm[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "checksum_algorithm",
+                  "kind": {
+                    "Enum": [
+                      "ascon_hash256",
+                      "bash_hash256",
+                      "bash_hash384",
+                      "bash_hash512",
+                      "belt_hash",
+                      "blake2b128",
+                      "blake2b256",
+                      "blake2b512",
+                      "blake2s128",
+                      "blake2s256",
+                      "fsb160",
+                      "fsb224",
+                      "fsb256",
+                      "fsb384",
+                      "fsb512",
+                      "gost94_crypto_pro",
+                      "gost94_s2015",
+                      "gost94_test",
+                      "gost94_ua",
+                      "groestl224",
+                      "groestl256",
+                      "groestl384",
+                      "groestl512",
+                      "jh224",
+                      "jh256",
+                      "jh384",
+                      "jh512",
+                      "kupyna224",
+                      "kupyna256",
+                      "kupyna384",
+                      "kupyna512",
+                      "md2",
+                      "md4",
+                      "md5",
+                      "ripemd128",
+                      "ripemd160",
+                      "ripemd256",
+                      "ripemd320",
+                      "sha1",
+                      "sha224",
+                      "sha256",
+                      "sha384",
+                      "sha512",
+                      "sha512_224",
+                      "sha512_256",
+                      "sha3_224",
+                      "sha3_256",
+                      "sha3_384",
+                      "sha3_512",
+                      "keccak224",
+                      "keccak256",
+                      "keccak384",
+                      "keccak512",
+                      "shabal192",
+                      "shabal224",
+                      "shabal256",
+                      "shabal384",
+                      "shabal512",
+                      "skein256_256",
+                      "skein256_512",
+                      "skein512_256",
+                      "skein512_512",
+                      "skein1024_256",
+                      "skein1024_512",
+                      "skein1024_1024",
+                      "sm3",
+                      "streebog256",
+                      "streebog512",
+                      "tiger",
+                      "tiger2",
+                      "whirlpool"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "79a0c52354e244541ea50c742e36d9e877f5094e85c443673abf7d312f872dff"
+}

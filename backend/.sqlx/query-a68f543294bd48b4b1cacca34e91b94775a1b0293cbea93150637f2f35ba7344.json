@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  target_file_size_bytes, default_compression, allow_lossless,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   medium_width_pixels, medium_height_pixels, medium_quality,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads as \"url_uploads: UrlUploads\", uploads_disabled_message\n           from elysia_settings where id = $1",
+  "query": "select max_file_size_bytes, max_width_pixels, max_height_pixels,\n                  target_width_pixels, target_height_pixels,\n                  default_target_file_format as \"default_target_file_format?: TargetFormat\",\n                  target_file_size_bytes, default_compression, allow_lossless,\n                   strip_exif_by_default, allow_overriding_strip_exif,\n                   medium_width_pixels, medium_height_pixels, medium_quality,\n                   thumbnail_width_pixels, thumbnail_height_pixels, thumbnail_quality,\n                   allow_registration, allowed_referrers, uploads_enabled,\n                   default_storage_quota_bytes, record_referrer_views,\n                   terms_of_service, privacy_policy,\n                   default_expiry_days, allow_overriding_expiry, albums_enabled,\n                   url_uploads as \"url_uploads: UrlUploads\", uploads_disabled_message,\n                   checksum_algorithms as \"checksum_algorithms: Vec<ChecksumAlgorithm>\"\n           from elysia_settings where id = $1",
   "describe": {
     "columns": [
       {
@@ -345,6 +345,103 @@
             "name": "uploads_disabled_message"
           }
         }
+      },
+      {
+        "ordinal": 29,
+        "name": "checksum_algorithms: Vec<ChecksumAlgorithm>",
+        "type_info": {
+          "Custom": {
+            "name": "checksum_algorithm[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "checksum_algorithm",
+                  "kind": {
+                    "Enum": [
+                      "ascon_hash256",
+                      "bash_hash256",
+                      "bash_hash384",
+                      "bash_hash512",
+                      "belt_hash",
+                      "blake2b128",
+                      "blake2b256",
+                      "blake2b512",
+                      "blake2s128",
+                      "blake2s256",
+                      "fsb160",
+                      "fsb224",
+                      "fsb256",
+                      "fsb384",
+                      "fsb512",
+                      "gost94_crypto_pro",
+                      "gost94_s2015",
+                      "gost94_test",
+                      "gost94_ua",
+                      "groestl224",
+                      "groestl256",
+                      "groestl384",
+                      "groestl512",
+                      "jh224",
+                      "jh256",
+                      "jh384",
+                      "jh512",
+                      "kupyna224",
+                      "kupyna256",
+                      "kupyna384",
+                      "kupyna512",
+                      "md2",
+                      "md4",
+                      "md5",
+                      "ripemd128",
+                      "ripemd160",
+                      "ripemd256",
+                      "ripemd320",
+                      "sha1",
+                      "sha224",
+                      "sha256",
+                      "sha384",
+                      "sha512",
+                      "sha512_224",
+                      "sha512_256",
+                      "sha3_224",
+                      "sha3_256",
+                      "sha3_384",
+                      "sha3_512",
+                      "keccak224",
+                      "keccak256",
+                      "keccak384",
+                      "keccak512",
+                      "shabal192",
+                      "shabal224",
+                      "shabal256",
+                      "shabal384",
+                      "shabal512",
+                      "skein256_256",
+                      "skein256_512",
+                      "skein512_256",
+                      "skein512_512",
+                      "skein1024_256",
+                      "skein1024_512",
+                      "skein1024_1024",
+                      "sm3",
+                      "streebog256",
+                      "streebog512",
+                      "tiger",
+                      "tiger2",
+                      "whirlpool"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "elysia_settings",
+            "name": "checksum_algorithms"
+          }
+        }
       }
     ],
     "parameters": {
@@ -381,8 +478,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "b4e295900f96537e7ee51abf49d6805deff0bb2cd3b119becaa1e4d9ea77cec3"
+  "hash": "a68f543294bd48b4b1cacca34e91b94775a1b0293cbea93150637f2f35ba7344"
 }

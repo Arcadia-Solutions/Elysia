@@ -1,0 +1,107 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select checksum.key::checksum_algorithm as \"algorithm!: ChecksumAlgorithm\",\n                  count(*) as \"count!\"\n           from files, jsonb_each_text(to_jsonb(files)) as checksum\n           where status = 'available' and checksum.value is not null\n             and checksum.key = any(enum_range(null::checksum_algorithm)::text[])\n           group by 1 order by 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "algorithm!: ChecksumAlgorithm",
+        "type_info": {
+          "Custom": {
+            "name": "checksum_algorithm",
+            "kind": {
+              "Enum": [
+                "ascon_hash256",
+                "bash_hash256",
+                "bash_hash384",
+                "bash_hash512",
+                "belt_hash",
+                "blake2b128",
+                "blake2b256",
+                "blake2b512",
+                "blake2s128",
+                "blake2s256",
+                "fsb160",
+                "fsb224",
+                "fsb256",
+                "fsb384",
+                "fsb512",
+                "gost94_crypto_pro",
+                "gost94_s2015",
+                "gost94_test",
+                "gost94_ua",
+                "groestl224",
+                "groestl256",
+                "groestl384",
+                "groestl512",
+                "jh224",
+                "jh256",
+                "jh384",
+                "jh512",
+                "kupyna224",
+                "kupyna256",
+                "kupyna384",
+                "kupyna512",
+                "md2",
+                "md4",
+                "md5",
+                "ripemd128",
+                "ripemd160",
+                "ripemd256",
+                "ripemd320",
+                "sha1",
+                "sha224",
+                "sha256",
+                "sha384",
+                "sha512",
+                "sha512_224",
+                "sha512_256",
+                "sha3_224",
+                "sha3_256",
+                "sha3_384",
+                "sha3_512",
+                "keccak224",
+                "keccak256",
+                "keccak384",
+                "keccak512",
+                "shabal192",
+                "shabal224",
+                "shabal256",
+                "shabal384",
+                "shabal512",
+                "skein256_256",
+                "skein256_512",
+                "skein512_256",
+                "skein512_512",
+                "skein1024_256",
+                "skein1024_512",
+                "skein1024_1024",
+                "sm3",
+                "streebog256",
+                "streebog512",
+                "tiger",
+                "tiger2",
+                "whirlpool"
+              ]
+            }
+          }
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "281d3b289d34c785dab953b5afd9641ca320ad7c30d387b5f82db5b18be33d1a"
+}

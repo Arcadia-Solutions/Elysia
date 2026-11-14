@@ -88,7 +88,7 @@
         </dd>
       </dl>
       <!-- Trashed images are not served from their public links. -->
-      <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, mediumUrl: meta.medium_url }]" />
+      <EmbedLinks v-if="!meta.trashed_at" :images="[{ url: meta.url, mediumUrl: meta.medium_url }]" :checksums="meta.checksums" />
       <div class="actions">
         <Button v-if="meta.can_delete" :label="$t('trash.delete', 1)" icon="pi pi-trash" severity="danger" size="small" @click="deleteDialogVisible = true" />
         <Button v-if="!meta.trashed_at" :label="$t('reports.report')" icon="pi pi-flag" severity="secondary" size="small" @click="reportDialogVisible = true" />

@@ -10,8 +10,9 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::middlewares::AuthUser;
 use crate::repository::albums::{self, ImageAlbum};
+use crate::repository::checksums as checksum_repository;
 use crate::repository::files::{ReferrerViews, find_referrer_views};
-use crate::services::files::{self, image_url, preview_url};
+use crate::services::files::{self, ChecksumLinks, checksum_links, image_url, preview_url};
 use crate::storage::Preview;
 
 /// Display metadata for the `/i/<id>` viewer page.
@@ -47,6 +48,9 @@ pub struct MetadataResponse {
     pub created_at: String,
     /// Public URL for the raw image. Trashed, it is only served to Elysia's own pages.
     pub url: String,
+    /// Content-addressed links, one per checksum of the stored bytes, SHA-256
+    /// first. Not served while trashed.
+    pub checksums: Vec<ChecksumLinks>,
     /// Public URL for the medium. Trashed, it is only served to Elysia's own pages.
     pub medium_url: String,
     /// Whether the caller may trash the image: an admin, or its uploader during
@@ -89,6 +93,19 @@ pub async fn metadata(
     let public_url = &config.server.public_url;
     Ok(HttpResponse::Ok().json(MetadataResponse {
         url: image_url(public_url, &row.id, &row.ext),
+        checksums: checksum_repository::for_file(pool.get_ref(), &row.id)
+            .await?
+            .into_iter()
+            .map(|checksum| {
+                checksum_links(
+                    public_url,
+                    checksum,
+                    &row.ext,
+                    row.has_medium,
+                    row.has_thumbnail,
+                )
+            })
+            .collect(),
         medium_url: preview_url(
             public_url,
             &row.id,
